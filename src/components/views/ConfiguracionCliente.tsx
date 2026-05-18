@@ -13,13 +13,17 @@ export const ConfiguracionCliente: React.FC<ConfiguracionClienteProps> = ({ clie
     industry: client.industry,
     ceo: client.contact.ceo,
     executiveSummary: client.executiveSummary,
-    tasksCompleted: client.kpis.tasksCompleted.replace('%', ''),
     daysInProgram: client.kpis.daysInProgram,
     realityAdherence: client.metrics.realityAdherence,
     radar: [...client.radarData]
   });
 
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Calculate Tasks Completed Automatically
+  const totalTasks = client.intervenciones.reduce((acc, int) => acc + (int.checklists?.length || 0), 0);
+  const completedTasks = client.intervenciones.reduce((acc, int) => acc + (int.checklists?.filter(c => c.completed)?.length || 0), 0);
+  const calculatedTasksCompleted = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const handleRadarChange = (index: number, value: string) => {
     const numValue = parseInt(value, 10);
@@ -44,7 +48,7 @@ export const ConfiguracionCliente: React.FC<ConfiguracionClienteProps> = ({ clie
         executiveSummary: formData.executiveSummary,
         kpis: {
           ...c.kpis,
-          tasksCompleted: `${formData.tasksCompleted}%`,
+          tasksCompleted: `${calculatedTasksCompleted}%`,
           daysInProgram: formData.daysInProgram,
         },
         metrics: {
@@ -113,11 +117,11 @@ export const ConfiguracionCliente: React.FC<ConfiguracionClienteProps> = ({ clie
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">% Tareas Completadas</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">% Tareas Completadas (Automático)</label>
               <div className="relative">
                 <input 
-                  type="number" min="0" max="100" value={formData.tasksCompleted} onChange={e => setFormData({...formData, tasksCompleted: e.target.value})}
-                  className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-red-500 pr-8" required
+                  type="number" value={calculatedTasksCompleted} readOnly disabled
+                  className="w-full px-4 py-2 bg-gray-100 border border-gray-200 rounded-lg focus:outline-none text-gray-500 font-semibold pr-8 cursor-not-allowed"
                 />
                 <span className="absolute right-3 top-2.5 text-gray-400 font-bold">%</span>
               </div>

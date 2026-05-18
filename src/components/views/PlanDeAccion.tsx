@@ -13,6 +13,16 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
   const [newTopic, setNewTopic] = useState('');
   const [newProblem, setNewProblem] = useState('');
   const [newTutor, setNewTutor] = useState('');
+  const [expandedInterventions, setExpandedInterventions] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedInterventions(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -149,6 +159,14 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
                 required
               />
+              <input 
+                type="text" 
+                placeholder="Consultor asignado..."
+                value={newTutor}
+                onChange={e => setNewTutor(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
+                required
+              />
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowNewForm(false)} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
                 <button type="submit" className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold">Guardar</button>
@@ -159,7 +177,10 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
           <div className="space-y-4">
             {intervenciones.map(intervencion => (
               <div key={intervencion.id} className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                <div className="bg-gray-50 p-4 border-b border-gray-100">
+                <div 
+                  className="bg-gray-50 p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => toggleExpand(intervencion.id)}
+                >
                   <div className="flex justify-between items-start mb-2">
                     <p className="font-bold text-gray-800 text-sm flex items-center gap-2">
                       <Clock className="w-4 h-4 text-blue-500" /> {intervencion.topic}
@@ -172,43 +193,50 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
                   
                   <div className="flex justify-between items-center text-xs text-gray-500">
                     <span>Consultor: {intervencion.tutor}</span>
-                    <span>{intervencion.date}</span>
+                    <span className="flex items-center gap-2">
+                      {intervencion.date}
+                      <span className="text-xs font-bold px-1.5 py-0.5 bg-gray-200 rounded text-gray-600">
+                        {expandedInterventions.has(intervencion.id) ? '▲ Ocultar Checklist' : '▼ Ver Checklist'}
+                      </span>
+                    </span>
                   </div>
                 </div>
 
-                {/* Checklist Section */}
-                <div className="p-4 bg-white">
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Checklist de Ejecución</span>
-                    <span className="text-xs font-bold text-red-600">{intervencion.progress}% Completado</span>
-                  </div>
-                  
-                  <div className="w-full bg-gray-100 rounded-full h-1.5 mb-3">
-                    <div className="bg-red-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${intervencion.progress}%` }}></div>
-                  </div>
+                {/* Checklist Section (Collapsible) */}
+                {expandedInterventions.has(intervencion.id) && (
+                  <div className="p-4 bg-white animate-in slide-in-from-top-2 duration-200">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Checklist de Ejecución</span>
+                      <span className="text-xs font-bold text-red-600">{intervencion.progress}% Completado</span>
+                    </div>
+                    
+                    <div className="w-full bg-gray-100 rounded-full h-1.5 mb-3">
+                      <div className="bg-red-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${intervencion.progress}%` }}></div>
+                    </div>
 
-                  <div className="space-y-2">
-                    {(intervencion.checklists || []).map(check => (
-                      <div 
-                        key={check.id} 
-                        onClick={() => toggleChecklist(intervencion.id, check.id)}
-                        className="flex items-start gap-2 cursor-pointer group"
-                      >
-                        {check.completed ? (
-                          <CheckSquare className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-                        ) : (
-                          <Square className="w-4 h-4 text-gray-300 group-hover:text-red-400 transition-colors shrink-0 mt-0.5" />
-                        )}
-                        <span className={`text-sm ${check.completed ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
-                          {check.task}
-                        </span>
-                      </div>
-                    ))}
-                    {(!intervencion.checklists || intervencion.checklists.length === 0) && (
-                      <p className="text-xs text-gray-400 italic">No hay tareas definidas.</p>
-                    )}
+                    <div className="space-y-2">
+                      {(intervencion.checklists || []).map(check => (
+                        <div 
+                          key={check.id} 
+                          onClick={() => toggleChecklist(intervencion.id, check.id)}
+                          className="flex items-start gap-2 cursor-pointer group"
+                        >
+                          {check.completed ? (
+                            <CheckSquare className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                          ) : (
+                            <Square className="w-4 h-4 text-gray-300 group-hover:text-red-400 transition-colors shrink-0 mt-0.5" />
+                          )}
+                          <span className={`text-sm ${check.completed ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
+                            {check.task}
+                          </span>
+                        </div>
+                      ))}
+                      {(!intervencion.checklists || intervencion.checklists.length === 0) && (
+                        <p className="text-xs text-gray-400 italic">No hay tareas definidas.</p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ))}
           </div>
