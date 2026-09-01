@@ -52,6 +52,7 @@ function App() {
           <Route path="/meetings/:id" element={<MeetingDetail />} />
           <Route path="/minutes" element={<Minutes />} />
           <Route path="/settings" element={<div className="p-8 font-bold text-gray-700">Configuración de GS y Conexión WhatsApp / Whisper</div>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

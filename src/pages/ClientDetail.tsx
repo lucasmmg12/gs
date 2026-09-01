@@ -196,8 +196,8 @@ export default function ClientDetail() {
                   <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Meta Trienal</span>
                 </div>
               </div>
-              <div className="h-80 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-80 w-full min-h-[320px] min-w-[280px]">
+                <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={300}>
                   <RadarChart data={radarChartData}>
                     <PolarGrid stroke="#e5e7eb" />
                     <PolarAngleAxis dataKey="subject" tick={{ fill: '#374151', fontSize: 12, fontWeight: 600 }} />
