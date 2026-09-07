@@ -11,6 +11,7 @@ import ClientDetail from './pages/ClientDetail';
 import Meetings from './pages/Meetings';
 import MeetingDetail from './pages/MeetingDetail';
 import Minutes from './pages/Minutes';
+import VoiceRecorder from './components/VoiceRecorder';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -51,6 +52,7 @@ function App() {
           <Route path="/meetings" element={<Meetings />} />
           <Route path="/meetings/:id" element={<MeetingDetail />} />
           <Route path="/minutes" element={<Minutes />} />
+          <Route path="/gobernanza" element={<VoiceRecorder currentUser={session?.user} />} />
           <Route path="/settings" element={<div className="p-8 font-bold text-gray-700">Configuración de GS y Conexión WhatsApp / Whisper</div>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

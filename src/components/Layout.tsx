@@ -8,7 +8,8 @@ import {
   Settings, 
   LogOut,
   Menu,
-  Activity
+  Activity,
+  Mic
 } from 'lucide-react';
 import { useState } from 'react';
 import GrowyChat from './GrowyChat';
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Clientes', href: '/clients', icon: Users },
   { name: 'Reuniones', href: '/meetings', icon: Calendar },
+  { name: 'Gobernanza Audios', href: '/gobernanza', icon: Mic },
   { name: 'Minutas', href: '/minutes', icon: FileText },
   { name: 'Configuración', href: '/settings', icon: Settings },
 ];
