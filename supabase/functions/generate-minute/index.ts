@@ -65,14 +65,24 @@ serve(async (req) => {
 
     if (meetingErr || !meeting) throw new Error('Meeting not found')
 
-    // 2. Fetch transcription
-    const { data: transcription } = await supabase
-      .from('transcriptions')
-      .select('*')
+    // 2. Fetch transcription from meeting's audios
+    const { data: audios } = await supabase
+      .from('audios')
+      .select('id')
       .eq('meeting_id', meeting_id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    
+    let transcription: any = null
+    if (audios && audios.length > 0) {
+      const audioIds = audios.map((a: any) => a.id)
+      const { data: transData } = await supabase
+        .from('transcriptions')
+        .select('*')
+        .in('audio_id', audioIds)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      transcription = transData
+    }
 
     const rawTranscript = transcription?.content_corrected || transcription?.content_raw || `Reunión de tutoría estratégica con ${meeting.organizations?.name}. Se trataron temas de gobernanza, procesos operativos y alineación de socios.`
 

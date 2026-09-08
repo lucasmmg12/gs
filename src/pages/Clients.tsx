@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
-import { Building2, Search, Plus, ChevronRight, Activity, Layers } from 'lucide-react';
+import { Building2, Search, Plus, ChevronRight, Activity, Layers, X, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 type Organization = Database['public']['Tables']['organizations']['Row'];
@@ -10,10 +10,13 @@ export default function Clients() {
   const [clients, setClients] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-
-  useEffect(() => {
-    fetchClients();
-  }, []);
+  
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientIndustry, setNewClientIndustry] = useState('Salud / Clínica');
+  const [creating, setCreating] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const fetchClients = async () => {
     const { data, error } = await supabase
@@ -29,8 +32,73 @@ export default function Clients() {
     setLoading(false);
   };
 
+  useEffect(() => {
+    fetchClients();
+  }, []);
+
+  const handleCreateClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClientName.trim()) {
+      setModalError('Ingrese la razón social o nombre de la organización.');
+      return;
+    }
+
+    setCreating(true);
+    setModalError(null);
+
+    try {
+      // 1. Insert organization
+      const { data: newOrg, error: orgError } = await supabase
+        .from('organizations')
+        .insert([{
+          name: newClientName.trim(),
+          industry: newClientIndustry.trim(),
+          status: 'active'
+        }])
+        .select()
+        .single();
+
+      if (orgError) throw orgError;
+
+      // 2. Initialize diagnostic_360 row
+      if (newOrg) {
+        await supabase.from('diagnostic_360').insert([{
+          organization_id: newOrg.id,
+          version: 1,
+          status: 'draft',
+          ime_score: 5.0,
+          ire_score: 3.5
+        }]);
+
+        // 3. Initialize pentagon baseline
+        await supabase.from('pentagon_scores').insert([{
+          organization_id: newOrg.id,
+          period_label: 'Línea Base Inicial',
+          measurement_date: new Date().toISOString().split('T')[0],
+          gobernanza: 5.0,
+          procesos: 4.5,
+          finanzas: 6.0,
+          talento: 5.5,
+          comercial: 5.0,
+          ime_actual: 5.2,
+          is_baseline: true
+        }]);
+      }
+
+      setIsModalOpen(false);
+      setNewClientName('');
+      await fetchClients();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al registrar cliente';
+      setModalError(msg);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const filteredClients = clients.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.industry && c.industry.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -42,7 +110,10 @@ export default function Clients() {
             Gestiona los clientes, su Diagnóstico 360°, Master Plan Estratégico y Pentágono del Orden.
           </p>
         </div>
-        <button className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
+        >
           <Plus className="h-4 w-4" />
           Nuevo Cliente
         </button>
@@ -55,7 +126,7 @@ export default function Clients() {
           </div>
           <input
             type="text"
-            className="block w-full rounded-lg border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+            className="block w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
             placeholder="Buscar por razón social o industria..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -108,6 +179,86 @@ export default function Clients() {
           </div>
         )}
       </div>
+
+      {/* Modal Nuevo Cliente */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900">Registrar Nuevo Cliente</h3>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateClient} className="mt-4 space-y-4">
+              {modalError && (
+                <div className="p-3 text-xs bg-red-50 text-red-700 rounded-lg border border-red-200">
+                  {modalError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Razón Social / Nombre Comercial *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Clínica Los Andes S.A."
+                  className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                  value={newClientName}
+                  onChange={e => setNewClientName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Industria / Rubro
+                </label>
+                <select
+                  className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                  value={newClientIndustry}
+                  onChange={e => setNewClientIndustry(e.target.value)}
+                >
+                  <option value="Salud / Clínica">Salud / Clínica</option>
+                  <option value="Laboratorio y Diagnóstico">Laboratorio y Diagnóstico</option>
+                  <option value="Desarrollo e Ingeniería">Desarrollo e Ingeniería</option>
+                  <option value="Servicios Corporativos">Servicios Corporativos</option>
+                  <option value="Industria Farmacéutica">Industria Farmacéutica</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-70"
+                >
+                  {creating ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Creando...
+                    </>
+                  ) : (
+                    'Guardar Cliente'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

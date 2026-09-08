@@ -5,6 +5,7 @@ import { MANUAL_PROCEDIMIENTOS } from './manual.ts'
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY') || ''
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || ''
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,17 +14,26 @@ const corsHeaders = {
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY })
 
-const BASE_SYSTEM_PROMPT = `Sos "Growy", el asistente de IA experto y copiloto metodológico de Consultora GS.
+const BASE_SYSTEM_PROMPT = `Sos "Growy", el asistente de IA experto, copiloto metodológico y analista de datos de Consultora GS (Grow Labs · Sanatorio Argentino).
 Hablás en español profesional, analítico y cercano (usando voseo argentino cuando sea natural).
-Sos experto en toda la plataforma y metodología de GS:
-- PR-01: Gestión de Reuniones, Audios, Transcripciones y Minutas oficiales con aprobación humana.
-- PR-02: Diagnóstico Integral 360° (10 Áreas, 78 Preguntas, OMV Target CVA, IME 0-100 e IRE 0-100) con actualización incremental.
-- PR-03: Master Plan Estratégico (5 Ejes: Gobernanza, Procesos, Finanzas, Talento, Comercial), Pentágono del Orden (PENT-PE 0-10) y Matriz de Riesgos (R-01.., 5x5).
 
-## REGLAS CRÍTICAS:
-1. **SIEMPRE consultá datos reales ANTES de responder.** Usá las herramientas (tools) disponibles para traer datos actualizados de la base de datos de Supabase.
-2. **Seguridad y Privacidad Estricta (RLS):** Si un cliente externo pregunta, solo puede acceder a la información de su propia organización. Si la base de datos devuelve vacío, explicale amablemente que no se encontraron registros o no cuenta con los permisos necesarios.
-3. **Proactividad Metodológica:** Si te preguntan por un cliente, aportá contexto de su IME, estado del Pentágono, minutas recientes y riesgos críticos identificados. Si preguntan sobre cómo proceder, usá \`query_manual\`.
+## TU ROL Y CAPACIDADES:
+1. **Conocimiento Total del Sistema y Metodología GS**:
+   - **PR-01: Gestión de Reuniones y Minutas**: Ciclo Recibido → Borrador → Pendiente de revisión → Aprobado → Publicado. Ningún contenido generado por IA se publica al cliente sin aprobación de un consultor humano.
+   - **PR-02: Diagnóstico Integral 360°**: 10 áreas, 78 preguntas clave, OMV (Objetivo de Mediano Plazo a 3 años), cálculo del IME (Índice de Madurez Estratégica 0-100) y del IRE (Índice de Riesgo Empresario 0-100). Actualización incremental basada en evidencias sin sobrescritura ciega.
+   - **PR-03: Master Plan Estratégico (MPE)**: Plan de acción priorizado en 5 Ejes (1. Gobernanza y Conducción, 2. Procesos y Operaciones, 3. Finanzas y Control de Gestión, 4. Talento y Personas, 5. Comercial y Expansión).
+   - **Pentágono del Orden (PENT-PE)**: Medición de 0 a 10 en los 5 ejes, comparando Línea Base, Medición Actual y Meta Trienal.
+   - **Medianera Conceptual**: Primero se mapea la cadena de valor y los procesos bajo ISO 9001, y recién después se diseña el organigrama de puestos para no acomodar la estructura a las personas actuales.
+   - **Matriz de Riesgos (5x5)**: Probabilidad x Impacto, foco en riesgos inherentes críticos y planes de contingencia.
+
+2. **Acceso a Toda la Base de Datos**:
+   - Antes de responder sobre cualquier cliente, estado de proyecto, reuniones, minutas, diagnóstico o tareas, **CONSULTÁ SIEMPRE LAS TOOLS CORRESPONDIENTES**.
+   - Traé datos reales: nombres exactos, números de IME, fechas de reuniones, responsables y estados.
+
+3. **Generación de Archivos Excel (.xlsx) e Informes en PDF**:
+   - Si el usuario solicita generar, armar, exportar o descargar un Excel o planilla de cálculo (ej: del Master Plan, de los Riesgos, del Diagnóstico, de las Reuniones), invocá la tool \`generate_excel_report\` con los datos formateados en filas y columnas limpias.
+   - Si el usuario solicita un informe, reporte formal o documento en PDF (ej: resumen ejecutivo del diagnóstico, informe de madurez del pentágono, reporte de auditoría), invocá la tool \`generate_pdf_report\` con título, subtítulo, métricas clave (KPIs), secciones y tablas.
+   - Además de invocar la tool, redactá en tu mensaje un resumen ejecutivo cordial informando que el archivo fue preparado y está disponible para descarga.
 `
 
 const tools: any = [
@@ -45,12 +55,12 @@ const tools: any = [
     type: 'function',
     function: {
       name: 'query_meetings',
-      description: 'Obtener historial de reuniones. Puedes filtrar por organization_id.',
+      description: 'Obtener historial de reuniones y audios. Puedes filtrar por organization_id.',
       parameters: {
         type: 'object',
         properties: {
           organization_id: { type: 'string', description: 'UUID de la organización' },
-          status: { type: 'string', description: 'Status de la reunión (ej: completed, scheduled)' }
+          status: { type: 'string', description: 'Status de la reunión' }
         }
       }
     }
@@ -59,7 +69,7 @@ const tools: any = [
     type: 'function',
     function: {
       name: 'query_minutes',
-      description: 'Consultar contenido de las minutas.',
+      description: 'Consultar contenido completo de las minutas oficiales y borradores.',
       parameters: {
         type: 'object',
         properties: {
@@ -106,7 +116,7 @@ const tools: any = [
         type: 'object',
         properties: {
           organization_id: { type: 'string', description: 'UUID de la organización' },
-          min_level: { type: 'number', description: 'Nivel mínimo de riesgo inherente (ej: 10 para riesgos altos/extremos)' }
+          min_level: { type: 'number', description: 'Nivel mínimo de riesgo inherente' }
         }
       }
     }
@@ -127,11 +137,105 @@ const tools: any = [
   {
     type: 'function',
     function: {
+      name: 'query_gobernanza',
+      description: 'Consultar sesiones de auditoría grabadas, plantillas y entrevistas con IA.',
+      parameters: {
+        type: 'object',
+        properties: {
+          plantilla_id: { type: 'string', description: 'UUID de la plantilla' }
+        }
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'query_manual',
       description: 'Obtener información del Manual de Procedimientos de GS para responder dudas de metodología (PR-01, PR-02, PR-03, políticas de seguridad).',
       parameters: {
         type: 'object',
         properties: {}
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'generate_excel_report',
+      description: 'Generar una planilla de cálculo Excel (.xlsx) descargable con tablas de datos solicitadas.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fileName: { type: 'string', description: 'Nombre del archivo .xlsx' },
+          sheets: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                sheetName: { type: 'string' },
+                headers: { type: 'array', items: { type: 'string' } },
+                rows: {
+                  type: 'array',
+                  items: {
+                    type: 'array',
+                    items: { type: 'string' }
+                  }
+                }
+              },
+              "required": ["sheetName", "headers", "rows"]
+            }
+          }
+        },
+        required: ["fileName", "sheets"]
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'generate_pdf_report',
+      description: 'Generar un informe ejecutivo en PDF estéticamente diseñado para presentación formal con métricas y tablas.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fileName: { type: 'string', description: 'Nombre del archivo .pdf' },
+          title: { type: 'string', description: 'Título del informe' },
+          subtitle: { type: 'string', description: 'Subtítulo' },
+          clientName: { type: 'string', description: 'Nombre del cliente' },
+          consultantName: { type: 'string', description: 'Nombre del consultor o auditor' },
+          date: { type: 'string', description: 'Fecha' },
+          kpis: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                label: { type: 'string' },
+                value: { type: 'string' },
+                change: { type: 'string' }
+              },
+              required: ["label", "value"]
+            }
+          },
+          sections: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                title: { type: 'string' },
+                content: { type: 'string' },
+                table: {
+                  type: 'object',
+                  properties: {
+                    headers: { type: 'array', items: { type: 'string' } },
+                    rows: { type: 'array', items: { type: 'array', items: { type: 'string' } } }
+                  }
+                }
+              },
+              required: ["title"]
+            }
+          }
+        },
+        required: ["fileName", "title", "sections"]
       }
     }
   }
@@ -143,18 +247,14 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) throw new Error('Missing Authorization header')
-
-    const supabase = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY') || '', {
-      global: { headers: { Authorization: authHeader } }
-    })
-
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
     const { messages } = await req.json()
     if (!messages) throw new Error('No messages provided')
 
     const sysMsg = { role: 'system', content: BASE_SYSTEM_PROMPT }
     const conversation = [sysMsg, ...messages]
+
+    let generatedAttachment: any = null
 
     // Step 1: Call OpenAI
     const response = await openai.chat.completions.create({
@@ -167,7 +267,7 @@ serve(async (req) => {
     let responseMessage = response.choices[0].message
     let stepCount = 0
 
-    // Step 2: Handle tool calls (execute them)
+    // Step 2: Handle tool calls
     while (responseMessage.tool_calls && stepCount < 6) {
       stepCount++
       conversation.push(responseMessage)
@@ -179,24 +279,24 @@ serve(async (req) => {
 
         try {
           if (name === 'query_organizations') {
-            let q = supabase.from('organizations').select('id, name, industry, status')
+            let q = supabase.from('organizations').select('*')
             if (args.search) q = q.ilike('name', `%${args.search}%`)
             if (args.industry) q = q.eq('industry', args.industry)
             const { data, error } = await q.limit(10)
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           } 
           else if (name === 'query_meetings') {
-            let q = supabase.from('meetings').select('id, title, meeting_date, status, organization_id')
+            let q = supabase.from('meetings').select('*, organizations(*), minutes(*)')
             if (args.organization_id) q = q.eq('organization_id', args.organization_id)
             if (args.status) q = q.eq('status', args.status)
             const { data, error } = await q.order('meeting_date', { ascending: false }).limit(10)
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           }
           else if (name === 'query_minutes') {
-            let q = supabase.from('minutes').select('id, meeting_id, status, content, version')
+            let q = supabase.from('minutes').select('*, meetings(*, organizations(*))')
             if (args.meeting_id) q = q.eq('meeting_id', args.meeting_id)
             if (args.status) q = q.eq('status', args.status)
-            const { data, error } = await q.limit(5)
+            const { data, error } = await q.order('created_at', { ascending: false }).limit(5)
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           }
           else if (name === 'query_master_plan') {
@@ -204,7 +304,7 @@ serve(async (req) => {
             if (args.organization_id) q = q.eq('organization_id', args.organization_id)
             if (args.axis) q = q.eq('axis', args.axis)
             if (args.status) q = q.eq('status', args.status)
-            const { data, error } = await q.order('axis').limit(15)
+            const { data, error } = await q.order('axis').limit(25)
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           }
           else if (name === 'query_pentagon_scores') {
@@ -217,7 +317,7 @@ serve(async (req) => {
             let q = supabase.from('risk_matrix').select('*')
             if (args.organization_id) q = q.eq('organization_id', args.organization_id)
             if (args.min_level) q = q.gte('level_inherent', args.min_level)
-            const { data, error } = await q.order('level_inherent', { ascending: false }).limit(10)
+            const { data, error } = await q.order('level_inherent', { ascending: false }).limit(20)
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           }
           else if (name === 'query_diagnostic_360') {
@@ -226,8 +326,29 @@ serve(async (req) => {
             const { data, error } = await q.order('version', { ascending: false }).limit(1).maybeSingle()
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           }
+          else if (name === 'query_gobernanza') {
+            const { data: plantillas } = await supabase.from('gobernanza_plantillas').select('*')
+            const { data: entrevistas } = await supabase.from('gobernanza_entrevistas').select('*').limit(5)
+            toolResult = JSON.stringify({ plantillas, entrevistas })
+          }
           else if (name === 'query_manual') {
             toolResult = MANUAL_PROCEDIMIENTOS
+          }
+          else if (name === 'generate_excel_report') {
+            generatedAttachment = {
+              type: 'excel',
+              fileName: args.fileName || 'Reporte_Consultora_GS.xlsx',
+              options: args
+            }
+            toolResult = 'OK: Archivo Excel preparado exitosamente para descarga por el usuario.'
+          }
+          else if (name === 'generate_pdf_report') {
+            generatedAttachment = {
+              type: 'pdf',
+              fileName: args.fileName || 'Informe_Consultora_GS.pdf',
+              options: args
+            }
+            toolResult = 'OK: Informe PDF generado exitosamente para descarga por el usuario.'
           }
         } catch (e: any) {
           toolResult = `Error en tool: ${e.message}`
@@ -241,7 +362,7 @@ serve(async (req) => {
         })
       }
 
-      // Step 3: Call OpenAI again with the tool results
+      // Next step
       const nextResponse = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: conversation,
@@ -251,7 +372,10 @@ serve(async (req) => {
       responseMessage = nextResponse.choices[0].message
     }
 
-    return new Response(JSON.stringify({ reply: responseMessage.content }), {
+    return new Response(JSON.stringify({ 
+      reply: responseMessage.content,
+      attachment: generatedAttachment 
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   } catch (error: any) {

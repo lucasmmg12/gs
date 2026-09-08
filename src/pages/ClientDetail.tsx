@@ -21,25 +21,21 @@ export default function ClientDetail() {
   const [diagnosticAnswers, setDiagnosticAnswers] = useState<Record<number, string>>({});
   const [diagnosticScale, setDiagnosticScale] = useState<Record<number, number>>({});
   const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [diagnosticRecordId, setDiagnosticRecordId] = useState<string | null>(null);
+  const [savingDiag, setSavingDiag] = useState(false);
 
   // Master Plan State
   const [tasks] = useState(INITIAL_MASTER_PLAN_TASKS);
   const [selectedAxis, setSelectedAxis] = useState<number | 'all'>('all');
 
   // Pentagon State
-  const [pentagonData] = useState(INITIAL_PENTAGON_DATA);
+  const [pentagonData, setPentagonData] = useState(INITIAL_PENTAGON_DATA);
 
   // Risks State
   const [risks] = useState(INITIAL_RISKS);
 
   // Meetings State
   const [meetings, setMeetings] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (id) {
-      fetchClientData();
-    }
-  }, [id]);
 
   const fetchClientData = async () => {
     setLoading(true);
@@ -72,7 +68,134 @@ export default function ClientDetail() {
       setSuggestions(sugs[0].suggested_changes?.suggested_changes || []);
     }
 
+    // 4. Fetch diagnostic_360 record
+    const { data: diagRecord } = await supabase
+      .from('diagnostic_360')
+      .select('*')
+      .eq('organization_id', id as string)
+      .order('version', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (diagRecord) {
+      setDiagnosticRecordId(diagRecord.id);
+      if (diagRecord.areas_data && typeof diagRecord.areas_data === 'object') {
+        const loadedAnswers: Record<number, string> = {};
+        const loadedScales: Record<number, number> = {};
+        const areas = diagRecord.areas_data as Record<string, any>;
+        Object.values(areas).forEach((a: any) => {
+          if (a?.questions) {
+            Object.entries(a.questions).forEach(([qKey, val]: [string, any]) => {
+              const num = parseInt(qKey, 10);
+              if (!isNaN(num)) {
+                if (typeof val === 'string') loadedAnswers[num] = val;
+                else if (val && typeof val === 'object') {
+                  if (val.answer) loadedAnswers[num] = val.answer;
+                  if (val.scale) loadedScales[num] = val.scale;
+                }
+              }
+            });
+          }
+        });
+        setDiagnosticAnswers(prev => ({ ...prev, ...loadedAnswers }));
+        setDiagnosticScale(prev => ({ ...prev, ...loadedScales }));
+      }
+    }
+
+    // 5. Fetch pentagon scores from Supabase
+    const { data: pentagonRows } = await supabase
+      .from('pentagon_scores')
+      .select('*')
+      .eq('organization_id', id as string)
+      .order('measurement_date', { ascending: true });
+
+    if (pentagonRows && pentagonRows.length >= 2) {
+      setPentagonData(pentagonRows.map(p => ({
+        label: p.period_label,
+        measurementDate: p.measurement_date,
+        gobernanza: Number(p.gobernanza) || 0,
+        procesos: Number(p.procesos) || 0,
+        finanzas: Number(p.finanzas) || 0,
+        talento: Number(p.talento) || 0,
+        comercial: Number(p.comercial) || 0,
+        imeActual: Number(p.ime_actual) || 0,
+        isBaseline: p.is_baseline || false,
+        isMeta: p.is_meta || false
+      })));
+    }
+
     setLoading(false);
+  };
+
+  useEffect(() => {
+    if (id) {
+      fetchClientData();
+    }
+  }, [id]);
+
+  const handleSaveDiagnostic = async () => {
+    if (!id) return;
+    setSavingDiag(true);
+    try {
+      const currentAreaObj = DIAGNOSTIC_AREAS.find(a => a.id === selectedArea);
+      const areaKey = selectedArea;
+
+      const areaQuestions: Record<string, any> = {};
+      currentAreaObj?.questions.forEach(q => {
+        areaQuestions[q.id] = {
+          answer: diagnosticAnswers[q.id] || '',
+          scale: diagnosticScale[q.id] || null
+        };
+      });
+
+      let existingAreas: Record<string, any> = {};
+      if (diagnosticRecordId) {
+        const { data: currentRecord } = await supabase
+          .from('diagnostic_360')
+          .select('areas_data')
+          .eq('id', diagnosticRecordId)
+          .single();
+        if (currentRecord?.areas_data && typeof currentRecord.areas_data === 'object') {
+          existingAreas = currentRecord.areas_data as Record<string, any>;
+        }
+      }
+
+      existingAreas[areaKey] = {
+        name: currentAreaObj?.name || selectedArea,
+        questions: areaQuestions,
+        updated_at: new Date().toISOString()
+      };
+
+      if (diagnosticRecordId) {
+        await supabase
+          .from('diagnostic_360')
+          .update({
+            areas_data: existingAreas,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', diagnosticRecordId);
+      } else {
+        const { data: created } = await supabase
+          .from('diagnostic_360')
+          .insert([{
+            organization_id: id,
+            version: 1,
+            status: 'draft',
+            areas_data: existingAreas,
+            ime_score: 5.5,
+            ire_score: 4.0
+          }])
+          .select()
+          .single();
+        if (created) setDiagnosticRecordId(created.id);
+      }
+      alert('¡Respuestas del área guardadas correctamente en la base de datos!');
+    } catch (e: any) {
+      console.error(e);
+      alert('Error guardando respuestas: ' + (e.message || 'Error'));
+    } finally {
+      setSavingDiag(false);
+    }
   };
 
   const handleApplySuggestion = (questionId: number, text: string) => {
@@ -374,10 +497,11 @@ export default function ClientDetail() {
 
                     <div className="flex justify-end pt-4 border-t border-gray-200">
                       <button 
-                        onClick={() => alert('Diagnóstico guardado correctamente en Supabase.')}
-                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm transition-colors"
+                        onClick={handleSaveDiagnostic}
+                        disabled={savingDiag}
+                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-bold rounded-lg shadow-sm transition-colors"
                       >
-                        Guardar Respuestas del Área
+                        {savingDiag ? 'Guardando en Base de Datos...' : 'Guardar Respuestas del Área'}
                       </button>
                     </div>
                   </>

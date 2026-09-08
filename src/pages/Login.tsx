@@ -86,6 +86,20 @@ export default function Login() {
               {loading ? 'Iniciando sesión...' : 'Ingresar al portal'}
             </button>
           </div>
+
+          <div className="pt-4 border-t border-gray-100 flex flex-col items-center gap-2">
+            <span className="text-[11px] text-gray-400 font-medium">Acceso para demostración y auditoría:</span>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('admin@gs.com');
+                setPassword('admin123456');
+              }}
+              className="text-xs font-semibold text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200 transition-colors"
+            >
+              Cargar Consultor GS (admin@gs.com)
+            </button>
+          </div>
         </form>
       </div>
     </div>

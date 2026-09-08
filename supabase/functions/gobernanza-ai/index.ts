@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { Configuration, OpenAIApi } from "https://esm.sh/openai@3.3.0";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import OpenAI from 'https://esm.sh/openai@4.28.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,8 +20,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY') || '';
-    const configuration = new Configuration({ apiKey: openaiApiKey });
-    const openai = new OpenAIApi(configuration);
+    const openai = new OpenAI({ apiKey: openaiApiKey });
 
     if (action === 'transcribe_and_analyze') {
       const { entrevista_id, plantilla_id, audio_path, manual_answers } = payload;
@@ -44,20 +43,17 @@ serve(async (req) => {
       if (downloadError) throw new Error(`Error descargando audio: ${downloadError.message}`);
 
       // 3. Transcripción con Whisper (OpenAI)
-      // Whisper requiere un File object. En Deno podemos crear un File.
       const audioFile = new File([audioData], "audio.webm", { type: "audio/webm" });
       
       console.log("Transcribiendo con OpenAI Whisper...");
-      const transcriptResponse = await openai.createTranscription(
-        audioFile,
-        "whisper-1",
-        undefined, // prompt
-        "json", // response_format
-        0.2, // temperature
-        "es" // language
-      );
+      const transcriptResponse = await openai.audio.transcriptions.create({
+        file: audioFile,
+        model: "whisper-1",
+        temperature: 0.2,
+        language: "es"
+      });
       
-      const transcripcionCompleta = transcriptResponse.data.text;
+      const transcripcionCompleta = transcriptResponse.text;
       console.log("Transcripción completada.");
 
       // 4. Análisis Estructurado con GPT-4o-mini o GPT-4o
@@ -84,13 +80,13 @@ serve(async (req) => {
       
       Asegúrate de que 'respuestas_cuestionario' tenga las respuestas extraídas de la reunión correspondientes al orden de las preguntas planteadas. Si no se habló de algo, indica 'No se menciona en la grabación'. Devuelve el JSON puro.`;
 
-      const chatResponse = await openai.createChatCompletion({
-        model: "gpt-4o-mini", // o gpt-4o para mayor razonamiento
+      const chatResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
         messages: [{ role: "system", content: prompt }],
         response_format: { type: "json_object" }
       });
 
-      const iaResultRaw = chatResponse.data.choices[0].message?.content || '{}';
+      const iaResultRaw = chatResponse.choices[0].message?.content || '{}';
       let iaResult = { resumen: '', respuestas_cuestionario: [], mapa_conceptual_mermaid: '', minutas: {} };
       try {
           iaResult = JSON.parse(iaResultRaw);

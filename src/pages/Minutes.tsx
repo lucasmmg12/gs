@@ -16,10 +16,6 @@ export default function Minutes() {
   const [minutes, setMinutes] = useState<MinuteWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchMinutes();
-  }, []);
-
   const fetchMinutes = async () => {
     const { data, error } = await supabase
       .from('minutes')
@@ -33,6 +29,10 @@ export default function Minutes() {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    fetchMinutes();
+  }, []);
 
   const getStatusBadge = (status: string | null) => {
     switch(status) {

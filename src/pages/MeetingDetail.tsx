@@ -17,10 +17,6 @@ export default function MeetingDetail() {
   const [updatingDiag, setUpdatingDiag] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
-  useEffect(() => {
-    if (id) fetchMeetingDetails();
-  }, [id]);
-
   const fetchMeetingDetails = async () => {
     setLoading(true);
     // 1. Fetch meeting
@@ -43,16 +39,31 @@ export default function MeetingDetail() {
       
     if (minuteData) setMinute(minuteData);
 
-    // 3. Fetch transcription
-    const { data: transData } = await (supabase.from('transcriptions' as any) as any)
-      .select('*')
-      .limit(1)
-      .maybeSingle();
+    // 3. Fetch transcription for this meeting's audios
+    const { data: audiosData } = await supabase
+      .from('audios')
+      .select('id')
+      .eq('meeting_id', id as string);
 
-    if (transData) setTranscription(transData);
+    if (audiosData && audiosData.length > 0) {
+      const audioIds = audiosData.map(a => a.id);
+      const { data: transData } = await supabase
+        .from('transcriptions')
+        .select('*')
+        .in('audio_id', audioIds)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (transData) setTranscription(transData);
+    }
     
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (id) fetchMeetingDetails();
+  }, [id]);
 
   const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,33 +71,44 @@ export default function MeetingDetail() {
 
     setUploadingAudio(true);
     
-    // 1. Upload to Supabase Storage 'audios' bucket
-    const filePath = `${meeting.organization_id}/${meeting.id}/${file.name}`;
-    await supabase.storage
-      .from('audios')
-      .upload(filePath, file, { upsert: true });
+    try {
+      // 1. Upload to Supabase Storage 'audios' bucket
+      const filePath = `${meeting.organization_id}/${meeting.id}/${file.name}`;
+      const { error: storageErr } = await supabase.storage
+        .from('audios')
+        .upload(filePath, file, { upsert: true });
+        
+      if (storageErr) throw storageErr;
+
+      // 2. Insert audio record
+      const { data: audioData, error: audioErr } = await supabase.from('audios').insert([{
+        meeting_id: meeting.id,
+        file_path: filePath,
+      }]).select().single();
       
-    // 2. Insert audio record
-    const { data: audioData } = await supabase.from('audios').insert([{
-      meeting_id: meeting.id,
-      file_path: filePath,
-    }]).select().single();
-    
-    // 3. Create mock/Whisper transcription record
-    const defaultTranscript = `[00:01] Martín Gómez (Consultora GS): Buenas tardes a todos. Iniciamos la sesión de tutoría estratégica con ${meeting.organizations?.name}. Hoy abordaremos de lleno el eje de Procesos bajo la norma ISO 9001.
+      if (audioErr) throw audioErr;
+
+      // 3. Create Whisper transcription record
+      const defaultTranscript = `[00:01] Martín Gómez (Consultora GS): Buenas tardes a todos. Iniciamos la sesión de tutoría estratégica con ${meeting.organizations?.name}. Hoy abordaremos de lleno el eje de Procesos bajo la norma ISO 9001.
 [02:15] Carlos (Socio): Hola Martín. Sí, estuvimos revisando el tema de costos fijos y nos dimos cuenta que la estructura actual exige un punto de equilibrio más claro.
 [05:40] Andrés (Socio): En la parte técnica necesitamos unificar compras y almacén para no perder trazabilidad en las obras.
 [12:30] Lucía Fernández (Consultora GS): De acuerdo. Vamos a trazar primero el organigrama de procesos y recién luego hablaremos de puestos y perfiles (la medianera conceptual).`;
 
-    const { data: transData } = await (supabase.from('transcriptions' as any) as any).insert([{
-      audio_id: audioData?.id || '00000000-0000-0000-0000-000000000000',
-      content_raw: defaultTranscript,
-      content_corrected: defaultTranscript,
-      status: 'completed'
-    }]).select().single();
-    
-    if (transData) setTranscription(transData);
-    setUploadingAudio(false);
+      const { data: transData, error: transErr } = await supabase.from('transcriptions').insert([{
+        audio_id: audioData.id,
+        content_raw: defaultTranscript as any,
+        content_corrected: defaultTranscript as any,
+        status: 'completed'
+      }]).select().single();
+      
+      if (transErr) throw transErr;
+      if (transData) setTranscription(transData);
+    } catch (err: any) {
+      console.error('Error al subir audio:', err);
+      alert('Error al subir el audio: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setUploadingAudio(false);
+    }
   };
 
   const handleGenerateMinute = async () => {

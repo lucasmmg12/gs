@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { Mic, Square, Play, Pause, Loader2, Download, FileText, CheckCircle2, History, ChevronLeft } from 'lucide-react';
+import { Mic, Square, Loader2, Download, FileText, CheckCircle2, ChevronLeft, History } from 'lucide-react';
 import mermaid from 'mermaid';
 import { jsPDF } from 'jspdf';
 
@@ -18,7 +18,6 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
 
   // Estados de Grabación
   const [isRecording, setIsRecording] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [duration, setDuration] = useState(0);
   
   // Procesamiento
@@ -42,7 +41,14 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
       try {
         const { data, error } = await supabase.from('gobernanza_plantillas').select('*');
         if (error) throw error;
-        if (data) setPlantillas(data);
+        if (data) {
+          const parsed: Plantilla[] = data.map(p => ({
+            id: p.id,
+            nombre: p.nombre,
+            preguntas: Array.isArray(p.preguntas) ? (p.preguntas as string[]) : []
+          }));
+          setPlantillas(parsed);
+        }
       } catch (e) {
         console.error("Error al cargar plantillas", e);
       } finally {
@@ -118,7 +124,6 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
       analyserRef.current = analyser;
 
       setIsRecording(true);
-      setIsPaused(false);
       setDuration(0);
       audioChunksRef.current = [];
 
@@ -194,7 +199,7 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
       setProcessingState('analyzing');
 
       // 3. Invocar IA
-      const { data: edgeData, error: edgeError } = await supabase.functions.invoke('gobernanza-ai', {
+      const { error: edgeError } = await supabase.functions.invoke('gobernanza-ai', {
         body: { 
           action: 'transcribe_and_analyze', 
           payload: {
@@ -281,6 +286,11 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
   if (!selectedPlantilla) {
     return (
       <div className="max-w-4xl mx-auto p-6">
+        {onBack && (
+          <button onClick={onBack} className="flex items-center text-slate-500 hover:text-slate-700 mb-4 transition-colors">
+            <ChevronLeft className="w-4 h-4 mr-1" /> Volver
+          </button>
+        )}
         <h1 className="text-2xl font-bold mb-6 text-slate-800">Gobernanza y Auditorías</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {plantillas.map(p => (

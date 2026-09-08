@@ -9,10 +9,6 @@ export default function Dashboard() {
   const [minutesCount, setMinutesCount] = useState(0);
   const [clients, setClients] = useState<any[]>([]);
 
-  useEffect(() => {
-    fetchDashboardStats();
-  }, []);
-
   const fetchDashboardStats = async () => {
     // 1. Fetch orgs
     const { data: orgs } = await supabase.from('organizations').select('*');
@@ -29,6 +25,10 @@ export default function Dashboard() {
     const { count: minCount } = await supabase.from('minutes').select('*', { count: 'exact', head: true }).eq('status', 'draft');
     setMinutesCount(minCount || 0);
   };
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">

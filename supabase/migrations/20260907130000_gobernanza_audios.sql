@@ -2,7 +2,7 @@
 
 -- Tabla para cuestionarios preconfigurados
 CREATE TABLE IF NOT EXISTS public.gobernanza_plantillas (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre TEXT NOT NULL,
     preguntas JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT now()
@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS public.gobernanza_plantillas (
 
 -- Tabla para almacenar cada sesión de auditoría realizada
 CREATE TABLE IF NOT EXISTS public.gobernanza_entrevistas (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     plantilla_id UUID REFERENCES public.gobernanza_plantillas(id) ON DELETE SET NULL,
     usuario_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     titulo TEXT NOT NULL DEFAULT 'Nueva Entrevista',
