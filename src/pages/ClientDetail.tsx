@@ -3,8 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { 
   ArrowLeft, Target, ShieldAlert, FileText, Calendar, 
-  Layers, ChevronRight,
-  Activity, Plus, Compass, Eye
+  Layers, ChevronRight, ChevronLeft,
+  Activity, Plus, Compass, Eye, Mic, CheckCircle2, Download, HardDrive, History
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import type { ResponseOptionValue } from '../data/diagnosticQuestions';
@@ -18,6 +18,7 @@ import type { ClientStage } from '../components/views/OMVModule';
 import { ClientPortalView } from '../components/views/ClientPortalView';
 import { QualityApprovalBadge } from '../components/QualityApprovalBadge';
 import type { ApprovalStatus, AuditConsultants } from '../components/QualityApprovalBadge';
+import ClientMeetingSession from '../components/views/ClientMeetingSession';
 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -107,8 +108,11 @@ export default function ClientDetail() {
   // Pentagon State
   const [pentagonData] = useState(INITIAL_PENTAGON_DATA);
 
-  // Meetings State
+  // Meetings & AI Interviews State
   const [meetings, setMeetings] = useState<any[]>([]);
+  const [clientInterviews, setClientInterviews] = useState<any[]>([]);
+  const [activeMeetingSession, setActiveMeetingSession] = useState(false);
+  const [selectedInterviewDetail, setSelectedInterviewDetail] = useState<any | null>(null);
 
   const fetchClientData = async () => {
     setLoading(true);
@@ -127,6 +131,14 @@ export default function ClientDetail() {
       .order('meeting_date', { ascending: false });
 
     if (mtgs) setMeetings(mtgs);
+
+    const { data: interviews } = await (supabase
+      .from('gobernanza_entrevistas') as any)
+      .select('*')
+      .eq('client_id', id as string)
+      .order('created_at', { ascending: false });
+
+    if (interviews) setClientInterviews(interviews);
 
     setLoading(false);
   };
@@ -481,50 +493,262 @@ export default function ClientDetail() {
         </div>
       )}
 
-      {/* TAB 6: MINUTAS DE SESIONES */}
+      {/* TAB 6: MINUTAS Y SESIONES DE ENTREVISTA CON IA */}
       {activeTab === 'meetings' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl font-bold text-zinc-950 uppercase tracking-wide">
-              Sesiones y Minutas Automatizadas por IA
-            </h2>
-            <Link
-              to={`/meetings`}
-              className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider hover:bg-red-700 transition-colors shadow-crimson"
-            >
-              + Nueva Sesión
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {meetings.length === 0 ? (
-              <div className="col-span-2 bg-white p-8 rounded-2xl border-2 border-zinc-900 text-center text-zinc-500 text-xs font-medium">
-                No hay reuniones registradas para esta empresa.
+        <div className="space-y-6">
+          {activeMeetingSession ? (
+            <ClientMeetingSession
+              client={client}
+              onBack={() => {
+                setActiveMeetingSession(false);
+                fetchClientData();
+              }}
+              onDiagnosticUpdated={() => {
+                fetchClientData();
+              }}
+            />
+          ) : selectedInterviewDetail ? (
+            /* Vista Detallada de Auditoría / Entrevista Guardada (Réplica exacta de resultados) */
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setSelectedInterviewDetail(null)}
+                  className="flex items-center text-zinc-500 hover:text-red-600 transition-colors font-bold text-xs uppercase tracking-wider"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Volver a Lista de Sesiones
+                </button>
               </div>
-            ) : (
-              meetings.map(m => (
-                <div key={m.id} className="bg-white p-5 rounded-2xl border-2 border-zinc-900 hover:border-red-600 transition-all space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-display font-bold text-base text-zinc-950 uppercase tracking-wide">{m.title}</h4>
-                      <p className="text-xs text-zinc-500 mt-1 font-medium">Fecha: {new Date(m.meeting_date).toLocaleDateString('es-AR')}</p>
-                    </div>
-                    <span className="px-2.5 py-0.5 bg-black text-emerald-400 font-display uppercase font-bold text-[10px] rounded">
-                      Completada
-                    </span>
+
+              <div className="bg-white rounded-2xl shadow-sm border-2 border-zinc-900 p-8 space-y-8">
+                <div>
+                  <h1 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-zinc-950 mb-1">
+                    {selectedInterviewDetail.titulo || 'Auditoría General'}
+                  </h1>
+                  <p className="text-zinc-600 text-xs">
+                    Grabación y análisis estructurado realizado con IA para {client.name}.
+                  </p>
+                </div>
+
+                {/* Banner Verde Exacto del Screenshot */}
+                <div className="flex justify-between items-center bg-green-50 border border-green-200 p-4 rounded-lg">
+                  <div className="flex items-center text-green-700 font-medium text-sm">
+                    <CheckCircle2 className="w-5 h-5 mr-2 text-green-600" />
+                    Análisis Completado
                   </div>
-                  <div className="pt-2 border-t border-zinc-100 flex justify-end">
-                    <Link
-                      to={`/meetings/${m.id}`}
-                      className="text-xs font-bold font-display uppercase tracking-wider text-red-600 hover:text-red-800 flex items-center gap-1"
-                    >
-                      Ver Detalle de Minuta <ChevronRight className="w-4 h-4" />
-                    </Link>
+                  <button
+                    onClick={() => {
+                      alert(`Descargando reporte oficial para ${client.name}...`);
+                    }}
+                    className="flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-md hover:bg-slate-50 text-xs font-bold transition-colors shadow-sm"
+                  >
+                    <Download className="w-4 h-4" /> Descargar PDF
+                  </button>
+                </div>
+
+                {/* Dos Columnas: Resumen Ejecutivo y Mapa Conceptual */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Resumen Ejecutivo */}
+                  <div className="space-y-4">
+                    <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-red-600" />
+                      Resumen Ejecutivo
+                    </h3>
+                    <p className="text-zinc-700 leading-relaxed bg-zinc-50 p-4 rounded-lg border border-zinc-200 text-sm">
+                      {selectedInterviewDetail.resumen || 'No hay resumen registrado.'}
+                    </p>
+                  </div>
+
+                  {/* Mapa Conceptual */}
+                  <div className="space-y-4">
+                    <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2">
+                      Mapa Conceptual
+                    </h3>
+                    {selectedInterviewDetail.mapa_conceptual_mermaid ? (
+                      <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200 overflow-x-auto text-center font-mono text-xs text-zinc-800 p-4">
+                        <pre className="text-left overflow-x-auto whitespace-pre-wrap">
+                          {selectedInterviewDetail.mapa_conceptual_mermaid.replace(/```mermaid/g, '').replace(/```/g, '')}
+                        </pre>
+                      </div>
+                    ) : (
+                      <p className="text-zinc-400 text-xs p-4 bg-zinc-50 rounded-lg border">No se generó mapa conceptual.</p>
+                    )}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+
+                {/* Respuestas Extraídas */}
+                <div className="space-y-4">
+                  <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2 flex items-center gap-2">
+                    <History className="w-5 h-5 text-red-600" />
+                    Respuestas Extraídas
+                  </h3>
+                  <div className="space-y-4">
+                    {Array.isArray(selectedInterviewDetail.respuestas_cuestionario) ? (
+                      selectedInterviewDetail.respuestas_cuestionario.map((ans: string, i: number) => (
+                        <div key={i} className="bg-zinc-50 p-4 rounded-lg border border-zinc-200">
+                          <p className="font-bold text-zinc-900 mb-2 text-sm">
+                            Pregunta #{i + 1}
+                          </p>
+                          <p className="text-zinc-600 pl-4 border-l-2 border-red-600 text-sm">
+                            {ans}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-zinc-500 text-xs">Sin respuestas catalogadas.</p>
+                    )}
+                  </div>
+                </div>
+
+                {selectedInterviewDetail.transcripcion && (
+                  <details className="mt-8 border-t border-zinc-200 pt-4">
+                    <summary className="text-slate-500 cursor-pointer hover:text-slate-800 font-medium text-xs">
+                      Ver Transcripción Completa
+                    </summary>
+                    <div className="mt-4 p-4 bg-slate-50 rounded-lg text-xs text-slate-600 whitespace-pre-wrap font-mono">
+                      {selectedInterviewDetail.transcripcion}
+                    </div>
+                  </details>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Lista Principal de Sesiones con Botón para Iniciar y Grabar */
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-red-600" />
+                    <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">
+                      Gobernanza 360° & Grabación Continua
+                    </span>
+                  </div>
+                  <h2 className="font-display text-2xl font-black text-zinc-950 uppercase tracking-tight">
+                    Sesiones de Entrevista y Minutas IA
+                  </h2>
+                  <p className="text-xs text-zinc-600 mt-1 max-w-2xl">
+                    Planifique las preguntas del catálogo 360°, active el protector de pantalla (WakeLock) y grabe sesiones de más de 1 hora con persistencia de chunks de audio cada 30 segundos.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setActiveMeetingSession(true)}
+                  className="px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-display font-black uppercase tracking-wider flex items-center gap-2 shadow-crimson hover:scale-105 transition-all shrink-0"
+                >
+                  <Mic className="w-4 h-4" /> Iniciar y Grabar Sesión
+                </button>
+              </div>
+
+              {/* Subsección: Entrevistas Grabadas con IA */}
+              <div className="space-y-3">
+                <h3 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-950 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-red-600" /> Entrevistas Estructuradas con IA ({clientInterviews.length})
+                </h3>
+
+                {clientInterviews.length === 0 ? (
+                  <div className="bg-white p-8 rounded-2xl border-2 border-zinc-300 text-center text-zinc-500 text-xs font-medium space-y-3">
+                    <HardDrive className="w-8 h-8 text-zinc-400 mx-auto" />
+                    <p>No hay entrevistas de diagnóstico grabadas para este cliente aún.</p>
+                    <button
+                      onClick={() => setActiveMeetingSession(true)}
+                      className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-bold uppercase tracking-wider text-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Planificar y Grabar la Primera Entrevista
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {clientInterviews.map(interview => (
+                      <div
+                        key={interview.id}
+                        className="bg-white p-5 rounded-2xl border-2 border-zinc-900 hover:border-red-600 transition-all space-y-3 shadow-sm hover:shadow-crimson group"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-display font-bold text-base text-zinc-950 group-hover:text-red-600 uppercase tracking-wide transition-colors">
+                              {interview.titulo || 'Auditoría General'}
+                            </h4>
+                            <p className="text-xs text-zinc-500 mt-1 font-medium">
+                              {new Date(interview.created_at).toLocaleDateString('es-AR')} • {Math.round((interview.duracion_segundos || 0) / 60)} min grabados
+                            </p>
+                          </div>
+                          <span className={`px-2.5 py-0.5 font-display uppercase font-bold text-[10px] rounded ${
+                            interview.estado === 'completado' 
+                              ? 'bg-black text-emerald-400' 
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {interview.estado === 'completado' ? 'Análisis Listo' : interview.estado}
+                          </span>
+                        </div>
+
+                        {interview.resumen && (
+                          <p className="text-xs text-zinc-600 line-clamp-2 bg-zinc-50 p-2.5 rounded-lg border border-zinc-200">
+                            {interview.resumen}
+                          </p>
+                        )}
+
+                        <div className="pt-2 border-t border-zinc-100 flex items-center justify-between">
+                          <span className="text-[10px] font-mono font-bold text-zinc-400">
+                            {Array.isArray(interview.selected_questions) ? `${interview.selected_questions.length} preguntas` : '360°'}
+                          </span>
+                          <button
+                            onClick={() => setSelectedInterviewDetail(interview)}
+                            className="text-xs font-bold font-display uppercase tracking-wider text-red-600 hover:text-red-800 flex items-center gap-1"
+                          >
+                            Ver Resultados y Mapa <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Subsección: Minutas Clásicas */}
+              <div className="space-y-3 pt-4 border-t border-zinc-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-950 flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-zinc-600" /> Minutas de Comités y Reuniones ({meetings.length})
+                  </h3>
+                  <Link
+                    to="/meetings"
+                    className="text-xs font-bold font-display uppercase tracking-wider text-zinc-600 hover:text-zinc-950"
+                  >
+                    Ver Todas las Minutas
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {meetings.length === 0 ? (
+                    <div className="col-span-2 bg-zinc-50 p-6 rounded-2xl border border-zinc-200 text-center text-zinc-400 text-xs">
+                      No hay minutas adicionales registradas.
+                    </div>
+                  ) : (
+                    meetings.map(m => (
+                      <div key={m.id} className="bg-white p-5 rounded-2xl border border-zinc-200 hover:border-zinc-900 transition-all space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-display font-bold text-sm text-zinc-950 uppercase tracking-wide">{m.title}</h4>
+                            <p className="text-xs text-zinc-500 mt-0.5">Fecha: {new Date(m.meeting_date).toLocaleDateString('es-AR')}</p>
+                          </div>
+                          <span className="px-2 py-0.5 bg-zinc-100 text-zinc-700 font-display uppercase font-bold text-[10px] rounded">
+                            {m.status || 'Completada'}
+                          </span>
+                        </div>
+                        <div className="pt-2 border-t border-zinc-100 flex justify-end">
+                          <Link
+                            to={`/meetings/${m.id}`}
+                            className="text-xs font-bold font-display uppercase tracking-wider text-zinc-700 hover:text-red-600 flex items-center gap-1"
+                          >
+                            Ver Detalle <ChevronRight className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
