@@ -83,32 +83,32 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
       {/* Encabezado del Portal del Cliente */}
-      <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-black via-zinc-950 to-red-950 text-white p-7 rounded-2xl shadow-obsidian border-2 border-red-900/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <span className="text-[10px] font-mono uppercase tracking-widest text-blue-200 block">
+          <span className="font-display text-[10px] uppercase tracking-widest text-red-400 block font-bold">
             Portal Oficial del Cliente • Acceso Seguro
           </span>
-          <h1 className="text-2xl font-black mt-1">{client.name}</h1>
-          <p className="text-xs text-blue-100 mt-0.5">
+          <h1 className="font-display text-3xl font-black mt-1 uppercase tracking-wide">{client.name}</h1>
+          <p className="text-xs text-zinc-400 mt-1 font-medium">
             Información estratégica unificada, minutas aprobadas y evolución del Pentágono del Orden.
           </p>
         </div>
 
-        <div className="bg-white/10 px-4 py-2.5 rounded-xl border border-white/15 backdrop-blur-xs flex items-center gap-3">
-          <Award className="w-6 h-6 text-blue-300 shrink-0" />
+        <div className="bg-black/60 px-5 py-3 rounded-xl border border-red-900/50 backdrop-blur-xs flex items-center gap-3">
+          <Award className="w-7 h-7 text-red-500 shrink-0" />
           <div>
-            <span className="text-[10px] text-blue-200 block uppercase font-bold">Madurez Empresarial</span>
-            <span className="text-lg font-black text-white">{results.globalIme10} / 10 (IME {results.globalIme}%)</span>
+            <span className="font-display text-[10px] text-zinc-400 block uppercase font-bold tracking-wider">Madurez Empresarial</span>
+            <span className="font-display text-xl font-black text-white">{results.globalIme10} / 10 <span className="text-xs text-red-400 font-bold">(IME {results.globalIme}%)</span></span>
           </div>
         </div>
       </div>
 
       {/* Navegación del Portal */}
-      <div className="flex items-center gap-2 border-b border-gray-200 pb-2 overflow-x-auto text-xs font-semibold">
+      <div className="flex items-center gap-2 border-b-2 border-zinc-200 pb-2 overflow-x-auto text-xs font-bold font-display uppercase tracking-wider">
         <button
           onClick={() => setActiveTab('pentagon')}
-          className={`px-3.5 py-2 rounded-xl transition-all whitespace-nowrap ${
-            activeTab === 'pentagon' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'
+          className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${
+            activeTab === 'pentagon' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
           }`}
         >
           Pentágono de Madurez
@@ -116,8 +116,8 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
 
         <button
           onClick={() => setActiveTab('minutes')}
-          className={`px-3.5 py-2 rounded-xl transition-all whitespace-nowrap ${
-            activeTab === 'minutes' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'
+          className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${
+            activeTab === 'minutes' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
           }`}
         >
           Minutas Aprobadas
@@ -125,8 +125,8 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
 
         <button
           onClick={() => setActiveTab('diagnostic')}
-          className={`px-3.5 py-2 rounded-xl transition-all whitespace-nowrap ${
-            activeTab === 'diagnostic' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'
+          className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${
+            activeTab === 'diagnostic' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
           }`}
         >
           Estado del Diagnóstico
@@ -134,8 +134,8 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
 
         <button
           onClick={() => setActiveTab('master_plan')}
-          className={`px-3.5 py-2 rounded-xl transition-all whitespace-nowrap ${
-            activeTab === 'master_plan' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'
+          className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${
+            activeTab === 'master_plan' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
           }`}
         >
           Master Plan (Gantt)
@@ -143,8 +143,8 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
 
         <button
           onClick={() => setActiveTab('self_assessment')}
-          className={`px-3.5 py-2 rounded-xl transition-all whitespace-nowrap ${
-            activeTab === 'self_assessment' ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:bg-gray-100'
+          className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${
+            activeTab === 'self_assessment' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
           }`}
         >
           Espacio de Autoevaluación
@@ -152,8 +152,8 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
 
         <button
           onClick={() => setActiveTab('content_generator')}
-          className={`px-3.5 py-2 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-            activeTab === 'content_generator' ? 'bg-indigo-600 text-white shadow-xs' : 'text-indigo-600 hover:bg-indigo-50 font-bold'
+          className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-2 ${
+            activeTab === 'content_generator' ? 'bg-red-600 text-white shadow-crimson' : 'text-red-600 hover:bg-red-50'
           }`}
         >
           <Sparkles className="w-3.5 h-3.5" />
@@ -164,9 +164,11 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
       {/* PESTAÑA: PENTÁGONO DE MADUREZ */}
       {activeTab === 'pentagon' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
-            <h3 className="text-base font-bold text-gray-900">Pentágono del Orden Actual (Escala 1 a 10)</h3>
-            <p className="text-xs text-gray-500">
+          <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
+            <h3 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
+              Pentágono del Orden Actual (Escala 1 a 10)
+            </h3>
+            <p className="text-xs text-zinc-500 font-medium">
               Evaluación trimestral del grado de autonomía y profesionalización de {client.name}.
             </p>
 
@@ -179,13 +181,15 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
                 { name: '5. Comercial y Clientes', score: results.pentagon.comercial, meta: 8.0 }
               ].map(axis => (
                 <div key={axis.name} className="space-y-1">
-                  <div className="flex justify-between text-xs font-semibold">
-                    <span className="text-gray-700">{axis.name}</span>
-                    <span className="font-mono text-gray-900">{axis.score} / 10 <span className="text-gray-400 font-normal">(Meta: {axis.meta})</span></span>
+                  <div className="flex justify-between text-xs font-bold">
+                    <span className="font-display text-zinc-800 uppercase tracking-wide">{axis.name}</span>
+                    <span className="font-display text-zinc-950 text-sm">
+                      {axis.score} / 10 <span className="text-zinc-400 font-normal font-sans text-xs">(Meta: {axis.meta})</span>
+                    </span>
                   </div>
-                  <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
+                  <div className="w-full bg-zinc-100 h-2.5 rounded-full overflow-hidden border border-zinc-200">
                     <div
-                      className="bg-blue-600 h-full rounded-full transition-all duration-500"
+                      className="bg-red-600 h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(220,38,38,0.4)]"
                       style={{ width: `${(axis.score / 10) * 100}%` }}
                     />
                   </div>
@@ -193,32 +197,34 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
               ))}
             </div>
 
-            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-xs text-gray-600">
+            <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 text-xs text-zinc-700 font-medium">
               Objetivo de la tutoría: Consolidar una puntuación general superior a 7.5 para espaciar las sesiones y asegurar autonomía.
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4 flex flex-col justify-between">
+          <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4 flex flex-col justify-between">
             <div>
-              <h3 className="text-base font-bold text-gray-900">Resumen de Madurez y Riesgo</h3>
-              <p className="text-xs text-gray-500 mt-1">
-                Dictamen actualizado por la consultora tras el control de calidad.
+              <h3 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
+                Resumen de Madurez y Riesgo
+              </h3>
+              <p className="text-xs text-zinc-500 mt-1 font-medium">
+                Dictamen oficial actualizado por la consultora tras el control de calidad.
               </p>
 
               <div className="mt-4 space-y-3">
-                <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                  <span className="text-[11px] font-bold text-blue-700 uppercase">Índice de Madurez (IME)</span>
-                  <p className="text-sm font-bold text-blue-900 mt-0.5">{results.globalIme}% — {results.maturityStatus.label}</p>
+                <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl text-white">
+                  <span className="font-display text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Índice de Madurez (IME)</span>
+                  <p className="font-display text-lg font-bold text-white mt-0.5">{results.globalIme}% — {results.maturityStatus.label}</p>
                 </div>
 
-                <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl">
-                  <span className="text-[11px] font-bold text-rose-700 uppercase">Índice de Riesgo (IRE)</span>
-                  <p className="text-sm font-bold text-rose-900 mt-0.5">{results.globalIre}% — Riesgo Controlado en mitigación</p>
+                <div className="p-4 bg-red-950/40 border border-red-900/60 rounded-xl text-white">
+                  <span className="font-display text-[10px] font-bold text-red-400 uppercase tracking-wider">Índice de Riesgo (IRE)</span>
+                  <p className="font-display text-lg font-bold text-red-400 mt-0.5">{results.globalIre}% — Riesgo Controlado en Mitigación</p>
                 </div>
               </div>
             </div>
 
-            <p className="text-[11px] text-gray-400">
+            <p className="text-[11px] text-zinc-400 font-medium">
               Próxima remedición trimestral programada para fin del trimestre en curso.
             </p>
           </div>
@@ -227,11 +233,13 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
 
       {/* PESTAÑA: MINUTAS APROBADAS */}
       {activeTab === 'minutes' && (
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b-2 border-zinc-100 pb-3">
             <div>
-              <h3 className="text-base font-bold text-gray-900">Historial de Minutas Oficiales Aprobadas</h3>
-              <p className="text-xs text-gray-500">
+              <h3 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
+                Historial de Minutas Oficiales Aprobadas
+              </h3>
+              <p className="text-xs text-zinc-500 font-medium">
                 Solo se exhiben las minutas revisadas y aprobadas en verde por la consultora.
               </p>
             </div>
@@ -254,25 +262,25 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
                 temas: 'Definición del OMV en presente, metas numéricas a 3 años y protocolo de socios preliminar.'
               }
             ].map(m => (
-              <div key={m.id} className="p-4 rounded-xl border border-gray-200 hover:border-gray-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div key={m.id} className="p-4 rounded-xl border-2 border-zinc-200 hover:border-zinc-900 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded">
+                    <span className="px-2 py-0.5 bg-black text-emerald-400 text-[10px] font-bold font-display uppercase tracking-wider rounded">
                       Aprobada
                     </span>
-                    <h4 className="text-xs font-bold text-gray-900">{m.title}</h4>
+                    <h4 className="text-sm font-bold text-zinc-950 font-display uppercase tracking-wide">{m.title}</h4>
                   </div>
-                  <p className="text-xs text-gray-500">{m.temas}</p>
-                  <span className="text-[11px] text-gray-400">
+                  <p className="text-xs text-zinc-600 font-medium">{m.temas}</p>
+                  <span className="text-[11px] text-zinc-400 font-medium">
                     Fecha: {m.date} • Líder de sesión: {m.consultor}
                   </span>
                 </div>
 
                 <button
                   onClick={() => alert(`Descargando minuta oficial en PDF: ${m.title}`)}
-                  className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold flex items-center gap-1.5 shrink-0"
+                  className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shrink-0 border border-zinc-300"
                 >
-                  <Download className="w-3.5 h-3.5" />
+                  <Download className="w-3.5 h-3.5 text-red-600" />
                   Descargar PDF
                 </button>
               </div>
@@ -283,30 +291,32 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
 
       {/* PESTAÑA: ESTADO DEL DIAGNÓSTICO */}
       {activeTab === 'diagnostic' && (
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
-          <h3 className="text-base font-bold text-gray-900">Estado de Avance del Diagnóstico 360°</h3>
-          <p className="text-xs text-gray-500">
+        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
+          <h3 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
+            Estado de Avance del Diagnóstico 360°
+          </h3>
+          <p className="text-xs text-zinc-500 font-medium">
             Relevamiento continuo a lo largo de las primeras 8 a 10 sesiones de trabajo.
           </p>
 
-          <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between">
+          <div className="p-5 bg-zinc-950 text-white rounded-xl border border-zinc-800 flex items-center justify-between">
             <div>
-              <span className="text-xs font-bold text-gray-700 block">Preguntas Completadas</span>
-              <span className="text-sm font-black text-blue-700">
+              <span className="font-display text-xs font-bold text-zinc-400 uppercase tracking-wider block">Preguntas Completadas</span>
+              <span className="font-display text-xl font-black text-white mt-0.5 block">
                 {results.totalAnswered} de {results.totalQuestions} ({results.progressPercentage}%)
               </span>
             </div>
-            <span className="px-3 py-1 rounded-lg text-xs font-bold bg-blue-100 text-blue-800">
+            <span className="px-3 py-1 rounded-lg text-xs font-bold font-display uppercase tracking-wider bg-red-600 text-white">
               {isDiagnosticApproved ? 'Aprobado y Publicado' : 'En Revisión'}
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2">
             {results.areaScores.map(a => (
-              <div key={a.areaId} className="p-3 bg-white border border-gray-200 rounded-xl text-center">
-                <span className="text-[10px] text-gray-400 font-bold block truncate">{a.areaName}</span>
-                <span className="text-base font-black text-gray-900 mt-1 block">{a.imeScore}%</span>
-                <span className="text-[10px] text-gray-400">{a.answeredCount}/{a.totalQuestions} resp.</span>
+              <div key={a.areaId} className="p-4 bg-white border-2 border-zinc-200 rounded-xl text-center">
+                <span className="font-display text-[10px] text-zinc-500 font-bold uppercase tracking-wider block truncate">{a.areaName}</span>
+                <span className="font-display text-xl font-black text-zinc-950 mt-1 block">{a.imeScore}%</span>
+                <span className="text-[10px] text-zinc-400 font-mono font-bold">{a.answeredCount}/{a.totalQuestions} resp.</span>
               </div>
             ))}
           </div>
@@ -315,36 +325,38 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
 
       {/* PESTAÑA: MASTER PLAN GANTT */}
       {activeTab === 'master_plan' && (
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b-2 border-zinc-100 pb-3">
             <div>
-              <h3 className="text-base font-bold text-gray-900">Master Plan Estratégico</h3>
-              <p className="text-xs text-gray-500">
+              <h3 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
+                Master Plan Estratégico
+              </h3>
+              <p className="text-xs text-zinc-500 font-medium">
                 Iniciativas y compromisos organizados bajo el Pentágono del Orden.
               </p>
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {[
               { axis: 'Finanzas', code: 'FIN-01', title: 'Implementar Flujo de Caja Proyectado a 6 Meses', resp: 'Administración', status: 'En Proceso', date: 'Oct 2026' },
               { axis: 'Procesos', code: 'PRC-02', title: 'Unificación de Compras y Almacén con Checklists', resp: 'Operaciones', status: 'En Proceso', date: 'Nov 2026' },
               { axis: 'Directorio', code: 'DIR-01', title: 'Redacción y Firma del Protocolo de Socios', resp: 'Directorio', status: 'Pendiente', date: 'Dic 2026' },
               { axis: 'Talento', code: 'TAL-03', title: 'Manual de Funciones de Mandos Medios', resp: 'RRHH', status: 'Pendiente', date: 'Ene 2027' }
             ].map(task => (
-              <div key={task.code} className="p-3.5 rounded-xl border border-gray-200 flex items-center justify-between text-xs">
+              <div key={task.code} className="p-4 rounded-xl border-2 border-zinc-200 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-3">
-                  <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                  <span className="font-mono font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded">
                     {task.code}
                   </span>
                   <div>
-                    <h4 className="font-bold text-gray-900">{task.title}</h4>
-                    <span className="text-[11px] text-gray-400">Eje: {task.axis} • Responsable: {task.resp}</span>
+                    <h4 className="font-bold text-zinc-950 text-xs font-display uppercase tracking-wide">{task.title}</h4>
+                    <span className="text-[11px] text-zinc-400 font-medium">Eje: {task.axis} • Responsable: {task.resp}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-gray-500 font-mono">{task.date}</span>
-                  <span className="px-2 py-0.5 bg-amber-50 text-amber-800 font-bold rounded">
+                  <span className="text-zinc-600 font-mono font-bold">{task.date}</span>
+                  <span className="px-2.5 py-0.5 bg-black text-white font-bold font-display uppercase text-[10px] rounded">
                     {task.status}
                   </span>
                 </div>
@@ -356,10 +368,12 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
 
       {/* PESTAÑA: ESPACIO DE AUTOEVALUACIÓN */}
       {activeTab === 'self_assessment' && (
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4 max-w-3xl mx-auto">
+        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4 max-w-3xl mx-auto">
           <div>
-            <h3 className="text-base font-bold text-gray-900">Autoevaluación Mensual del Empresario</h3>
-            <p className="text-xs text-gray-500">
+            <h3 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
+              Autoevaluación Mensual del Empresario
+            </h3>
+            <p className="text-xs text-zinc-500 font-medium">
               Espacio exclusivo para que el cliente evalúe su propia percepción del orden antes de la reunión de gabinete.
             </p>
           </div>
@@ -371,14 +385,14 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
               '¿El flujo de caja de este mes le brinda tranquilidad para las obligaciones inmediatas?',
               '¿Pudo delegar tareas operativas en su equipo sin necesidad de intervenir?'
             ].map((q, idx) => (
-              <div key={idx} className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2">
-                <label className="text-xs font-semibold text-gray-900 block">{idx + 1}. {q}</label>
+              <div key={idx} className="p-4 rounded-xl border-2 border-zinc-200 bg-zinc-50 space-y-2">
+                <label className="text-xs font-bold text-zinc-950 block">{idx + 1}. {q}</label>
                 <div className="flex gap-2">
                   {['Totalmente', 'Parcialmente', 'Aún no'].map(opt => (
                     <button
                       key={opt}
                       type="button"
-                      className="px-3 py-1.5 bg-white border border-gray-200 hover:border-blue-600 rounded-lg text-xs text-gray-700 font-medium"
+                      className="px-4 py-1.5 bg-white border-2 border-zinc-300 hover:border-black rounded-lg text-xs text-zinc-800 font-display font-bold uppercase tracking-wide"
                     >
                       {opt}
                     </button>
@@ -390,7 +404,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
             <button
               type="button"
               onClick={() => alert('¡Autoevaluación enviada a su consultor GS!')}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+              className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider shadow-crimson transition-colors"
             >
               Enviar Respuestas al Consultor GS
             </button>
@@ -400,13 +414,13 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
 
       {/* PESTAÑA: GENERADOR DE CONTENIDOS IA */}
       {activeTab === 'content_generator' && (
-        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-6">
-          <div className="border-b border-gray-100 pb-3">
-            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-600" />
+        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-6">
+          <div className="border-b-2 border-zinc-100 pb-3">
+            <h3 className="font-display text-xl font-bold text-zinc-950 flex items-center gap-2 uppercase tracking-wide">
+              <Sparkles className="w-5 h-5 text-red-600" />
               Generador de Contenidos Institucionales con IA
             </h3>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-zinc-500 mt-1 font-medium">
               Aproveche los datos estratégicos unificados de su diagnóstico para crear material comercial, discursos y propuestas de valor en segundos.
             </p>
           </div>
@@ -421,14 +435,16 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
               <button
                 key={item.id}
                 onClick={() => setSelectedContentType(item.id as any)}
-                className={`p-4 rounded-xl border text-left transition-all ${
+                className={`p-4 rounded-xl border-2 text-left transition-all ${
                   selectedContentType === item.id
-                    ? 'bg-indigo-50 border-indigo-600 text-indigo-950 ring-2 ring-indigo-100'
-                    : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-700'
+                    ? 'bg-black text-white border-black ring-2 ring-red-600'
+                    : 'bg-white border-zinc-200 hover:border-zinc-900 text-zinc-800'
                 }`}
               >
-                <h4 className="text-xs font-bold">{item.label}</h4>
-                <p className="text-[11px] text-gray-500 mt-1">{item.desc}</p>
+                <h4 className="font-display text-sm font-bold uppercase tracking-wide">{item.label}</h4>
+                <p className={`text-[11px] mt-1 font-medium ${
+                  selectedContentType === item.id ? 'text-zinc-300' : 'text-zinc-500'
+                }`}>{item.desc}</p>
               </button>
             ))}
           </div>
@@ -437,7 +453,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
             <button
               onClick={handleGenerateContent}
               disabled={isGenerating}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-colors disabled:opacity-60"
+              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shadow-crimson transition-all disabled:opacity-60"
             >
               <Sparkles className="w-4 h-4" />
               {isGenerating ? 'Analizando diagnóstico y redactando...' : 'Generar Contenido con IA'}
@@ -446,23 +462,23 @@ Los invitamos a construir juntos la próxima etapa de crecimiento de su empresa.
 
           {/* Área de Visualización y Copia de Contenido */}
           {generatedContent && (
-            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 space-y-3 animate-in fade-in duration-200">
-              <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+            <div className="p-6 rounded-2xl bg-zinc-950 text-white border-2 border-zinc-800 space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <span className="font-display text-xs font-bold text-red-400 uppercase tracking-widest">
                   Contenido Generado Listo para Usar
                 </span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleCopy}
-                    className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                    className="px-3.5 py-1.5 bg-white text-zinc-950 hover:bg-zinc-200 rounded-lg text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5"
                   >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[3]" /> : <Copy className="w-3.5 h-3.5" />}
                     {copied ? 'Copiado' : 'Copiar Texto'}
                   </button>
                 </div>
               </div>
 
-              <div className="whitespace-pre-line text-xs text-gray-800 leading-relaxed font-mono bg-white p-4 rounded-xl border border-gray-200 max-h-96 overflow-y-auto">
+              <div className="whitespace-pre-line text-xs text-zinc-200 leading-relaxed font-mono bg-black/60 p-5 rounded-xl border border-zinc-800 max-h-96 overflow-y-auto">
                 {generatedContent}
               </div>
             </div>
