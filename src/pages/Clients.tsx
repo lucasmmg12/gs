@@ -105,28 +105,34 @@ export default function Clients() {
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Directorio de Clientes</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="h-2 w-2 rounded-full bg-red-600" />
+            <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">Cartera Estratégica</span>
+          </div>
+          <h1 className="font-display text-3xl font-black uppercase tracking-tight text-zinc-950">
+            Directorio de Clientes
+          </h1>
+          <p className="mt-1 text-sm text-zinc-600 font-sans">
             Gestiona los clientes, su Diagnóstico 360°, Master Plan Estratégico y Pentágono del Orden.
           </p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 font-display text-xs font-black uppercase tracking-wider text-white shadow-crimson hover:bg-red-700 transition-colors"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4 stroke-[3]" />
           Nuevo Cliente
         </button>
       </div>
 
-      <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-xs border border-gray-200">
+      <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border-2 border-zinc-900">
         <div className="relative flex-1 max-w-md">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search className="h-4 w-4 text-gray-400" />
+            <Search className="h-4 w-4 text-zinc-400" />
           </div>
           <input
             type="text"
-            className="block w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+            className="block w-full rounded-lg border border-zinc-300 py-2 pl-9 pr-3 text-sm text-zinc-900 focus:ring-2 focus:ring-red-600 focus:border-red-600 placeholder:text-zinc-400"
             placeholder="Buscar por razón social o industria..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -134,47 +140,49 @@ export default function Clients() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl bg-white shadow-xs border border-gray-200">
+      <div className="overflow-hidden rounded-xl bg-white shadow-sm border-2 border-zinc-900">
         {loading ? (
-          <div className="p-12 text-center text-gray-500 font-medium">Cargando clientes de Consultora GS...</div>
+          <div className="p-12 text-center text-zinc-500 font-bold font-display uppercase tracking-wider">
+            Cargando clientes de Consultora GS...
+          </div>
         ) : filteredClients.length > 0 ? (
-          <ul role="list" className="divide-y divide-gray-100">
+          <ul role="list" className="divide-y divide-zinc-200">
             {filteredClients.map((client) => (
-              <li key={client.id} className="hover:bg-gray-50/80 transition-colors">
+              <li key={client.id} className="hover:bg-red-50/40 transition-colors group">
                 <Link to={`/clients/${client.id}`} className="flex items-center justify-between gap-x-6 px-6 py-5">
                   <div className="flex min-w-0 gap-x-4 items-center">
-                    <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+                    <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-zinc-950 text-red-500 border border-zinc-800 shadow-xs group-hover:bg-red-600 group-hover:text-white transition-colors">
                       <Building2 className="h-6 w-6" />
                     </div>
                     <div className="min-w-0 flex-auto">
-                      <p className="text-base font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                      <p className="font-display text-base font-bold text-zinc-950 group-hover:text-red-600 transition-colors uppercase tracking-wide">
                         {client.name}
                       </p>
-                      <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
-                        <span>{client.industry || 'PyME en Desarrollo'}</span>
-                        <span className="h-1 w-1 rounded-full bg-gray-300" />
-                        <span className="flex items-center gap-1 text-blue-700 font-semibold">
-                          <Activity className="h-3 w-3" /> IME: 5.5
+                      <div className="mt-1 flex items-center gap-3 text-xs text-zinc-500 font-sans">
+                        <span className="font-medium">{client.industry || 'PyME en Desarrollo'}</span>
+                        <span className="h-1 w-1 rounded-full bg-zinc-300" />
+                        <span className="flex items-center gap-1 text-red-600 font-bold font-display uppercase tracking-wider">
+                          <Activity className="h-3 w-3 stroke-[2.5]" /> IME: 5.5
                         </span>
-                        <span className="h-1 w-1 rounded-full bg-gray-300" />
-                        <span className="flex items-center gap-1 text-emerald-700 font-semibold">
+                        <span className="h-1 w-1 rounded-full bg-zinc-300" />
+                        <span className="flex items-center gap-1 text-zinc-900 font-bold font-display uppercase tracking-wider">
                           <Layers className="h-3 w-3" /> Master Plan: 42%
                         </span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                    <span className="inline-flex items-center rounded-full bg-zinc-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-red-400 border border-red-600/40">
                       Activo
                     </span>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                    <ChevronRight className="h-5 w-5 text-zinc-400 group-hover:text-red-600 group-hover:translate-x-0.5 transition-all" />
                   </div>
                 </Link>
               </li>
             ))}
           </ul>
         ) : (
-          <div className="p-12 text-center text-gray-500 font-medium">
+          <div className="p-12 text-center text-zinc-500 font-medium">
             No se encontraron clientes activos.
           </div>
         )}
@@ -182,13 +190,15 @@ export default function Clients() {
 
       {/* Modal Nuevo Cliente */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900">Registrar Nuevo Cliente</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-obsidian border-2 border-zinc-900">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-red-600">
+              <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950">
+                Registrar Nuevo Cliente
+              </h3>
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
+                className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -196,31 +206,31 @@ export default function Clients() {
 
             <form onSubmit={handleCreateClient} className="mt-4 space-y-4">
               {modalError && (
-                <div className="p-3 text-xs bg-red-50 text-red-700 rounded-lg border border-red-200">
+                <div className="p-3 text-xs bg-red-50 text-red-700 rounded-lg border border-red-200 font-bold">
                   {modalError}
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1">
                   Razón Social / Nombre Comercial *
                 </label>
                 <input
                   type="text"
                   required
                   placeholder="Ej: Clínica Los Andes S.A."
-                  className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                  className="w-full text-sm rounded-lg border border-zinc-300 px-3 py-2 focus:ring-2 focus:ring-red-600 focus:border-red-600"
                   value={newClientName}
                   onChange={e => setNewClientName(e.target.value)}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1">
                   Industria / Rubro
                 </label>
                 <select
-                  className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                  className="w-full text-sm rounded-lg border border-zinc-300 px-3 py-2 focus:ring-2 focus:ring-red-600 focus:border-red-600"
                   value={newClientIndustry}
                   onChange={e => setNewClientIndustry(e.target.value)}
                 >
@@ -233,18 +243,18 @@ export default function Clients() {
                 </select>
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-zinc-200">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-4 py-2 font-display text-xs font-bold uppercase tracking-wider text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-70"
+                  className="px-5 py-2 font-display text-xs font-black uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-crimson disabled:opacity-70"
                 >
                   {creating ? (
                     <>

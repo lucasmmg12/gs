@@ -36,47 +36,55 @@ export default function Minutes() {
 
   const getStatusBadge = (status: string | null) => {
     switch(status) {
-      case 'draft': return <span className="inline-flex items-center gap-x-1.5 rounded-full px-2 py-1 text-xs font-medium text-gray-900 ring-1 ring-inset ring-gray-200"><Clock className="h-3 w-3 text-gray-400" /> Borrador</span>;
-      case 'in_review': return <span className="inline-flex items-center gap-x-1.5 rounded-full bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20"><Clock className="h-3 w-3 text-yellow-500" /> En revisión</span>;
-      case 'approved': return <span className="inline-flex items-center gap-x-1.5 rounded-full bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20"><CheckCircle className="h-3 w-3 text-emerald-500" /> Aprobada</span>;
-      case 'published': return <span className="inline-flex items-center gap-x-1.5 rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20"><Send className="h-3 w-3 text-blue-500" /> Publicada</span>;
+      case 'draft': return <span className="inline-flex items-center gap-x-1.5 rounded-full px-2.5 py-1 text-xs font-bold bg-zinc-100 text-zinc-800 border border-zinc-300 uppercase tracking-wider"><Clock className="h-3 w-3 text-zinc-500" /> Borrador</span>;
+      case 'in_review': return <span className="inline-flex items-center gap-x-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 border border-amber-300 uppercase tracking-wider"><Clock className="h-3 w-3 text-amber-500" /> En revisión</span>;
+      case 'approved': return <span className="inline-flex items-center gap-x-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 border border-emerald-300 uppercase tracking-wider"><CheckCircle className="h-3 w-3 text-emerald-600" /> Aprobada</span>;
+      case 'published': return <span className="inline-flex items-center gap-x-1.5 rounded-full bg-zinc-950 px-2.5 py-1 text-xs font-black text-red-400 border border-red-600/40 uppercase tracking-wider"><Send className="h-3 w-3 text-red-500" /> Publicada</span>;
       default: return null;
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Minutas y Aprobaciones</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Flujo de revisión y publicación de minutas generadas
+          <div className="flex items-center gap-2 mb-1">
+            <span className="h-2 w-2 rounded-full bg-red-600" />
+            <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">Documentación Oficial</span>
+          </div>
+          <h1 className="font-display text-3xl font-black uppercase tracking-tight text-zinc-950">
+            Minutas y Aprobaciones
+          </h1>
+          <p className="mt-1 text-sm text-zinc-600 font-sans">
+            Flujo de revisión, validación por consultor y publicación de minutas generadas.
           </p>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-900/5">
+      <div className="overflow-hidden rounded-xl bg-white shadow-sm border-2 border-zinc-900">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Cargando minutas...</div>
+          <div className="p-12 text-center text-zinc-500 font-bold font-display uppercase tracking-wider">
+            Cargando minutas...
+          </div>
         ) : minutes.length > 0 ? (
-          <ul role="list" className="divide-y divide-gray-100">
+          <ul role="list" className="divide-y divide-zinc-200">
             {minutes.map((minute) => (
-              <li key={minute.id} className="relative flex justify-between gap-x-6 px-6 py-5 hover:bg-gray-50 transition-colors">
-                <div className="flex min-w-0 gap-x-4">
-                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-lg bg-blue-50">
-                    <FileText className="h-6 w-6 text-blue-600" />
+              <li key={minute.id} className="relative flex justify-between gap-x-6 px-6 py-5 hover:bg-red-50/40 transition-colors group">
+                <div className="flex min-w-0 gap-x-4 items-center">
+                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-zinc-950 text-red-500 border border-zinc-800 shadow-xs group-hover:bg-red-600 group-hover:text-white transition-colors">
+                    <FileText className="h-6 w-6" />
                   </div>
                   <div className="min-w-0 flex-auto">
-                    <p className="text-sm font-semibold leading-6 text-gray-900">
+                    <p className="font-display text-base font-bold text-zinc-950 group-hover:text-red-600 transition-colors uppercase tracking-wide">
                       <Link to={`/meetings/${minute.meeting_id}`}>
                         <span className="absolute inset-x-0 -top-px bottom-0" />
                         {minute.meetings?.title || 'Reunión sin título'}
                       </Link>
                     </p>
-                    <div className="mt-1 flex items-center gap-x-2 text-xs leading-5 text-gray-500">
-                      <p className="truncate font-medium text-gray-700">{minute.meetings?.organizations?.name}</p>
-                      <svg viewBox="0 0 2 2" className="h-0.5 w-0.5 fill-current"><circle cx={1} cy={1} r={1} /></svg>
-                      <p>V{minute.version}</p>
+                    <div className="mt-1 flex items-center gap-x-3 text-xs text-zinc-500 font-sans">
+                      <p className="truncate font-bold text-zinc-800 uppercase tracking-wider">{minute.meetings?.organizations?.name}</p>
+                      <span className="h-1 w-1 rounded-full bg-zinc-300" />
+                      <p className="font-mono text-zinc-500 font-bold">V{minute.version}</p>
                     </div>
                   </div>
                 </div>
@@ -90,9 +98,9 @@ export default function Minutes() {
           </ul>
         ) : (
           <div className="p-12 text-center">
-            <FileText className="mx-auto h-12 w-12 text-gray-300" />
-            <h3 className="mt-2 text-sm font-semibold text-gray-900">No hay minutas</h3>
-            <p className="mt-1 text-sm text-gray-500">Aún no se han generado borradores desde las reuniones.</p>
+            <FileText className="mx-auto h-12 w-12 text-zinc-300" />
+            <h3 className="mt-2 font-display text-sm font-bold uppercase tracking-wider text-zinc-900">No hay minutas</h3>
+            <p className="mt-1 text-sm text-zinc-500">Aún no se han generado borradores desde las reuniones.</p>
           </div>
         )}
       </div>

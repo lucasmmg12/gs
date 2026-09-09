@@ -92,7 +92,7 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
       canvasCtx.fillStyle = '#f8fafc'; // bg-slate-50
       canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
       canvasCtx.lineWidth = 2.5;
-      canvasCtx.strokeStyle = '#3b82f6';
+      canvasCtx.strokeStyle = '#dc2626';
       canvasCtx.beginPath();
 
       const sliceWidth = canvas.width * 1.0 / bufferLength;
@@ -279,28 +279,40 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
   };
 
   if (loading) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-blue-500 h-8 w-8" /></div>;
+    return <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-red-600 h-8 w-8" /></div>;
   }
 
   // Si no se ha elegido plantilla
   if (!selectedPlantilla) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
         {onBack && (
-          <button onClick={onBack} className="flex items-center text-slate-500 hover:text-slate-700 mb-4 transition-colors">
+          <button onClick={onBack} className="flex items-center text-zinc-500 hover:text-red-600 mb-2 transition-colors font-bold text-xs uppercase tracking-wider">
             <ChevronLeft className="w-4 h-4 mr-1" /> Volver
           </button>
         )}
-        <h1 className="text-2xl font-bold mb-6 text-slate-800">Gobernanza y Auditorías</h1>
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="h-2 w-2 rounded-full bg-red-600" />
+            <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">Auditorías de Voz</span>
+          </div>
+          <h1 className="font-display text-3xl font-black uppercase tracking-tight text-zinc-950">
+            Gobernanza y Auditorías
+          </h1>
+          <p className="mt-1 text-sm text-zinc-600 font-sans">
+            Selecciona una plantilla estructurada para registrar entrevistas y transcribir con IA.
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {plantillas.map(p => (
-            <div key={p.id} onClick={() => setSelectedPlantilla(p)} className="p-6 bg-white border border-slate-200 rounded-xl hover:shadow-md cursor-pointer transition-shadow">
-              <h3 className="font-semibold text-lg text-blue-700">{p.nombre}</h3>
-              <p className="text-sm text-slate-500 mt-2">{p.preguntas.length} preguntas predefinidas</p>
+            <div key={p.id} onClick={() => setSelectedPlantilla(p)} className="p-6 bg-white border-2 border-zinc-900 rounded-xl hover:shadow-crimson hover:border-red-600 cursor-pointer transition-all group">
+              <h3 className="font-display text-lg font-bold text-zinc-950 group-hover:text-red-600 uppercase tracking-wide transition-colors">{p.nombre}</h3>
+              <p className="text-xs text-zinc-500 mt-2 font-medium">{p.preguntas.length} preguntas predefinidas</p>
             </div>
           ))}
           {plantillas.length === 0 && (
-             <div className="p-6 bg-yellow-50 text-yellow-800 rounded-xl">
+             <div className="p-6 bg-zinc-100 text-zinc-800 rounded-xl border border-zinc-300 font-medium text-xs">
                No hay plantillas creadas. Se necesita al menos una en base de datos.
              </div>
           )}
@@ -310,32 +322,32 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <button onClick={() => setSelectedPlantilla(null)} className="flex items-center text-slate-500 hover:text-slate-700 mb-6 transition-colors">
+    <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <button onClick={() => setSelectedPlantilla(null)} className="flex items-center text-zinc-500 hover:text-red-600 mb-2 transition-colors font-bold text-xs uppercase tracking-wider">
         <ChevronLeft className="w-4 h-4 mr-1" /> Volver a Plantillas
       </button>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">{selectedPlantilla.nombre}</h2>
-        <p className="text-slate-500 mb-8">Grabe la entrevista y la inteligencia artificial extraerá las respuestas y generará un resumen.</p>
+      <div className="bg-white rounded-2xl shadow-sm border-2 border-zinc-900 p-8">
+        <h2 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-zinc-950 mb-2">{selectedPlantilla.nombre}</h2>
+        <p className="text-zinc-600 text-sm mb-8">Grabe la entrevista y la inteligencia artificial extraerá las respuestas y generará un resumen estructurado.</p>
 
         {/* Grabador Activo */}
         {!resultData && !processingState && (
-          <div className="flex flex-col items-center justify-center py-12 bg-slate-50 rounded-xl border-2 border-dashed border-slate-300">
-            <canvas ref={canvasRef} width="600" height="100" className="w-full max-w-lg mb-8 rounded-lg bg-slate-50" />
+          <div className="flex flex-col items-center justify-center py-12 bg-zinc-50 rounded-xl border-2 border-dashed border-zinc-300">
+            <canvas ref={canvasRef} width="600" height="100" className="w-full max-w-lg mb-8 rounded-lg bg-zinc-50" />
             
-            <div className="text-4xl font-mono text-slate-700 mb-8 tracking-wider">
+            <div className="text-5xl font-mono font-black text-zinc-950 mb-8 tracking-wider">
               {formatTime(duration)}
             </div>
 
             <div className="flex gap-4">
               {!isRecording ? (
-                <button onClick={startRecording} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all">
-                  <Mic className="w-6 h-6" /> Iniciar Grabación
+                <button onClick={startRecording} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full font-display font-black text-sm uppercase tracking-wider shadow-crimson hover:scale-105 transition-all">
+                  <Mic className="w-6 h-6 stroke-[2.5]" /> Iniciar Grabación
                 </button>
               ) : (
-                <button onClick={stopRecording} className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all animate-pulse">
-                  <Square className="w-6 h-6" /> Detener y Analizar
+                <button onClick={stopRecording} className="flex items-center gap-2 bg-zinc-950 hover:bg-black text-white px-8 py-4 rounded-full font-display font-black text-sm uppercase tracking-wider shadow-lg hover:scale-105 transition-all animate-pulse border-2 border-red-600">
+                  <Square className="w-6 h-6 text-red-500" /> Detener y Analizar
                 </button>
               )}
             </div>
@@ -344,12 +356,12 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
 
         {/* Estados de Procesamiento */}
         {processingState && (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-600">
-            <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
-            <h3 className="text-xl font-medium">
+          <div className="flex flex-col items-center justify-center py-20 text-zinc-600">
+            <Loader2 className="w-12 h-12 text-red-600 animate-spin mb-4" />
+            <h3 className="font-display text-xl font-black uppercase tracking-wide text-zinc-950">
               {processingState === 'uploading' ? 'Subiendo audio seguro...' : 'Analizando con IA...'}
             </h3>
-            <p className="text-sm text-slate-400 mt-2">Esto puede tomar un momento dependiendo de la duración de la grabación.</p>
+            <p className="text-xs text-zinc-500 mt-2 font-sans">Esto puede tomar un momento dependiendo de la duración de la grabación.</p>
           </div>
         )}
 
@@ -368,37 +380,37 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-600" />
+                <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-red-600" />
                   Resumen Ejecutivo
                 </h3>
-                <p className="text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-lg">
+                <p className="text-zinc-700 leading-relaxed bg-zinc-50 p-4 rounded-lg border border-zinc-200">
                   {resultData.resumen}
                 </p>
               </div>
               
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold border-b pb-2">Mapa Conceptual</h3>
+                <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2">Mapa Conceptual</h3>
                 {resultData.mapa_conceptual_mermaid ? (
-                  <div className="bg-slate-50 p-4 rounded-lg overflow-x-auto text-center" ref={mermaidRef}>
+                  <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200 overflow-x-auto text-center" ref={mermaidRef}>
                     {resultData.mapa_conceptual_mermaid.replace(/```mermaid/g, '').replace(/```/g, '')}
                   </div>
                 ) : (
-                  <p className="text-slate-400">No se pudo generar diagrama.</p>
+                  <p className="text-zinc-400">No se pudo generar diagrama.</p>
                 )}
               </div>
             </div>
 
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b pb-2 flex items-center gap-2">
-                <History className="w-5 h-5 text-blue-600" />
+              <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2 flex items-center gap-2">
+                <History className="w-5 h-5 text-red-600" />
                 Respuestas Extraídas
               </h3>
               <div className="space-y-4">
                 {selectedPlantilla.preguntas.map((q, i) => (
-                  <div key={i} className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                    <p className="font-medium text-slate-800 mb-2">{i + 1}. {q}</p>
-                    <p className="text-slate-600 pl-4 border-l-2 border-blue-300">
+                  <div key={i} className="bg-zinc-50 p-4 rounded-lg border border-zinc-200">
+                    <p className="font-bold text-zinc-900 mb-2">{i + 1}. {q}</p>
+                    <p className="text-zinc-600 pl-4 border-l-2 border-red-600">
                       {(resultData.respuestas && resultData.respuestas[i]) || "No hay información en el audio"}
                     </p>
                   </div>

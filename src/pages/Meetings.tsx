@@ -90,50 +90,58 @@ export default function Meetings() {
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Reuniones y Auditorías</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="h-2 w-2 rounded-full bg-red-600" />
+            <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">Sesiones y Gobernanza</span>
+          </div>
+          <h1 className="font-display text-3xl font-black uppercase tracking-tight text-zinc-950">
+            Reuniones y Auditorías
+          </h1>
+          <p className="mt-1 text-sm text-zinc-600 font-sans">
             Registro de sesiones clínicas/estratégicas, audios, transcripción Whisper y minutas ejecutivas.
           </p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 font-display text-xs font-black uppercase tracking-wider text-white shadow-crimson hover:bg-red-700 transition-colors"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4 stroke-[3]" />
           Nueva Reunión
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-xl bg-white shadow-xs border border-gray-200">
+      <div className="overflow-hidden rounded-xl bg-white shadow-sm border-2 border-zinc-900">
         {loading ? (
-          <div className="p-8 text-center text-gray-500 font-medium">Cargando reuniones...</div>
+          <div className="p-12 text-center text-zinc-500 font-bold font-display uppercase tracking-wider">
+            Cargando reuniones...
+          </div>
         ) : meetings.length > 0 ? (
-          <ul role="list" className="divide-y divide-gray-100">
+          <ul role="list" className="divide-y divide-zinc-200">
             {meetings.map((meeting) => (
-              <li key={meeting.id} className="relative flex justify-between gap-x-6 px-6 py-5 hover:bg-gray-50 transition-colors">
+              <li key={meeting.id} className="relative flex justify-between gap-x-6 px-6 py-5 hover:bg-red-50/40 transition-colors group">
                 <div className="flex min-w-0 gap-x-4 items-center">
-                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-zinc-950 text-red-500 border border-zinc-800 shadow-xs group-hover:bg-red-600 group-hover:text-white transition-colors">
                     <CalendarIcon className="h-6 w-6" />
                   </div>
                   <div className="min-w-0 flex-auto">
-                    <p className="text-base font-bold text-gray-900 hover:text-blue-600 transition-colors">
+                    <p className="font-display text-base font-bold text-zinc-950 group-hover:text-red-600 transition-colors uppercase tracking-wide">
                       <Link to={`/meetings/${meeting.id}`}>
                         <span className="absolute inset-x-0 -top-px bottom-0" />
                         {meeting.title}
                       </Link>
                     </p>
-                    <div className="mt-1 flex items-center gap-x-3 text-xs text-gray-500">
-                      <span className="font-semibold text-gray-700">{meeting.organizations?.name || 'Cliente'}</span>
-                      <span className="h-1 w-1 rounded-full bg-gray-300" />
-                      <p className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
+                    <div className="mt-1 flex items-center gap-x-3 text-xs text-zinc-500">
+                      <span className="font-bold text-zinc-800">{meeting.organizations?.name || 'Cliente'}</span>
+                      <span className="h-1 w-1 rounded-full bg-zinc-300" />
+                      <p className="flex items-center gap-1 font-medium">
+                        <Clock className="h-3 w-3 text-red-600" />
                         {new Date(meeting.meeting_date).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-x-4">
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200 capitalize">
+                  <span className="inline-flex items-center rounded-full bg-zinc-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-red-400 border border-red-600/40">
                     {meeting.status}
                   </span>
                 </div>
@@ -142,22 +150,24 @@ export default function Meetings() {
           </ul>
         ) : (
           <div className="p-12 text-center">
-            <CalendarIcon className="mx-auto h-12 w-12 text-gray-300" />
-            <h3 className="mt-2 text-sm font-semibold text-gray-900">No hay reuniones</h3>
-            <p className="mt-1 text-sm text-gray-500">Comienza registrando la primera sesión de un cliente.</p>
+            <CalendarIcon className="mx-auto h-12 w-12 text-zinc-300" />
+            <h3 className="mt-2 font-display text-sm font-bold uppercase tracking-wider text-zinc-900">No hay reuniones</h3>
+            <p className="mt-1 text-sm text-zinc-500">Comienza registrando la primera sesión de un cliente.</p>
           </div>
         )}
       </div>
 
       {/* Modal Nueva Reunión */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900">Registrar Nueva Sesión</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-obsidian border-2 border-zinc-900">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-red-600">
+              <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950">
+                Registrar Nueva Sesión
+              </h3>
               <button 
                 onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
+                className="text-zinc-400 hover:text-zinc-600 p-1 rounded-lg"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -165,18 +175,18 @@ export default function Meetings() {
 
             <form onSubmit={handleCreateMeeting} className="mt-4 space-y-4">
               {modalError && (
-                <div className="p-3 text-xs bg-red-50 text-red-700 rounded-lg border border-red-200">
+                <div className="p-3 text-xs bg-red-50 text-red-700 rounded-lg border border-red-200 font-bold">
                   {modalError}
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1">
                   Organización / Cliente *
                 </label>
                 <select
                   required
-                  className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                  className="w-full text-sm rounded-lg border border-zinc-300 px-3 py-2 focus:ring-2 focus:ring-red-600 focus:border-red-600"
                   value={selectedOrgId}
                   onChange={e => setSelectedOrgId(e.target.value)}
                 >
@@ -187,44 +197,44 @@ export default function Meetings() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1">
                   Título de la Sesión *
                 </label>
                 <input
                   type="text"
                   required
                   placeholder="Ej: Acompañamiento Estratégico · Procesos y Medianera Conceptual"
-                  className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                  className="w-full text-sm rounded-lg border border-zinc-300 px-3 py-2 focus:ring-2 focus:ring-red-600 focus:border-red-600"
                   value={meetingTitle}
                   onChange={e => setMeetingTitle(e.target.value)}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1">
                   Fecha de la Sesión *
                 </label>
                 <input
                   type="date"
                   required
-                  className="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                  className="w-full text-sm rounded-lg border border-zinc-300 px-3 py-2 focus:ring-2 focus:ring-red-600 focus:border-red-600"
                   value={meetingDate}
                   onChange={e => setMeetingDate(e.target.value)}
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-zinc-200">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-4 py-2 font-display text-xs font-bold uppercase tracking-wider text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-70"
+                  className="px-5 py-2 font-display text-xs font-black uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-crimson disabled:opacity-70"
                 >
                   {creating ? (
                     <>
