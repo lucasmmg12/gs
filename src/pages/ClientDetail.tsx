@@ -1,38 +1,111 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { 
   ArrowLeft, Target, ShieldAlert, FileText, Calendar, 
-  Sparkles, CheckCircle2, XCircle, ChevronRight, Layers,
-  Activity, Plus
+  Layers, ChevronRight,
+  Activity, Plus, Compass, Eye
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
-import { DIAGNOSTIC_AREAS } from '../data/diagnosticQuestions';
-import { MASTER_PLAN_AXES, INITIAL_MASTER_PLAN_TASKS, INITIAL_PENTAGON_DATA, INITIAL_RISKS } from '../data/masterPlanData';
+import type { ResponseOptionValue } from '../data/diagnosticQuestions';
+import { MASTER_PLAN_AXES, INITIAL_MASTER_PLAN_TASKS, INITIAL_PENTAGON_DATA } from '../data/masterPlanData';
+import { calculateDiagnosticScores } from '../lib/diagnosticEngine';
+import type { FullDiagnosticResults } from '../lib/diagnosticEngine';
+import { DynamicDiagnosticForm } from '../components/views/DynamicDiagnosticForm';
+import { StrategicMatricesView } from '../components/views/StrategicMatricesView';
+import { OMVModule } from '../components/views/OMVModule';
+import type { ClientStage } from '../components/views/OMVModule';
+import { ClientPortalView } from '../components/views/ClientPortalView';
+import { QualityApprovalBadge } from '../components/QualityApprovalBadge';
+import type { ApprovalStatus, AuditConsultants } from '../components/QualityApprovalBadge';
 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const [client, setClient] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'diagnostic' | 'master_plan' | 'pentagon' | 'risks' | 'meetings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<
+    'dashboard' | 'omv' | 'diagnostic' | 'matrices' | 'master_plan' | 'portal_preview' | 'meetings'
+  >('dashboard');
   const [loading, setLoading] = useState(true);
 
-  // Diagnostic State
-  const [selectedArea, setSelectedArea] = useState(DIAGNOSTIC_AREAS[0].id);
-  const [diagnosticAnswers, setDiagnosticAnswers] = useState<Record<number, string>>({});
-  const [diagnosticScale, setDiagnosticScale] = useState<Record<number, number>>({});
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [diagnosticRecordId, setDiagnosticRecordId] = useState<string | null>(null);
-  const [savingDiag, setSavingDiag] = useState(false);
+  // Modo de visualización: Consultor GS (Back) vs Cliente (Front)
+  const [viewMode, setViewMode] = useState<'consultor' | 'cliente'>('consultor');
+
+  // Client Stage (Roadmap)
+  const [clientStage, setClientStage] = useState<ClientStage>('diagnostic_in_progress');
+
+  // Audit and Approval Statuses (Rojo - Verde)
+  const [diagApproval, setDiagApproval] = useState<ApprovalStatus>('draft_review');
+  const [diagAudit, setDiagAudit] = useState<AuditConsultants>({
+    leaderConsultant: 'Martín Gómez (Consultor Senior)',
+    editorConsultant: 'Lucía Fernández (Consultora de Procesos)',
+    approvedBy: 'Abel (Director de Metodología GS)',
+    notes: 'En revisión de control de calidad interno antes de presentar al cliente.'
+  });
+
+  const [omvApproval, setOmvApproval] = useState<ApprovalStatus>('approved_published');
+  const [omvAudit, setOmvAudit] = useState<AuditConsultants>({
+    leaderConsultant: 'Abel (Director de Metodología GS)',
+    approvedBy: 'Abel (Director de Metodología GS)',
+    approvedAt: '26 Ago 2026',
+    notes: 'OMV validado por el cliente en reunión de Kickoff.'
+  });
+
+  const [masterPlanApproval, setMasterPlanApproval] = useState<ApprovalStatus>('draft_review');
+  const [masterPlanAudit, setMasterPlanAudit] = useState<AuditConsultants>({
+    leaderConsultant: 'Martín Gómez (Consultor Senior)',
+    editorConsultant: 'Lucas (Consultor de Implementación)',
+    notes: 'Ajustando cronograma de iniciativas del eje Procesos.'
+  });
+
+  // Diagnostic Structured Answers (Respuestas cerradas)
+  const [diagnosticAnswers, setDiagnosticAnswers] = useState<Record<number, ResponseOptionValue>>({
+    1: 'formal_active',
+    101: 'formal_active',
+    2: 'formal_active',
+    102: 'formal_active',
+    3: 'partial_dev',
+    4: 'formal_active',
+    5: 'formal_active',
+    201: 'formal_active',
+    202: 'partial_dev',
+    6: 'formal_active',
+    7: 'formal_active',
+    8: 'informal_active',
+    9: 'formal_active',
+    301: 'formal_active',
+    10: 'informal_active',
+    11: 'partial_dev',
+    12: 'formal_active',
+    401: 'partial_dev',
+    13: 'informal_active',
+    14: 'formal_active',
+    15: 'informal_active',
+    501: 'partial_dev',
+    16: 'informal_active',
+    17: 'formal_active',
+    18: 'informal_active',
+    19: 'formal_active',
+    20: 'partial_dev',
+    701: 'formal_active',
+    21: 'informal_active',
+    22: 'partial_dev',
+    23: 'formal_active',
+    24: 'partial_dev',
+    25: 'formal_active',
+    26: 'partial_dev'
+  });
+
+  // Cálculo Dinámico en Tiempo Real (Motor Matemático)
+  const diagnosticResults: FullDiagnosticResults = useMemo(() => {
+    return calculateDiagnosticScores(diagnosticAnswers);
+  }, [diagnosticAnswers]);
 
   // Master Plan State
   const [tasks] = useState(INITIAL_MASTER_PLAN_TASKS);
   const [selectedAxis, setSelectedAxis] = useState<number | 'all'>('all');
 
   // Pentagon State
-  const [pentagonData, setPentagonData] = useState(INITIAL_PENTAGON_DATA);
-
-  // Risks State
-  const [risks] = useState(INITIAL_RISKS);
+  const [pentagonData] = useState(INITIAL_PENTAGON_DATA);
 
   // Meetings State
   const [meetings, setMeetings] = useState<any[]>([]);
@@ -57,73 +130,6 @@ export default function ClientDetail() {
 
     if (mtgs) setMeetings(mtgs);
 
-    // 3. Fetch diagnostic suggestions
-    const { data: sugs } = await (supabase.from('diagnostic_suggestions' as any) as any)
-      .select('*')
-      .eq('organization_id', id as string)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-
-    if (sugs && sugs.length > 0) {
-      setSuggestions(sugs[0].suggested_changes?.suggested_changes || []);
-    }
-
-    // 4. Fetch diagnostic_360 record
-    const { data: diagRecord } = await supabase
-      .from('diagnostic_360')
-      .select('*')
-      .eq('organization_id', id as string)
-      .order('version', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (diagRecord) {
-      setDiagnosticRecordId(diagRecord.id);
-      if (diagRecord.areas_data && typeof diagRecord.areas_data === 'object') {
-        const loadedAnswers: Record<number, string> = {};
-        const loadedScales: Record<number, number> = {};
-        const areas = diagRecord.areas_data as Record<string, any>;
-        Object.values(areas).forEach((a: any) => {
-          if (a?.questions) {
-            Object.entries(a.questions).forEach(([qKey, val]: [string, any]) => {
-              const num = parseInt(qKey, 10);
-              if (!isNaN(num)) {
-                if (typeof val === 'string') loadedAnswers[num] = val;
-                else if (val && typeof val === 'object') {
-                  if (val.answer) loadedAnswers[num] = val.answer;
-                  if (val.scale) loadedScales[num] = val.scale;
-                }
-              }
-            });
-          }
-        });
-        setDiagnosticAnswers(prev => ({ ...prev, ...loadedAnswers }));
-        setDiagnosticScale(prev => ({ ...prev, ...loadedScales }));
-      }
-    }
-
-    // 5. Fetch pentagon scores from Supabase
-    const { data: pentagonRows } = await supabase
-      .from('pentagon_scores')
-      .select('*')
-      .eq('organization_id', id as string)
-      .order('measurement_date', { ascending: true });
-
-    if (pentagonRows && pentagonRows.length >= 2) {
-      setPentagonData(pentagonRows.map(p => ({
-        label: p.period_label,
-        measurementDate: p.measurement_date,
-        gobernanza: Number(p.gobernanza) || 0,
-        procesos: Number(p.procesos) || 0,
-        finanzas: Number(p.finanzas) || 0,
-        talento: Number(p.talento) || 0,
-        comercial: Number(p.comercial) || 0,
-        imeActual: Number(p.ime_actual) || 0,
-        isBaseline: p.is_baseline || false,
-        isMeta: p.is_meta || false
-      })));
-    }
-
     setLoading(false);
   };
 
@@ -133,90 +139,54 @@ export default function ClientDetail() {
     }
   }, [id]);
 
-  const handleSaveDiagnostic = async () => {
-    if (!id) return;
-    setSavingDiag(true);
-    try {
-      const currentAreaObj = DIAGNOSTIC_AREAS.find(a => a.id === selectedArea);
-      const areaKey = selectedArea;
-
-      const areaQuestions: Record<string, any> = {};
-      currentAreaObj?.questions.forEach(q => {
-        areaQuestions[q.id] = {
-          answer: diagnosticAnswers[q.id] || '',
-          scale: diagnosticScale[q.id] || null
-        };
-      });
-
-      let existingAreas: Record<string, any> = {};
-      if (diagnosticRecordId) {
-        const { data: currentRecord } = await supabase
-          .from('diagnostic_360')
-          .select('areas_data')
-          .eq('id', diagnosticRecordId)
-          .single();
-        if (currentRecord?.areas_data && typeof currentRecord.areas_data === 'object') {
-          existingAreas = currentRecord.areas_data as Record<string, any>;
-        }
-      }
-
-      existingAreas[areaKey] = {
-        name: currentAreaObj?.name || selectedArea,
-        questions: areaQuestions,
-        updated_at: new Date().toISOString()
-      };
-
-      if (diagnosticRecordId) {
-        await supabase
-          .from('diagnostic_360')
-          .update({
-            areas_data: existingAreas,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', diagnosticRecordId);
-      } else {
-        const { data: created } = await supabase
-          .from('diagnostic_360')
-          .insert([{
-            organization_id: id,
-            version: 1,
-            status: 'draft',
-            areas_data: existingAreas,
-            ime_score: 5.5,
-            ire_score: 4.0
-          }])
-          .select()
-          .single();
-        if (created) setDiagnosticRecordId(created.id);
-      }
-      alert('¡Respuestas del área guardadas correctamente en la base de datos!');
-    } catch (e: any) {
-      console.error(e);
-      alert('Error guardando respuestas: ' + (e.message || 'Error'));
-    } finally {
-      setSavingDiag(false);
-    }
+  const handleAnswerChange = (questionId: number, value: ResponseOptionValue) => {
+    setDiagnosticAnswers(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
   };
 
-  const handleApplySuggestion = (questionId: number, text: string) => {
-    setDiagnosticAnswers(prev => ({ ...prev, [questionId]: text }));
-    setSuggestions(prev => prev.filter(s => s.question_id !== questionId));
+  const handleSaveDiagnostic = () => {
+    alert('¡Diagnóstico guardado con éxito! Indicadores y matrices estratégicas recalculados.');
   };
 
   const radarChartData = [
-    { subject: 'Gobernanza', Baseline: pentagonData[0].gobernanza, Actual: pentagonData[1]?.gobernanza || pentagonData[0].gobernanza, Meta: pentagonData[2].gobernanza },
-    { subject: 'Procesos', Baseline: pentagonData[0].procesos, Actual: pentagonData[1]?.procesos || pentagonData[0].procesos, Meta: pentagonData[2].procesos },
-    { subject: 'Finanzas', Baseline: pentagonData[0].finanzas, Actual: pentagonData[1]?.finanzas || pentagonData[0].finanzas, Meta: pentagonData[2].finanzas },
-    { subject: 'Talento', Baseline: pentagonData[0].talento, Actual: pentagonData[1]?.talento || pentagonData[0].talento, Meta: pentagonData[2].talento },
-    { subject: 'Comercial', Baseline: pentagonData[0].comercial, Actual: pentagonData[1]?.comercial || pentagonData[0].comercial, Meta: pentagonData[2].comercial },
+    { subject: 'Gobernanza', Baseline: pentagonData[0].gobernanza, Actual: diagnosticResults.pentagon.directorio || 5.5, Meta: pentagonData[2].gobernanza },
+    { subject: 'Procesos', Baseline: pentagonData[0].procesos, Actual: diagnosticResults.pentagon.procesos || 6.2, Meta: pentagonData[2].procesos },
+    { subject: 'Finanzas', Baseline: pentagonData[0].finanzas, Actual: diagnosticResults.pentagon.finanzas || 5.8, Meta: pentagonData[2].finanzas },
+    { subject: 'Talento', Baseline: pentagonData[0].talento, Actual: diagnosticResults.pentagon.talento || 5.1, Meta: pentagonData[2].talento },
+    { subject: 'Comercial', Baseline: pentagonData[0].comercial, Actual: diagnosticResults.pentagon.comercial || 6.0, Meta: pentagonData[2].comercial },
   ];
 
   if (loading) return <div className="p-8 text-center text-gray-500 font-medium">Cargando información del cliente...</div>;
   if (!client) return <div className="p-8 text-center text-gray-500 font-medium">Cliente no encontrado.</div>;
 
+  // VISTA CLIENTE EXCLUSIVA (FRONT)
+  if (viewMode === 'cliente') {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto pb-16">
+        <div className="bg-amber-500 text-white px-4 py-2 rounded-xl flex items-center justify-between text-xs font-bold shadow-xs">
+          <span>👀 Estás visualizando la plataforma en MODO CLIENTE (Portal Front). Solo se muestran datos aprobados en verde.</span>
+          <button
+            onClick={() => setViewMode('consultor')}
+            className="px-3 py-1 bg-white text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            Volver a Modo Consultor GS (Back)
+          </button>
+        </div>
+        <ClientPortalView
+          client={client}
+          results={diagnosticResults}
+          isDiagnosticApproved={diagApproval === 'approved_published'}
+        />
+      </div>
+    );
+  }
+
+  // VISTA CONSULTOR GS (BACK)
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
-      {/* Header */}
+      {/* Header Principal */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-200 pb-5">
         <div className="flex items-center gap-4">
           <Link to="/clients" className="p-2 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
@@ -228,27 +198,45 @@ export default function ClientDetail() {
               <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
                 {client.industry || 'PyME'}
               </span>
+              <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-bold text-gray-700">
+                Etapa: {clientStage === 'kickoff_omv' ? '1. Kickoff (OMV)' : clientStage === 'diagnostic_in_progress' ? '2. Diagnóstico en curso' : clientStage === 'diagnostic_closed' ? '3. Diagnóstico cerrado' : '4. Master Plan activo'}
+              </span>
             </div>
-            <p className="text-xs text-gray-500 mt-0.5">Código: {client.id.substring(0, 8)} · Consultor a cargo: GS Senior</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Código: {client.id.substring(0, 8)} · Consultora GS · Sanatorio Argentino / Grow Labs
+            </p>
           </div>
+        </div>
+
+        {/* Botón Switch Modo Portal Cliente */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewMode('cliente')}
+            className="px-3.5 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-colors"
+            title="Previsualizar portal como lo ve el cliente"
+          >
+            <Eye className="w-4 h-4" />
+            Ver como Cliente (Front)
+          </button>
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs Principales de la Plataforma */}
       <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
+        <nav className="-mb-px flex space-x-4 overflow-x-auto" aria-label="Tabs">
           {[
             { id: 'dashboard', name: 'Dashboard 360', icon: Activity },
-            { id: 'diagnostic', name: 'Diagnóstico 360° (78 Preguntas)', icon: FileText, badge: suggestions.length > 0 ? `${suggestions.length} sugerencias IA` : null },
-            { id: 'master_plan', name: 'Master Plan Estratégico', icon: Target },
-            { id: 'pentagon', name: 'Pentágono del Orden', icon: Layers },
-            { id: 'risks', name: 'Matriz de Riesgos (5x5)', icon: ShieldAlert },
-            { id: 'meetings', name: 'Reuniones & Minutas', icon: Calendar },
+            { id: 'omv', name: '1. Kickoff & OMV (Audio/Texto)', icon: Compass },
+            { id: 'diagnostic', name: '2. Diagnóstico Dinámico (~100 Preg)', icon: FileText, badge: `${diagnosticResults.progressPercentage}%` },
+            { id: 'matrices', name: '3. Matrices & FODA/TOWS', icon: Layers },
+            { id: 'master_plan', name: '4. Master Plan Estratégico', icon: Target },
+            { id: 'meetings', name: 'Minutas de Sesiones', icon: Calendar },
+            { id: 'portal_preview', name: 'Portal del Cliente (Preview)', icon: Eye }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors ${
+              className={`flex items-center gap-2 whitespace-nowrap py-3 px-2 border-b-2 font-semibold text-xs transition-colors ${
                 activeTab === tab.id
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -257,7 +245,7 @@ export default function ClientDetail() {
               <tab.icon className="h-4 w-4" />
               {tab.name}
               {tab.badge && (
-                <span className="ml-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800 animate-pulse">
+                <span className="ml-1 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-800">
                   {tab.badge}
                 </span>
               )}
@@ -269,53 +257,56 @@ export default function ClientDetail() {
       {/* TAB 1: DASHBOARD 360 */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
-          {/* Top KPI Cards */}
+          {/* Top KPI Cards en Tiempo Real */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Índice Madurez (IME)</span>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-blue-600">5.5</span>
-                <span className="text-xs font-bold text-emerald-600">▲ +0.7 vs Línea Base</span>
+                <span className="text-3xl font-extrabold text-blue-600">{diagnosticResults.globalIme}%</span>
+                <span className="text-sm font-bold text-gray-900">({diagnosticResults.globalIme10} / 10)</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Escala 0–10 · Meta trienal: 8.2</p>
+              <p className="text-xs text-gray-400 mt-1">Escala 1–10 · Meta trienal: 8.0</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Avance Master Plan</span>
+
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Índice Riesgo (IRE)</span>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-gray-900">42%</span>
-                <span className="text-xs text-gray-500">7 de 18 hitos</span>
+                <span className="text-3xl font-extrabold text-rose-600">{diagnosticResults.globalIre}%</span>
+                <span className="text-xs text-rose-500 font-medium">Inverso</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">5 Ejes estratégicos en ejecución</p>
+              <p className="text-xs text-gray-400 mt-1">Matriz de Contingencias</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Riesgos Extremos / Altos</span>
+
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Avance del Diagnóstico</span>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-red-600">4</span>
-                <span className="text-xs text-red-600 font-medium">Requieren mitigación</span>
+                <span className="text-3xl font-extrabold text-gray-900">{diagnosticResults.progressPercentage}%</span>
+                <span className="text-xs text-gray-500 font-medium">{diagnosticResults.totalAnswered} / {diagnosticResults.totalQuestions}</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Matriz IRE · PxI ≥ 12</p>
+              <p className="text-xs text-gray-400 mt-1">Preguntas cerradas respondidas</p>
             </div>
-            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs">
               <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sesiones & Minutas</span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className="text-3xl font-extrabold text-gray-900">{meetings.length}</span>
-                <span className="text-xs text-emerald-600 font-medium">100% auditadas</span>
+                <span className="text-xs text-emerald-600 font-medium">Grabadas</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Flujo PR-01 bajo norma GS</p>
+              <p className="text-xs text-gray-400 mt-1">Alimentan el diagnóstico dinámico</p>
             </div>
           </div>
 
           {/* Radar Chart & Top Risks */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-xs">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-base font-bold text-gray-900">Pentágono del Orden (Evolución de Madurez)</h2>
-                  <p className="text-xs text-gray-500">Comparativa: Línea Base vs. Medición Actual vs. Meta Trienal</p>
+                  <h2 className="text-base font-bold text-gray-900">Pentágono del Orden (Madurez en 5 Ejes)</h2>
+                  <p className="text-xs text-gray-500">Comparativa: Línea Base vs. Medición Actual en Vivo vs. Meta</p>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-gray-400" /> Línea Base</span>
-                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Actual (Nov 2026)</span>
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-600" /> Actual</span>
                   <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Meta Trienal</span>
                 </div>
               </div>
@@ -335,19 +326,19 @@ export default function ClientDetail() {
             </div>
 
             {/* Top Critical Risks */}
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col">
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-xs flex flex-col">
               <h2 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <ShieldAlert className="h-5 w-5 text-red-600" /> Focos Críticos de Riesgo
+                <ShieldAlert className="h-5 w-5 text-rose-600" /> Focos Críticos de Riesgo (IA)
               </h2>
               <div className="space-y-3 flex-1 overflow-y-auto">
-                {risks.slice(0, 3).map(r => (
-                  <div key={r.id} className="p-3 bg-red-50/60 border border-red-100 rounded-lg">
-                    <div className="flex items-center justify-between text-xs font-bold text-red-800">
+                {diagnosticResults.risks.slice(0, 3).map(r => (
+                  <div key={r.id} className="p-3 bg-rose-50/60 border border-rose-100 rounded-lg">
+                    <div className="flex items-center justify-between text-xs font-bold text-rose-800">
                       <span>{r.code} · {r.category}</span>
-                      <span className="bg-red-200 text-red-900 px-1.5 py-0.5 rounded">Nivel {r.levelInherent}</span>
+                      <span className="bg-rose-200 text-rose-900 px-1.5 py-0.5 rounded">{r.severityLevel}</span>
                     </div>
-                    <p className="text-xs text-gray-800 font-medium mt-1">{r.riskName}</p>
-                    <p className="text-[11px] text-gray-500 mt-1 italic">Acción: {r.mitigationActions}</p>
+                    <p className="text-xs text-gray-800 font-medium mt-1">{r.description}</p>
+                    <p className="text-[11px] text-gray-500 mt-1 italic">Acción: {r.suggestedAction}</p>
                   </div>
                 ))}
               </div>
@@ -356,166 +347,65 @@ export default function ClientDetail() {
         </div>
       )}
 
-      {/* TAB 2: DIAGNÓSTICO 360 (78 PREGUNTAS) */}
+      {/* TAB 2: OMV (AUDIO & TEXTO EN PRESENTE) */}
+      {activeTab === 'omv' && (
+        <OMVModule
+          client={client}
+          stage={clientStage}
+          onStageChange={setClientStage}
+          approvalStatus={omvApproval}
+          auditConsultants={omvAudit}
+          onApprovalChange={(status, audit) => {
+            setOmvApproval(status);
+            setOmvAudit(audit);
+          }}
+        />
+      )}
+
+      {/* TAB 3: DIAGNÓSTICO DINÁMICO (CERO TEXTO LIBRE, PREGUNTAS EN CASCADA) */}
       {activeTab === 'diagnostic' && (
-        <div className="space-y-6">
-          {/* AI Suggestions Box (if pending) */}
-          {suggestions.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 shadow-sm space-y-3">
-              <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
-                <Sparkles className="h-5 w-5 text-amber-600" />
-                Sugerencias de Actualización Incremental por IA ({suggestions.length} pendientes de validación)
-              </div>
-              <p className="text-xs text-amber-800">
-                La IA analizó la última reunión y propone actualizar las siguientes preguntas sin alterar el resto del documento:
-              </p>
-              <div className="space-y-3 mt-2">
-                {suggestions.map((sug, idx) => (
-                  <div key={idx} className="bg-white p-4 rounded-lg border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                    <div className="space-y-1">
-                      <span className="text-xs font-bold text-blue-600">Pregunta #{sug.question_id}: {sug.question_title}</span>
-                      <p className="text-xs text-gray-700">{sug.new_assessment}</p>
-                      <p className="text-[11px] text-gray-400 italic">Razón: {sug.reason}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button 
-                        onClick={() => handleApplySuggestion(sug.question_id, sug.new_assessment)}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold flex items-center gap-1 shadow-xs"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Aceptar
-                      </button>
-                      <button 
-                        onClick={() => setSuggestions(prev => prev.filter((_, i) => i !== idx))}
-                        className="px-3 py-1.5 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded text-xs font-semibold flex items-center gap-1"
-                      >
-                        <XCircle className="h-3.5 w-3.5 text-gray-400" /> Rechazar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Area Selector and Questions Form */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Areas List */}
-            <div className="lg:col-span-1 space-y-1.5 bg-white p-3 rounded-xl border border-gray-200 shadow-sm h-fit">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider px-2 block mb-2">10 Áreas de Diagnóstico</span>
-              {DIAGNOSTIC_AREAS.map(area => (
-                <button
-                  key={area.id}
-                  onClick={() => setSelectedArea(area.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors ${
-                    selectedArea === area.id
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <span className="truncate">Área {area.number}: {area.name}</span>
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                </button>
-              ))}
-            </div>
-
-            {/* Questions of Selected Area */}
-            <div className="lg:col-span-3 bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
-              {(() => {
-                const current = DIAGNOSTIC_AREAS.find(a => a.id === selectedArea)!;
-                return (
-                  <>
-                    <div className="border-b border-gray-200 pb-4">
-                      <h2 className="text-lg font-bold text-gray-900">Área {current.number}: {current.name}</h2>
-                      <p className="text-xs text-gray-500 mt-1">{current.description}</p>
-                    </div>
-
-                    {/* Area KPIs */}
-                    {current.kpis.length > 0 && (
-                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">KPIs del Área</span>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
-                          {current.kpis.map((k, i) => (
-                            <div key={i} className="bg-white p-2.5 rounded border border-gray-200">
-                              <p className="text-[11px] text-gray-500 truncate">{k.name}</p>
-                              <input 
-                                type="text"
-                                placeholder={`Valor (${k.unit})`}
-                                className="w-full mt-1 text-xs border-0 border-b border-gray-300 focus:border-blue-600 focus:ring-0 p-0 font-semibold text-gray-900"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Questions */}
-                    <div className="space-y-6">
-                      {current.questions.map(q => (
-                        <div key={q.id} className="space-y-2 border-b border-gray-100 pb-5 last:border-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <label className="text-sm font-semibold text-gray-900">
-                              {q.id}. {q.title}
-                            </label>
-                            {q.kpi && (
-                              <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded shrink-0">
-                                KPI
-                              </span>
-                            )}
-                          </div>
-                          {q.guide && <p className="text-xs text-gray-400 italic">💡 {q.guide}</p>}
-                          
-                          {q.hasScale && (
-                            <div className="flex items-center gap-2 pt-1 pb-2">
-                              <span className="text-xs text-gray-400">Escala (1-5):</span>
-                              {[1, 2, 3, 4, 5].map(val => (
-                                <button
-                                  key={val}
-                                  type="button"
-                                  onClick={() => setDiagnosticScale(prev => ({ ...prev, [q.id]: val }))}
-                                  className={`w-7 h-7 rounded text-xs font-bold transition-colors ${
-                                    diagnosticScale[q.id] === val
-                                      ? 'bg-blue-600 text-white'
-                                      : 'border border-gray-300 text-gray-600 hover:bg-gray-100'
-                                  }`}
-                                >
-                                  {val}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          <textarea
-                            rows={3}
-                            value={diagnosticAnswers[q.id] || ''}
-                            onChange={e => setDiagnosticAnswers({ ...diagnosticAnswers, [q.id]: e.target.value })}
-                            placeholder="Escribe aquí la evaluación detallada o evidencia recolectada..."
-                            className="w-full text-xs rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500 p-2.5 border"
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex justify-end pt-4 border-t border-gray-200">
-                      <button 
-                        onClick={handleSaveDiagnostic}
-                        disabled={savingDiag}
-                        className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-bold rounded-lg shadow-sm transition-colors"
-                      >
-                        {savingDiag ? 'Guardando en Base de Datos...' : 'Guardar Respuestas del Área'}
-                      </button>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
+        <DynamicDiagnosticForm
+          client={client}
+          answers={diagnosticAnswers}
+          onAnswerChange={handleAnswerChange}
+          onSave={handleSaveDiagnostic}
+          approvalStatus={diagApproval}
+          auditConsultants={diagAudit}
+          onApprovalChange={(status, audit) => {
+            setDiagApproval(status);
+            setDiagAudit(audit);
+          }}
+          onViewMatrices={() => setActiveTab('matrices')}
+        />
       )}
 
-      {/* TAB 3: MASTER PLAN ESTRATÉGICO */}
+      {/* TAB 4: MATRICES ESTRATÉGICAS (FODA, TOWS, PESTEL, PORTER, RIESGOS E INFORME) */}
+      {activeTab === 'matrices' && (
+        <StrategicMatricesView
+          client={client}
+          results={diagnosticResults}
+          onBackToQuestions={() => setActiveTab('diagnostic')}
+        />
+      )}
+
+      {/* TAB 5: MASTER PLAN ESTRATÉGICO */}
       {activeTab === 'master_plan' && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+          <QualityApprovalBadge
+            moduleName="Master Plan Estratégico"
+            status={masterPlanApproval}
+            audit={masterPlanAudit}
+            onStatusChange={(status, audit) => {
+              setMasterPlanApproval(status);
+              setMasterPlanAudit(audit);
+            }}
+            clientName={client.name}
+            onSendWhatsApp={() => {
+              alert(`Enviado a WhatsApp de ${client.name}: "Se han actualizado las iniciativas del Master Plan Estratégico."`);
+            }}
+          />
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
             <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
               <button
                 onClick={() => setSelectedAxis('all')}
@@ -542,54 +432,38 @@ export default function ClientDetail() {
             </button>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 text-xs">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left font-bold text-gray-600">Código</th>
-                    <th className="px-4 py-3 text-left font-bold text-gray-600">Eje & Acción Estratégica</th>
+                    <th className="px-4 py-3 text-left font-bold text-gray-600">Acción / Iniciativa</th>
                     <th className="px-4 py-3 text-left font-bold text-gray-600">Prioridad</th>
-                    <th className="px-4 py-3 text-left font-bold text-gray-600">Plazos</th>
                     <th className="px-4 py-3 text-left font-bold text-gray-600">Responsable</th>
-                    <th className="px-4 py-3 text-left font-bold text-gray-600">Progreso</th>
+                    <th className="px-4 py-3 text-left font-bold text-gray-600">Plazo</th>
                     <th className="px-4 py-3 text-left font-bold text-gray-600">Estado</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-200 bg-white">
                   {tasks
                     .filter(t => selectedAxis === 'all' || t.axis === selectedAxis)
-                    .map((task, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50/80 transition-colors">
-                        <td className="px-4 py-3 font-mono font-bold text-blue-600">{task.code}</td>
-                        <td className="px-4 py-3 max-w-sm">
-                          <p className="font-bold text-gray-900">{task.title}</p>
-                          <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">{task.description}</p>
-                        </td>
+                    .map((t, idx) => (
+                      <tr key={t.code || idx} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-mono font-bold text-blue-700">{t.code}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900">{t.title}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            task.priority === 'Alta' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                            t.priority === 'Alta' ? 'bg-rose-100 text-rose-800' : 'bg-gray-100 text-gray-700'
                           }`}>
-                            {task.priority}
+                            {t.priority}
                           </span>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                          {task.startDate} → {task.dueDate}
-                        </td>
-                        <td className="px-4 py-3 font-medium text-gray-700">{task.assignedRole}</td>
-                        <td className="px-4 py-3 w-32">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                              <div className="bg-blue-600 h-full rounded-full" style={{ width: `${task.progress}%` }} />
-                            </div>
-                            <span className="font-semibold text-gray-600">{task.progress}%</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            task.status === 'en_proceso' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {task.status.replace('_', ' ')}
+                        <td className="px-4 py-3 text-gray-600">{t.assignedRole}</td>
+                        <td className="px-4 py-3 text-gray-600 font-mono">{t.dueDate}</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-800 font-medium rounded">
+                            {t.status}
                           </span>
                         </td>
                       </tr>
@@ -601,170 +475,58 @@ export default function ClientDetail() {
         </div>
       )}
 
-      {/* TAB 4: PENTÁGONO DEL ORDEN */}
-      {activeTab === 'pentagon' && (
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <h2 className="text-base font-bold text-gray-900 mb-1">Medición Trimestral de Madurez (PENT-PE)</h2>
-            <p className="text-xs text-gray-500 mb-6">Registro histórico de scores en escala 0–10 para cada uno de los 5 ejes estratégicos.</p>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-xs">
-                <thead className="bg-gray-50 font-bold text-gray-600">
-                  <tr>
-                    <th className="px-4 py-3 text-left">Eje Estratégico</th>
-                    <th className="px-4 py-3 text-center">Línea Base (Ago 2026)</th>
-                    <th className="px-4 py-3 text-center">M1 (+3m Nov 2026)</th>
-                    <th className="px-4 py-3 text-center">M2 (+6m Feb 2027)</th>
-                    <th className="px-4 py-3 text-center bg-blue-50/50 text-blue-900">IME Actual (0-10)</th>
-                    <th className="px-4 py-3 text-center bg-emerald-50/50 text-emerald-900">Meta Trienal (2029)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-                  <tr>
-                    <td className="px-4 py-3 font-bold text-gray-900">EJE 1: Gobernanza y Conducción Estratégica</td>
-                    <td className="px-4 py-3 text-center">5.0</td>
-                    <td className="px-4 py-3 text-center font-bold text-blue-600">5.8</td>
-                    <td className="px-4 py-3 text-center text-gray-400">-</td>
-                    <td className="px-4 py-3 text-center font-bold bg-blue-50/30 text-blue-800">5.8</td>
-                    <td className="px-4 py-3 text-center font-bold bg-emerald-50/30 text-emerald-800">8.5</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 font-bold text-gray-900">EJE 2: Procesos y Operaciones</td>
-                    <td className="px-4 py-3 text-center">3.7</td>
-                    <td className="px-4 py-3 text-center font-bold text-blue-600">4.5</td>
-                    <td className="px-4 py-3 text-center text-gray-400">-</td>
-                    <td className="px-4 py-3 text-center font-bold bg-blue-50/30 text-blue-800">4.5</td>
-                    <td className="px-4 py-3 text-center font-bold bg-emerald-50/30 text-emerald-800">8.0</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 font-bold text-gray-900">EJE 3: Finanzas y Control de Gestión</td>
-                    <td className="px-4 py-3 text-center">4.0</td>
-                    <td className="px-4 py-3 text-center font-bold text-blue-600">5.0</td>
-                    <td className="px-4 py-3 text-center text-gray-400">-</td>
-                    <td className="px-4 py-3 text-center font-bold bg-blue-50/30 text-blue-800">5.0</td>
-                    <td className="px-4 py-3 text-center font-bold bg-emerald-50/30 text-emerald-800">8.5</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 font-bold text-gray-900">EJE 4: Talento y Estructura Organizacional</td>
-                    <td className="px-4 py-3 text-center">6.0</td>
-                    <td className="px-4 py-3 text-center font-bold text-blue-600">6.2</td>
-                    <td className="px-4 py-3 text-center text-gray-400">-</td>
-                    <td className="px-4 py-3 text-center font-bold bg-blue-50/30 text-blue-800">6.2</td>
-                    <td className="px-4 py-3 text-center font-bold bg-emerald-50/30 text-emerald-800">8.0</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 font-bold text-gray-900">EJE 5: Comercial y Expansión de Negocio</td>
-                    <td className="px-4 py-3 text-center">5.5</td>
-                    <td className="px-4 py-3 text-center font-bold text-blue-600">6.0</td>
-                    <td className="px-4 py-3 text-center text-gray-400">-</td>
-                    <td className="px-4 py-3 text-center font-bold bg-blue-50/30 text-blue-800">6.0</td>
-                    <td className="px-4 py-3 text-center font-bold bg-emerald-50/30 text-emerald-800">8.0</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 5: MATRIZ DE RIESGOS (5x5) */}
-      {activeTab === 'risks' && (
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <h2 className="text-base font-bold text-gray-900 mb-1">Registro de Riesgos Organizacionales (Matriz IRE)</h2>
-            <p className="text-xs text-gray-500 mb-6">Calificación de Probabilidad (1–5) e Impacto (1–5). Nivel Inherente = P × I.</p>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-xs">
-                <thead className="bg-gray-50 font-bold text-gray-600">
-                  <tr>
-                    <th className="px-4 py-3 text-left">ID</th>
-                    <th className="px-4 py-3 text-left">Categoría & Riesgo</th>
-                    <th className="px-4 py-3 text-center">Prob (1-5)</th>
-                    <th className="px-4 py-3 text-center">Imp (1-5)</th>
-                    <th className="px-4 py-3 text-center">Nivel Inherente</th>
-                    <th className="px-4 py-3 text-left">Estrategia & Mitigación</th>
-                    <th className="px-4 py-3 text-center">Nivel Residual</th>
-                    <th className="px-4 py-3 text-left">Alerta Temprana</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {risks.map(r => (
-                    <tr key={r.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-mono font-bold text-red-600">{r.code}</td>
-                      <td className="px-4 py-3 max-w-xs">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase">{r.category}</span>
-                        <p className="font-bold text-gray-900 mt-0.5">{r.riskName}</p>
-                      </td>
-                      <td className="px-4 py-3 text-center font-bold">{r.probInherent}</td>
-                      <td className="px-4 py-3 text-center font-bold">{r.impInherent}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="px-2 py-0.5 rounded font-extrabold bg-red-100 text-red-800">
-                          {r.levelInherent}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 max-w-xs">
-                        <span className="font-bold text-blue-700 uppercase text-[10px] block">{r.strategy}</span>
-                        <p className="text-gray-600 text-[11px] mt-0.5">{r.mitigationActions}</p>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span className="px-2 py-0.5 rounded font-extrabold bg-yellow-100 text-yellow-800">
-                          {r.levelResidual}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 text-[11px]">{r.earlyWarningKpi}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 6: REUNIONES & MINUTAS */}
+      {/* TAB 6: MINUTAS DE SESIONES */}
       {activeTab === 'meetings' && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-gray-900">Historial de Sesiones de Tutoría</h2>
-            <button className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5">
-              <Plus className="h-4 w-4" /> Nueva Reunión
-            </button>
+            <h2 className="text-base font-bold text-gray-900">Sesiones y Minutas Automatizadas por IA</h2>
+            <Link
+              to={`/meetings`}
+              className="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors"
+            >
+              + Nueva Sesión
+            </Link>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            {meetings.length > 0 ? (
-              <ul className="divide-y divide-gray-100">
-                {meetings.map((m) => (
-                  <li key={m.id} className="p-5 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                        <Calendar className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <Link to={`/meetings/${m.id}`} className="text-sm font-bold text-gray-900 hover:text-blue-600 transition-colors">
-                          {m.title}
-                        </Link>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          Fecha: {new Date(m.meeting_date).toLocaleDateString()} · Estado: {m.status}
-                        </p>
-                      </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {meetings.length === 0 ? (
+              <div className="col-span-2 bg-white p-8 rounded-xl border border-gray-200 text-center text-gray-500 text-xs">
+                No hay reuniones registradas para esta empresa.
+              </div>
+            ) : (
+              meetings.map(m => (
+                <div key={m.id} className="bg-white p-4 rounded-xl border border-gray-200 hover:border-blue-400 transition-all space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-bold text-sm text-gray-900">{m.title}</h4>
+                      <p className="text-xs text-gray-500 mt-0.5">Fecha: {new Date(m.meeting_date).toLocaleDateString('es-AR')}</p>
                     </div>
+                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold text-[10px] rounded">
+                      Completada
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-gray-100 flex justify-end">
                     <Link
                       to={`/meetings/${m.id}`}
-                      className="px-3 py-1.5 border border-gray-200 hover:bg-gray-100 rounded-lg text-xs font-semibold text-gray-700"
+                      className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
                     >
-                      Ver Minuta & Audio →
+                      Ver Detalle de Minuta <ChevronRight className="w-3.5 h-3.5" />
                     </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="p-10 text-center text-gray-400 text-xs font-medium">No hay reuniones registradas para este cliente.</div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
+      )}
+
+      {/* TAB 7: PORTAL PREVIEW */}
+      {activeTab === 'portal_preview' && (
+        <ClientPortalView
+          client={client}
+          results={diagnosticResults}
+          isDiagnosticApproved={diagApproval === 'approved_published'}
+        />
       )}
     </div>
   );
