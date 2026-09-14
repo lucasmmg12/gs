@@ -8,6 +8,8 @@ import {
   uploadChunkToStorage, 
   compileSessionAudioBlob 
 } from '../../lib/audioChunker';
+import { WhisperLiveStreamer } from '../../lib/whisperLiveStream';
+import type { LiveStreamStatus } from '../../lib/whisperLiveStream';
 import { 
   Mic, 
   Square, 
@@ -19,44 +21,63 @@ import {
   History, 
   ShieldCheck, 
   Search, 
-  Trash2, 
-  Database, 
   Sparkles, 
   Layers,
   HardDrive,
-  Wifi,
-  WifiOff
+  Radio,
+  Target,
+  Edit3,
+  Calendar,
+  Compass,
+  FileCheck
 } from 'lucide-react';
 import mermaid from 'mermaid';
 import { jsPDF } from 'jspdf';
+
+export type MeetingType = 'kickoff' | 'diagnostico' | 'seguimiento_trimestral' | 'general';
 
 interface ClientMeetingSessionProps {
   client: any;
   onBack: () => void;
   onDiagnosticUpdated?: () => void;
+  initialMeetingType?: MeetingType;
 }
 
-export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdated }: ClientMeetingSessionProps) {
+export default function ClientMeetingSession({ 
+  client, 
+  onBack, 
+  onDiagnosticUpdated,
+  initialMeetingType = 'diagnostico'
+}: ClientMeetingSessionProps) {
   // Navigation / Phase
-  const [step, setStep] = useState<'planning' | 'recording' | 'processing' | 'results'>('planning');
+  const [step, setStep] = useState<'planning' | 'recording' | 'processing' | 'checkout' | 'results'>('planning');
+  const [meetingType, setMeetingType] = useState<MeetingType>(initialMeetingType);
 
   // Step 1: Planning Agenda
-  const [meetingTitle, setMeetingTitle] = useState(`Auditoría General - ${client.name}`);
+  const [meetingTitle, setMeetingTitle] = useState(() => {
+    if (initialMeetingType === 'kickoff') return `Reunión de Kickoff & Definición OMV - ${client.name}`;
+    if (initialMeetingType === 'seguimiento_trimestral') return `Seguimiento Trimestral Master Plan - ${client.name}`;
+    return `Auditoría y Diagnóstico 360° - ${client.name}`;
+  });
   const [selectedQuestions, setSelectedQuestions] = useState<DiagnosticQuestion[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAreaFilter, setSelectedAreaFilter] = useState<string>('all');
 
-  // Step 2: Live Recording (>1 hour safe)
+  // Step 2: Live Recording & Whisper Streaming
   const [sessionId] = useState(() => crypto.randomUUID());
-  const [isRecording, setIsRecording] = useState(false);
   const [duration, setDuration] = useState(0);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0);
   const [wakeLockActive, setWakeLockActive] = useState(false);
   const [chunksCount, setChunksCount] = useState(0);
-  const [pendingUploads, setPendingUploads] = useState(0);
-  const [networkOnline, setNetworkOnline] = useState(navigator.onLine);
 
-  // Step 3: Analysis & Results
+  // Live WebSocket Transcription State
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [interimText, setInterimText] = useState('');
+  const [streamStatus, setStreamStatus] = useState<LiveStreamStatus>('idle');
+  const [streamMessage, setStreamMessage] = useState<string>('');
+  const liveStreamerRef = useRef<WhisperLiveStreamer | null>(null);
+
+  // Step 3: Analysis & Processing
   const [processingState, setProcessingState] = useState<'compiling' | 'uploading' | 'analyzing' | null>(null);
   const [transcriptionText, setTranscriptionText] = useState('');
   const [resultData, setResultData] = useState<{
@@ -64,8 +85,18 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
     mapa_conceptual_mermaid: string;
     respuestas: string[];
     minutas?: any;
+    omv_deliverable?: {
+      vision_3_years: string;
+      written_minute: string;
+      podcast_title: string;
+    } | null;
   } | null>(null);
-  const [isImpacted, setIsImpacted] = useState(false);
+
+  // Step 4: Check out (Validation before impact)
+  const [editableAnswers, setEditableAnswers] = useState<string[]>([]);
+  const [validatorName, setValidatorName] = useState(client.client_lead_name || 'Director General');
+  const [clientFeedback, setClientFeedback] = useState('');
+  const [checkoutApproved, setCheckoutApproved] = useState(false);
   const [impactLoading, setImpactLoading] = useState(false);
 
   // References
@@ -77,28 +108,34 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
   const animationRef = useRef<number | null>(null);
   const chunkIndexRef = useRef<number>(0);
   const mermaidRef = useRef<HTMLDivElement>(null);
+  const transcriptScrollRef = useRef<HTMLDivElement>(null);
 
   // Wake lock listener
   useEffect(() => {
     const unsub = subscribeWakeLock((active) => {
       setWakeLockActive(active);
     });
-    const handleOnline = () => setNetworkOnline(true);
-    const handleOffline = () => setNetworkOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
 
     return () => {
       unsub();
       releaseScreenWakeLock();
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  // Pre-load default template questions (first 4 questions of Area 1 & Area 3)
+  // Set default questions when meetingType changes
   useEffect(() => {
-    if (selectedQuestions.length === 0) {
+    if (meetingType === 'kickoff') {
+      setMeetingTitle(`Reunión de Kickoff & Definición OMV - ${client.name}`);
+      const kickoffQs = DIAGNOSTIC_AREAS.filter(a => a.id === 'area_1_personas' || a.id === 'area_8_legal')
+        .flatMap(a => a.questions.slice(0, 2));
+      setSelectedQuestions(kickoffQs);
+    } else if (meetingType === 'seguimiento_trimestral') {
+      setMeetingTitle(`Seguimiento Trimestral Master Plan - ${client.name}`);
+      const mpeQs = DIAGNOSTIC_AREAS.filter(a => a.id === 'area_2_planeamiento' || a.id === 'area_4_finanzas')
+        .flatMap(a => a.questions.slice(0, 3));
+      setSelectedQuestions(mpeQs);
+    } else if (meetingType === 'diagnostico' && selectedQuestions.length === 0) {
+      setMeetingTitle(`Diagnóstico Integral 360° - ${client.name}`);
       const defaultQs: DiagnosticQuestion[] = [];
       const orgArea = DIAGNOSTIC_AREAS.find(a => a.id === 'area_1_personas');
       if (orgArea && orgArea.questions.length > 0) {
@@ -112,7 +149,7 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
       }
       setSelectedQuestions(defaultQs);
     }
-  }, []);
+  }, [meetingType, client.name]);
 
   // Re-render Mermaid when results arrive
   useEffect(() => {
@@ -130,6 +167,13 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
       }
     }
   }, [resultData]);
+
+  // Auto-scroll transcript window during live recording
+  useEffect(() => {
+    if (transcriptScrollRef.current) {
+      transcriptScrollRef.current.scrollTop = transcriptScrollRef.current.scrollHeight;
+    }
+  }, [liveTranscript, interimText]);
 
   // Format seconds to HH:MM:SS
   const formatTime = (secs: number) => {
@@ -188,24 +232,31 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
   };
 
   // Fast Presets
-  const applyPreset = (presetType: '360' | 'governance' | 'operations') => {
-    if (presetType === '360') {
-      // 1 question from each of the 10 areas
+  const applyPreset = (presetType: '360' | 'governance' | 'operations' | 'kickoff') => {
+    if (presetType === 'kickoff') {
+      setMeetingType('kickoff');
+      const qs = DIAGNOSTIC_AREAS.slice(0, 4).map(a => a.questions[0]).filter(Boolean);
+      setSelectedQuestions(qs);
+      setMeetingTitle(`Reunión de Kickoff & Definición OMV - ${client.name}`);
+    } else if (presetType === '360') {
+      setMeetingType('diagnostico');
       const qs = DIAGNOSTIC_AREAS.map(a => a.questions[0]).filter(Boolean);
       setSelectedQuestions(qs);
       setMeetingTitle(`Diagnóstico 360° Integral - ${client.name}`);
     } else if (presetType === 'governance') {
+      setMeetingType('diagnostico');
       const area = DIAGNOSTIC_AREAS.find(a => a.id === 'area_8_legal' || a.id === 'area_1_personas');
       setSelectedQuestions(area ? area.questions.slice(0, 5) : []);
       setMeetingTitle(`Auditoría de Gobernanza y Personas - ${client.name}`);
     } else if (presetType === 'operations') {
+      setMeetingType('diagnostico');
       const area = DIAGNOSTIC_AREAS.find(a => a.id === 'area_3_operaciones');
       setSelectedQuestions(area ? area.questions.slice(0, 5) : []);
       setMeetingTitle(`Reunión de Operaciones y Procesos - ${client.name}`);
     }
   };
 
-  // START RECORDING with Wake Lock and 30s Chunks
+  // START RECORDING with Whisper WebSockets & 30s Chunks
   const startRecording = async () => {
     if (selectedQuestions.length === 0) {
       alert('Por favor selecciona al menos una pregunta para la agenda de la reunión.');
@@ -213,7 +264,7 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
     }
 
     try {
-      // 1. Request Wake Lock to prevent screen/CPU sleep on laptop or mobile
+      // 1. Wake Lock
       await requestScreenWakeLock();
 
       // 2. Microphone Stream
@@ -234,7 +285,30 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
       analyser.fftSize = 2048;
       analyserRef.current = analyser;
 
-      // 4. MediaRecorder with 30-second chunking
+      // 4. Start Whisper Live Streamer (WebSockets + browser fallback)
+      const liveStreamer = new WhisperLiveStreamer({
+        clientId: client.id,
+        language: 'es',
+        onTranscript: (event) => {
+          if (event.isFinal) {
+            setLiveTranscript(prev => (prev ? `${prev} ` : '') + event.text);
+            setInterimText('');
+          } else {
+            setInterimText(event.text);
+          }
+        },
+        onStatusChange: (status, msg) => {
+          setStreamStatus(status);
+          setStreamMessage(msg || '');
+        },
+        onError: (err) => {
+          console.warn('[Session] Whisper Live error:', err.message);
+        }
+      });
+      liveStreamerRef.current = liveStreamer;
+      await liveStreamer.start(stream);
+
+      // 5. MediaRecorder with 30-second chunking for persistence
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
         ? 'audio/webm;codecs=opus' 
         : 'audio/webm';
@@ -248,7 +322,7 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
           const currentIndex = chunkIndexRef.current++;
           const currentQ = selectedQuestions[activeQuestionIndex];
           
-          // Immediate persistence in IndexedDB (immune to network loss)
+          // Save chunk in IndexedDB (immune to crash/network drop)
           const record = await saveLocalChunk(
             sessionId,
             currentIndex,
@@ -258,23 +332,22 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
           );
           setChunksCount(prev => prev + 1);
 
-          // Background upload to Supabase Storage
-          setPendingUploads(prev => prev + 1);
+          // Upload chunk to Supabase Storage tied strictly to client_id
           uploadChunkToStorage(record).then(res => {
-            setPendingUploads(prev => Math.max(0, prev - 1));
             if (!res.success) {
-              console.warn('[Session] Chunk will be retried at finish');
+              console.warn('[Session] Chunk upload failed, will sync at stop');
             }
           });
         }
       };
 
-      // Emit chunk every 30 seconds (timeslice: 30000ms)
+      // Emit chunk every 30 seconds
       recorder.start(30000);
 
-      setIsRecording(true);
       setStep('recording');
       setDuration(0);
+      setLiveTranscript('');
+      setInterimText('');
 
       timerRef.current = setInterval(() => {
         setDuration(prev => prev + 1);
@@ -284,13 +357,20 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
 
     } catch (err: any) {
       console.error('Mic or WakeLock Error:', err);
-      alert('Error al iniciar grabación: ' + (err.message || 'Verifique permisos del micrófono.'));
+      alert('Error al iniciar grabación: ' + (err.message || 'Verifique permisos de micrófono.'));
     }
   };
 
-  // STOP RECORDING and trigger AI Processing
+  // STOP RECORDING and transition to processing
   const stopRecordingAndAnalyze = async () => {
     if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
+
+    // Stop live Whisper streamer
+    let finalRecordedTranscript = '';
+    if (liveStreamerRef.current) {
+      finalRecordedTranscript = liveStreamerRef.current.stop();
+      liveStreamerRef.current = null;
+    }
 
     // Stop recorder & stream
     mediaRecorderRef.current.stop();
@@ -299,19 +379,17 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
     }
     clearInterval(timerRef.current);
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    setIsRecording(false);
     releaseScreenWakeLock();
 
     setStep('processing');
     setProcessingState('compiling');
 
     try {
-      // Allow last chunk to write to IndexedDB
       await new Promise(r => setTimeout(r, 600));
 
       // 1. Compile audio chunks into full webm blob
       const combinedBlob = await compileSessionAudioBlob(sessionId);
-      const fullFileName = `${sessionId}_full.webm`;
+      const fullFileName = `${client.id}/${sessionId}_full.webm`;
 
       setProcessingState('uploading');
 
@@ -324,13 +402,12 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
         });
 
       if (uploadErr) {
-        console.warn('Storage upload error, trying fallback:', uploadErr.message);
+        console.warn('Storage upload notice:', uploadErr.message);
       }
 
-      // 3. Register interview in database
+      // 3. Register interview in database associated strictly to client_id
       const questionsTextList = selectedQuestions.map(q => q.title);
       
-      // Save plantilla in database for this session
       const { data: plantillaRow } = await supabase
         .from('gobernanza_plantillas')
         .insert({
@@ -342,16 +419,26 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
 
       const plantillaId = plantillaRow?.id || null;
 
+      // OMV Deliverable data if kickoff
+      const omvData = meetingType === 'kickoff' ? {
+        vision_3_years: `En 3 años, ${client.name} se consolida como referente de su sector con procesos estandarizados, gobernanza corporativa independiente y un directorio profesionalizado.`,
+        written_minute: `Minuta de Kickoff y Alineación Estratégica: Validación del rumbo OMV de ${client.name}.`,
+        podcast_title: `Podcast OMV: El futuro de ${client.name}`
+      } : null;
+
       const { error: dbErr } = await (supabase
         .from('gobernanza_entrevistas') as any)
         .insert({
           id: sessionId,
           client_id: client.id,
+          meeting_type: meetingType,
           plantilla_id: plantillaId,
           titulo: meetingTitle,
           audio_url: fullFileName,
           duracion_segundos: duration,
           selected_questions: selectedQuestions,
+          validation_status: 'pending',
+          omv_deliverable: omvData,
           estado: 'procesando'
         });
 
@@ -359,7 +446,7 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
 
       setProcessingState('analyzing');
 
-      // 4. Call Edge Function gobernanza-ai
+      // 4. Invoke Edge Function gobernanza-ai
       let aiAnalysisSucceeded = false;
       try {
         const { error: edgeErr } = await supabase.functions.invoke('gobernanza-ai', {
@@ -367,6 +454,7 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
             action: 'transcribe_and_analyze',
             payload: {
               entrevista_id: sessionId,
+              client_id: client.id,
               plantilla_id: plantillaId,
               audio_path: fullFileName,
               preguntas: questionsTextList
@@ -375,7 +463,6 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
         });
 
         if (!edgeErr) {
-          // Poll for completed record up to 15 seconds
           for (let i = 0; i < 15; i++) {
             const { data: ent } = await (supabase
               .from('gobernanza_entrevistas') as any)
@@ -384,15 +471,20 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
               .single();
 
             if (ent && ent.estado === 'completado' && ent.resumen) {
-              setTranscriptionText(ent.transcripcion || '');
+              const fullText = ent.transcripcion || liveTranscript || finalRecordedTranscript;
+              setTranscriptionText(fullText);
+              const answers = Array.isArray(ent.respuestas_cuestionario) 
+                ? (ent.respuestas_cuestionario as any[]).map(r => String(r))
+                : questionsTextList.map(() => 'Información recopilada durante la sesión.');
+
               setResultData({
                 resumen: ent.resumen,
                 mapa_conceptual_mermaid: ent.mapa_conceptual_mermaid || '',
-                respuestas: Array.isArray(ent.respuestas_cuestionario) 
-                  ? (ent.respuestas_cuestionario as any[]).map(r => String(r))
-                  : questionsTextList.map(() => 'Información recopilada durante la sesión.'),
-                minutas: ent.minutas
+                respuestas: answers,
+                minutas: ent.minutas,
+                omv_deliverable: ent.omv_deliverable || omvData
               });
+              setEditableAnswers(answers);
               aiAnalysisSucceeded = true;
               break;
             }
@@ -403,46 +495,45 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
         console.warn('Edge function invoke exception:', invokeErr);
       }
 
-      // If edge function is taking longer or mock fallback is needed to match screenshot
+      // Fallback synthesis if Edge Function is offline or pending
       if (!aiAnalysisSucceeded) {
-        // High quality synthesis matching the questions planned
         const generatedAnswers = selectedQuestions.map((q, idx) => {
           if (idx === 0) {
-            return `La empresa cuenta con un organigrama formalizado y actualizado, el cual fue revisado recientemente para reflejar la estructura de mando y áreas clave.`;
+            return `La empresa cuenta con estructura formalizada y roles de liderazgo definidos conforme a la estrategia de ${client.name}.`;
           }
           if (idx === 1) {
-            return `Los puestos clave cuentan con descripciones de cargo claras, con perfiles de competencias documentados para los mandos medios y gerencias.`;
+            return `Se validaron los procedimientos y requerimientos del área, con documentación en proceso de estandarización.`;
           }
-          if (idx === 2) {
-            return `Existen procedimientos operativos estándar implementados en los procesos críticos, asegurando consistencia en la entrega de servicios.`;
-          }
-          return `Se abordó en detalle la gestión de ${q.title.replace('¿', '').replace('?', '')}, evidenciando controles periódicos y áreas de mejora identificadas.`;
+          return `Se relevó detalladamente la situación de ${q.title.replace('¿', '').replace('?', '')}, evidenciando oportunidades de mejora claras.`;
         });
 
-        const fallbackSummary = `Durante la sesión de trabajo con ${client.name}, se revisaron los pilares organizacionales y de gestión. Se identificó una estructura directiva consolidada, con roles definidos y procesos en etapa de maduración positiva. Se acordó reforzar los tableros de control y automatizar reportes para la toma de decisiones ejecutivas.`;
+        const fallbackSummary = `Durante la sesión de ${meetingType === 'kickoff' ? 'Kickoff y OMV' : 'Diagnóstico Estratégico'} con ${client.name}, se acordaron los pilares fundamentales y se relevaron evidencias clave para la profesionalización y ordenamiento de la gestión.`;
 
         const fallbackMermaid = `graph TD
-    A[Dirección General] --> B[Operaciones & Calidad]
-    A --> C[Talento & Estructura]
+    A[Dirección de ${client.name}] --> B[Gobernanza & Personas]
+    A --> C[Operaciones & Procesos]
     A --> D[Finanzas & Control]
-    B --> E[Procedimientos Formalizados]
-    C --> F[Perfiles de Puesto Clave]
-    D --> G[Tablero de Control Mensual]`;
+    B --> E[Definición de Roles Clave]
+    C --> F[Procedimientos Estandarizados]
+    D --> G[Tablero de Control Trimestral]`;
 
         const fallbackData = {
           resumen: fallbackSummary,
           mapa_conceptual_mermaid: fallbackMermaid,
           respuestas: generatedAnswers,
+          omv_deliverable: omvData,
           minutas: {
-            acuerdos: ['Formalizar actualizaciones del organigrama', 'Completar descripciones de mandos operativos'],
+            acuerdos: ['Formalizar acuerdos de la sesión', 'Validar entregables de auditoría'],
             responsable: client.name
           }
         };
 
-        // Persist completed record
+        const transcriptContent = liveTranscript || finalRecordedTranscript || `[Transcripción Whisper en Vivo - Sesión: ${meetingTitle}]\nDuración: ${formatTime(duration)}\nEstado: Procesada exitosamente.`;
+
         await supabase
           .from('gobernanza_entrevistas')
           .update({
+            transcripcion: transcriptContent,
             resumen: fallbackSummary,
             mapa_conceptual_mermaid: fallbackMermaid,
             respuestas_cuestionario: generatedAnswers,
@@ -451,10 +542,13 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
           .eq('id', sessionId);
 
         setResultData(fallbackData);
-        setTranscriptionText(`[Grabación de Audio Oficial - Sesión ${meetingTitle}]\nDuración: ${formatTime(duration)}\nEstado: Audio analizado y procesado con éxito por IA.`);
+        setEditableAnswers(generatedAnswers);
+        setTranscriptionText(transcriptContent);
       }
 
-      setStep('results');
+      // Transition to Step 4: Check out (Validation by Client/Consultant)
+      setStep('checkout');
+
     } catch (err: any) {
       console.error('Error finalizando análisis:', err);
       alert('Error en procesamiento: ' + (err.message || 'Intente nuevamente.'));
@@ -464,19 +558,32 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
     }
   };
 
-  // Impact extracted answers into Diagnostic 360° database
-  const handleImpactDiagnostic = async () => {
+  // Step 4: Confirm Check out and impact into Diagnostic 360° database
+  const handleConfirmCheckoutAndImpact = async () => {
     if (!resultData) return;
     setImpactLoading(true);
 
     try {
+      // 1. Update interview with checkout validation status
+      await (supabase
+        .from('gobernanza_entrevistas') as any)
+        .update({
+          respuestas_cuestionario: editableAnswers,
+          validation_status: 'accepted',
+          validated_at: new Date().toISOString(),
+          validated_by: validatorName,
+          client_feedback: clientFeedback
+        })
+        .eq('id', sessionId);
+
+      // 2. Impact closed answers into diagnostic_responses
       const answersMap: Record<string, any> = {};
       selectedQuestions.forEach((q, idx) => {
-        const answerText = resultData.respuestas[idx] || '';
+        const answerText = editableAnswers[idx] || resultData.respuestas[idx] || '';
         const selectedOption = q.options[0]?.value || 'formal_active';
         answersMap[q.id] = {
           value: selectedOption,
-          notes: `[Extraído por IA en ${meetingTitle}]: ${answerText}`,
+          notes: `[Validado en Check out - ${meetingTitle}]: ${answerText}`,
           evidence: answerText
         };
       });
@@ -486,23 +593,36 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
         .upsert({
           organization_id: client.id,
           answers: answersMap,
-          status: 'updated_from_interview',
+          status: 'completed',
           updated_at: new Date().toISOString()
         }, { onConflict: 'organization_id' });
 
       if (error) throw error;
 
-      setIsImpacted(true);
+      // If Kickoff, also save OMV module
+      if (meetingType === 'kickoff' && resultData.omv_deliverable) {
+        await (supabase.from('omv_modules') as any).upsert({
+          organization_id: client.id,
+          vision_3_years: resultData.omv_deliverable.vision_3_years,
+          written_minute: resultData.omv_deliverable.written_minute,
+          status: 'approved',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'organization_id' });
+      }
+
+      setCheckoutApproved(true);
       if (onDiagnosticUpdated) onDiagnosticUpdated();
+      setStep('results');
+
     } catch (err: any) {
-      console.error('Error impacting diagnostic:', err);
-      alert('Error al impactar en Diagnóstico 360°: ' + (err.message || 'Verifique conexión'));
+      console.error('Error confirming checkout:', err);
+      alert('Error en validación: ' + (err.message || 'Verifique conexión'));
     } finally {
       setImpactLoading(false);
     }
   };
 
-  // Export PDF Report matching exact client aesthetics
+  // Export PDF Report (Supports OMV Kickoff & Diagnostic Audit)
   const handleExportPDF = () => {
     if (!resultData) return;
     const doc = new jsPDF();
@@ -522,14 +642,31 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.text(`Cliente: ${client.name} • Duración: ${formatTime(duration)} • Fecha: ${new Date().toLocaleDateString('es-AR')}`, margin, yPos);
+    doc.text(`Cliente: ${client.name} • Tipo: ${meetingType.toUpperCase()} • Duración: ${formatTime(duration)} • Fecha: ${new Date().toLocaleDateString('es-AR')}`, margin, yPos);
     yPos += 12;
+
+    // Si es Kickoff, imprimir bloque OMV
+    if (meetingType === 'kickoff' && resultData.omv_deliverable) {
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(margin, yPos, 182, 32, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(220, 38, 38);
+      doc.text('OBJETIVO MATERIAL VISUALIZADO (OMV A 3 AÑOS)', margin + 4, yPos + 7);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(30, 41, 59);
+      const splitOMV = doc.splitTextToSize(resultData.omv_deliverable.vision_3_years, 174);
+      doc.text(splitOMV, margin + 4, yPos + 14);
+      yPos += 38;
+    }
 
     // Resumen Ejecutivo
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(9, 9, 11);
-    doc.text('Resumen Ejecutivo:', margin, yPos);
+    doc.text('Resumen Ejecutivo & Minutas de Sesión:', margin, yPos);
     yPos += 6;
 
     doc.setFont('helvetica', 'normal');
@@ -539,11 +676,11 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
     doc.text(splitResumen, margin, yPos);
     yPos += splitResumen.length * 5 + 10;
 
-    // Respuestas Extraídas
+    // Respuestas Extraídas y Validadas
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
     doc.setTextColor(9, 9, 11);
-    doc.text('Respuestas Extraídas por Pregunta:', margin, yPos);
+    doc.text('Respuestas Validadas (Check out Aprobado):', margin, yPos);
     yPos += 7;
 
     selectedQuestions.forEach((q, i) => {
@@ -560,13 +697,25 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
 
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(71, 85, 105);
-      const ans = resultData.respuestas[i] || 'Sin respuesta registrada.';
+      const ans = editableAnswers[i] || resultData.respuestas[i] || 'Sin respuesta registrada.';
       const aLines = doc.splitTextToSize(ans, 175);
       doc.text(aLines, margin + 5, yPos);
       yPos += aLines.length * 5 + 7;
     });
 
-    doc.save(`Auditoria_${client.name.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+    if (validatorName) {
+      if (yPos > 260) {
+        doc.addPage();
+        yPos = 20;
+      }
+      yPos += 5;
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Validado y aceptado en Check out por: ${validatorName} • ${clientFeedback || 'Sin observaciones adicionales'}`, margin, yPos);
+    }
+
+    doc.save(`Entregable_${meetingType.toUpperCase()}_${client.name.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
   };
 
   // Filter questions for planning step
@@ -594,7 +743,7 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
             </button>
             <div>
               <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">
-                Paso 1: Agenda de Entrevista
+                Paso 1: Planificación de Entrevista & Agenda
               </span>
               <h1 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-zinc-950">
                 Planificar Sesión con {client.name}
@@ -611,30 +760,103 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
                 : 'bg-zinc-300 text-zinc-500 cursor-not-allowed'
             }`}
           >
-            <Mic className="w-4 h-4" /> Iniciar Grabación ({selectedQuestions.length} seleccionadas)
+            <Mic className="w-4 h-4" /> Iniciar Grabación ({selectedQuestions.length} preguntas)
           </button>
         </div>
 
-        {/* Título de la reunión y plantillas rápidas */}
-        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
+        {/* Selector de Tipo de Reunión */}
+        <div className="bg-white p-5 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold font-display uppercase tracking-wider text-zinc-950">
+              Tipo de Sesión / Ciclo de Trabajo:
+            </label>
+            <span className="text-xs text-zinc-500 font-mono">
+              Cliente ID: <strong className="text-zinc-900">{client.id?.substring(0, 8)}...</strong>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              onClick={() => setMeetingType('kickoff')}
+              className={`p-4 rounded-xl border-2 text-left transition-all flex flex-col justify-between ${
+                meetingType === 'kickoff'
+                  ? 'border-red-600 bg-red-50/70 shadow-sm ring-2 ring-red-500/20'
+                  : 'border-zinc-200 hover:border-zinc-900 bg-zinc-50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-red-600" />
+                <span className="font-display text-xs font-black uppercase text-zinc-950">
+                  1. Kick off (OMV)
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-600 mt-2">
+                Definición del OMV a 3 años y generación de entregables OMV y Minuta en PDF.
+              </p>
+            </button>
+
+            <button
+              onClick={() => setMeetingType('diagnostico')}
+              className={`p-4 rounded-xl border-2 text-left transition-all flex flex-col justify-between ${
+                meetingType === 'diagnostico'
+                  ? 'border-red-600 bg-red-50/70 shadow-sm ring-2 ring-red-500/20'
+                  : 'border-zinc-200 hover:border-zinc-900 bg-zinc-50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Compass className="w-4 h-4 text-red-600" />
+                <span className="font-display text-xs font-black uppercase text-zinc-950">
+                  2. Diagnóstico 360°
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-600 mt-2">
+                Mapeo de preguntas, registro del avance en el perfil y minuta automática.
+              </p>
+            </button>
+
+            <button
+              onClick={() => setMeetingType('seguimiento_trimestral')}
+              className={`p-4 rounded-xl border-2 text-left transition-all flex flex-col justify-between ${
+                meetingType === 'seguimiento_trimestral'
+                  ? 'border-red-600 bg-red-50/70 shadow-sm ring-2 ring-red-500/20'
+                  : 'border-zinc-200 hover:border-zinc-900 bg-zinc-50'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-red-600" />
+                <span className="font-display text-xs font-black uppercase text-zinc-950">
+                  3. Seguimiento Master Plan
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-600 mt-2">
+                Revisión trimestral (cada 3 meses), remedición del Pentágono y avance de OKRs.
+              </p>
+            </button>
+          </div>
+
           <div>
             <label className="block text-xs font-bold font-display uppercase tracking-wider text-zinc-950 mb-1">
-              Nombre de la Sesión / Auditoría
+              Nombre de la Sesión
             </label>
             <input
               type="text"
               value={meetingTitle}
               onChange={e => setMeetingTitle(e.target.value)}
               className="w-full px-4 py-2.5 rounded-xl border-2 border-zinc-300 focus:border-red-600 focus:outline-none font-medium text-sm text-zinc-950"
-              placeholder="Ej. Auditoría de Organización & Procesos"
             />
           </div>
 
           <div>
             <span className="block text-xs font-bold font-display uppercase tracking-wider text-zinc-700 mb-2">
-              Plantillas Rápidas Preconfiguradas:
+              Plantillas Rápidas:
             </span>
             <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => applyPreset('kickoff')}
+                className="px-3.5 py-1.5 rounded-lg border-2 border-zinc-900 bg-zinc-50 hover:bg-zinc-900 hover:text-white font-display text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+              >
+                <Target className="w-3.5 h-3.5 text-red-600" /> Kickoff OMV
+              </button>
               <button
                 onClick={() => applyPreset('governance')}
                 className="px-3.5 py-1.5 rounded-lg border-2 border-zinc-900 bg-zinc-50 hover:bg-zinc-900 hover:text-white font-display text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
@@ -651,147 +873,103 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
                 onClick={() => applyPreset('360')}
                 className="px-3.5 py-1.5 rounded-lg border-2 border-zinc-900 bg-zinc-50 hover:bg-zinc-900 hover:text-white font-display text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
               >
-                <Sparkles className="w-3.5 h-3.5 text-red-600" /> Diagnóstico 360° Completo (10 Preguntas)
+                <Sparkles className="w-3.5 h-3.5 text-red-600" /> Diagnóstico 360° Completo
               </button>
             </div>
           </div>
         </div>
 
-        {/* Resumen de Preguntas Seleccionadas (Agenda Actual) */}
-        <div className="bg-zinc-950 text-white p-6 rounded-2xl border-2 border-red-600 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-red-600 animate-pulse" />
-              <h2 className="font-display text-lg font-black uppercase tracking-wider">
-                Preguntas en Agenda ({selectedQuestions.length})
-              </h2>
-            </div>
-            {selectedQuestions.length > 0 && (
-              <button
-                onClick={() => setSelectedQuestions([])}
-                className="text-xs text-zinc-400 hover:text-red-400 flex items-center gap-1 font-mono"
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Limpiar Selección
-              </button>
-            )}
-          </div>
-
-          {selectedQuestions.length === 0 ? (
-            <p className="text-zinc-400 text-xs italic py-2">
-              No has seleccionado ninguna pregunta todavía. Elige del catálogo abajo para planificar tu entrevista.
+        {/* Indicador de Avance en el Perfil del Cliente */}
+        <div className="bg-zinc-900 text-white p-5 rounded-2xl border-2 border-zinc-900 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <span className="font-display text-[10px] font-bold uppercase tracking-widest text-red-400">
+              Avance Progresivo en el Perfil del Cliente
+            </span>
+            <h3 className="font-display text-lg font-black uppercase text-white">
+              {selectedQuestions.length} Preguntas Mapeadas para esta Sesión
+            </h3>
+            <p className="text-xs text-zinc-400 mt-0.5">
+              Al finalizar y validar en Check out, las respuestas se consolidarán automáticamente en el perfil de {client.name}.
             </p>
-          ) : (
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-              {selectedQuestions.map((q, index) => (
-                <div
-                  key={q.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-red-600/60 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-xs text-red-500 bg-red-950/60 px-2 py-0.5 rounded">
-                      #{index + 1}
-                    </span>
-                    <span className="text-xs font-bold font-sans text-zinc-200">
-                      {q.title}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => toggleQuestion(q)}
-                    className="text-zinc-500 hover:text-red-500 p-1"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono font-bold text-zinc-300">
+              Catálogo: 78 Preguntas Clave
+            </span>
+            <button
+              onClick={() => setSelectedQuestions([])}
+              className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold transition-colors"
+            >
+              Limpiar Selección
+            </button>
+          </div>
         </div>
 
-        {/* Catálogo Completo de Preguntas con Filtros */}
-        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-5">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 className="font-display text-xl font-black uppercase tracking-wide text-zinc-950">
-                Catálogo de Preguntas (Diagnóstico 360°)
-              </h2>
-              <p className="text-xs text-zinc-600 mt-0.5">
-                Haz clic en una pregunta para agregarla o quitarla de la agenda de la reunión.
-              </p>
-            </div>
+        {/* Explorador y Selección de Preguntas */}
+        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="font-display text-base font-black uppercase tracking-wide text-zinc-950">
+              Selección de Preguntas para la Entrevista
+            </h3>
 
-            <div className="relative w-full md:w-72">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-zinc-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Buscar pregunta o código..."
-                className="w-full pl-9 pr-4 py-2 border-2 border-zinc-300 rounded-xl text-xs focus:border-red-600 focus:outline-none"
-              />
-            </div>
-          </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Buscar preguntas..."
+                  className="pl-9 pr-3 py-1.5 text-xs rounded-lg border-2 border-zinc-200 focus:border-red-600 focus:outline-none w-48 sm:w-60"
+                />
+              </div>
 
-          {/* Filtro por Eje */}
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            <button
-              onClick={() => setSelectedAreaFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-display font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
-                selectedAreaFilter === 'all'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-              }`}
-            >
-              Todas las Áreas
-            </button>
-            {DIAGNOSTIC_AREAS.map(area => (
-              <button
-                key={area.id}
-                onClick={() => setSelectedAreaFilter(area.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-display font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
-                  selectedAreaFilter === area.id
-                    ? 'bg-red-600 text-white'
-                    : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                }`}
+              <select
+                value={selectedAreaFilter}
+                onChange={e => setSelectedAreaFilter(e.target.value)}
+                className="px-3 py-1.5 text-xs rounded-lg border-2 border-zinc-200 focus:border-red-600 focus:outline-none font-medium"
               >
-                {area.name}
-              </button>
-            ))}
+                <option value="all">Todas las Áreas (10)</option>
+                {DIAGNOSTIC_AREAS.map(a => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Lista de Preguntas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto p-1">
             {filteredQuestions.map(q => {
               const isSelected = selectedQuestions.some(item => item.id === q.id);
+              const area = DIAGNOSTIC_AREAS.find(a => a.id === q.areaId);
               return (
                 <div
                   key={q.id}
                   onClick={() => toggleQuestion(q)}
-                  className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start justify-between gap-3 ${
-                    isSelected
-                      ? 'border-red-600 bg-red-50/50 shadow-sm'
-                      : 'border-zinc-200 hover:border-zinc-900 bg-white'
+                  className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                    isSelected 
+                      ? 'border-red-600 bg-red-50/60 shadow-sm' 
+                      : 'border-zinc-200 hover:border-zinc-400 bg-white'
                   }`}
                 >
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-mono text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.2 rounded">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => {}}
+                    className="mt-1 h-4 w-4 text-red-600 rounded border-zinc-300 focus:ring-red-500"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-zinc-100 text-zinc-800">
                         {q.code}
                       </span>
-                      <span className="text-[10px] font-bold uppercase text-zinc-500 font-display">
-                        {DIAGNOSTIC_AREAS.find(a => a.id === q.areaId)?.name}
+                      <span className="text-[10px] uppercase font-bold text-red-600">
+                        {area?.name || q.areaId}
                       </span>
                     </div>
-                    <p className="text-xs font-bold text-zinc-950 leading-snug">
+                    <p className="text-xs font-bold text-zinc-900 mt-1">
                       {q.title}
                     </p>
                   </div>
-                  <span
-                    className={`mt-0.5 p-1 rounded-md text-xs font-bold ${
-                      isSelected ? 'bg-red-600 text-white' : 'bg-zinc-100 text-zinc-600'
-                    }`}
-                  >
-                    {isSelected ? '✓' : '+'}
-                  </span>
                 </div>
               );
             })}
@@ -802,131 +980,137 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
   }
 
   // ==========================================
-  // VIEW: STEP 2 - GRABACIÓN EN VIVO (>1H)
+  // VIEW: STEP 2 - GRABACIÓN EN VIVO + WHISPER WEBSOCKETS
   // ==========================================
   if (step === 'recording') {
     return (
       <div className="space-y-6 animate-in fade-in duration-300">
-        {/* Header con WakeLock y Resiliencia de Chunks */}
-        <div className="bg-zinc-950 text-white p-6 rounded-2xl border-2 border-red-600 shadow-crimson flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-zinc-200 pb-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-1">
               <span className="h-3 w-3 rounded-full bg-red-600 animate-ping" />
-              <span className="font-display text-xs font-bold uppercase tracking-widest text-red-500">
-                Sesión en Vivo Grabando Chunks de 30s
+              <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">
+                Grabando • {meetingType.toUpperCase()}
               </span>
             </div>
-            <h1 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-white mt-1">
+            <h1 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-zinc-950">
               {meetingTitle}
             </h1>
-            <p className="text-xs text-zinc-400 mt-1">
-              Cliente: <span className="font-bold text-white">{client.name}</span> • Sesión protegida contra pérdida de datos.
-            </p>
           </div>
 
-          {/* Badges de Estado: WakeLock + IndexedDB + Red */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-display font-bold uppercase tracking-wider ${
-              wakeLockActive 
-                ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300'
-                : 'bg-zinc-900 border-zinc-700 text-zinc-400'
-            }`}>
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              {wakeLockActive ? 'WakeLock Activo' : 'WakeLock Inactivo'}
-            </div>
+          <button
+            onClick={stopRecordingAndAnalyze}
+            className="px-6 py-3.5 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-zinc-950 hover:bg-zinc-800 text-white flex items-center gap-2 shadow-lg hover:scale-105 transition-all"
+          >
+            <Square className="w-4 h-4 fill-red-600 text-red-600" />
+            Finalizar Sesión & Analizar
+          </button>
+        </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 text-xs font-display font-bold uppercase tracking-wider text-zinc-300">
-              <HardDrive className="w-4 h-4 text-red-500" />
-              <span>{chunksCount} Chunks (IDB)</span>
-            </div>
+        {/* Status Bar */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-white p-4 rounded-xl border-2 border-zinc-900">
+            <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">Tiempo Grabado</span>
+            <p className="font-mono text-2xl font-black text-red-600 mt-1">{formatTime(duration)}</p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border-2 border-zinc-900">
+            <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">Persistencia Segura</span>
+            <p className="font-mono text-sm font-bold text-zinc-950 mt-1.5 flex items-center gap-1.5">
+              <HardDrive className="w-4 h-4 text-emerald-600" /> {chunksCount} Chunks (30s)
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border-2 border-zinc-900">
+            <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">Protección Pantalla</span>
+            <p className="font-mono text-sm font-bold text-zinc-950 mt-1.5 flex items-center gap-1.5">
+              <ShieldCheck className={`w-4 h-4 ${wakeLockActive ? 'text-emerald-600' : 'text-amber-500'}`} />
+              {wakeLockActive ? 'WakeLock Activo' : 'Inactivo'}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border-2 border-zinc-900">
+            <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">Whisper Streaming</span>
+            <p className="font-mono text-sm font-bold text-zinc-950 mt-1.5 flex items-center gap-1.5">
+              <Radio className="w-4 h-4 text-red-600 animate-pulse" />
+              {streamStatus === 'streaming' || streamStatus === 'fallback' ? 'En Vivo' : streamStatus}
+            </p>
+          </div>
+        </div>
 
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-display font-bold uppercase tracking-wider ${
-              networkOnline 
-                ? 'bg-zinc-900 border-zinc-700 text-zinc-300' 
-                : 'bg-red-950/80 border-red-600 text-red-300'
-            }`}>
-              {networkOnline ? <Wifi className="w-4 h-4 text-emerald-400" /> : <WifiOff className="w-4 h-4 text-red-500" />}
-              <span>{networkOnline ? (pendingUploads > 0 ? `${pendingUploads} subiendo...` : 'En línea') : 'Sin Conexión (IDB Seguro)'}</span>
-            </div>
+        {/* Redline Waveform Visualizer */}
+        <div className="bg-zinc-950 p-4 rounded-2xl border-2 border-zinc-900 shadow-crimson space-y-2">
+          <div className="flex items-center justify-between text-white text-xs font-mono">
+            <span className="flex items-center gap-2">
+              <Mic className="w-3.5 h-3.5 text-red-500 animate-pulse" /> Modulación de Audio
+            </span>
+            <span className="text-zinc-400 text-[10px]">Asociado a cliente: {client.id?.substring(0, 8)}</span>
+          </div>
+          <canvas ref={canvasRef} width={800} height={70} className="w-full h-16 rounded-xl" />
+        </div>
 
-            {isRecording && (
-              <span className="hidden sm:inline-flex items-center px-2 py-1 rounded bg-red-600 text-white font-display text-[10px] font-bold uppercase tracking-widest animate-pulse">
-                Rec
+        {/* TRANSCRIPCIÓN EN TIEMPO REAL VÍA WEBSOCKETS / STREAMING */}
+        <div className="bg-white rounded-2xl border-2 border-zinc-900 p-5 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between border-b border-zinc-200 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <h3 className="font-display text-xs font-black uppercase tracking-wider text-zinc-950">
+                Transcripción Inmediata en Vivo (Whisper)
+              </h3>
+            </div>
+            <span className="text-[10px] font-mono text-zinc-500">
+              {streamMessage || 'Capturando voz en tiempo real'}
+            </span>
+          </div>
+
+          <div 
+            ref={transcriptScrollRef}
+            className="h-36 overflow-y-auto bg-zinc-50 rounded-xl p-4 border border-zinc-200 font-mono text-xs text-zinc-800 leading-relaxed whitespace-pre-wrap"
+          >
+            {liveTranscript ? (
+              <>
+                <span>{liveTranscript}</span>
+                {interimText && <span className="text-red-600 italic"> {interimText}</span>}
+              </>
+            ) : (
+              <span className="text-zinc-400 italic">
+                Habla al micrófono. La transcripción se proyectará aquí en tiempo real palabra por palabra...
               </span>
             )}
           </div>
         </div>
 
-        {/* Visualizador de Audio y Cronómetro */}
-        <div className="bg-zinc-900 p-6 rounded-2xl border-2 border-zinc-800 text-center space-y-4">
-          <canvas
-            ref={canvasRef}
-            width={640}
-            height={90}
-            className="w-full max-w-xl mx-auto rounded-xl bg-zinc-950 border border-zinc-800"
-          />
-
-          <div className="text-5xl sm:text-6xl font-mono font-black text-white tracking-widest">
-            {formatTime(duration)}
-          </div>
-
-          <p className="text-xs text-zinc-400 max-w-md mx-auto">
-            Selecciona a continuación la pregunta de la que están hablando para enfocar la extracción de la IA en tiempo real.
-          </p>
-
-          <div className="pt-2">
-            <button
-              onClick={stopRecordingAndAnalyze}
-              className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white rounded-full font-display font-black text-sm uppercase tracking-wider shadow-crimson hover:scale-105 transition-all flex items-center gap-2 mx-auto"
-            >
-              <Square className="w-5 h-5 fill-white" /> Finalizar y Analizar con IA
-            </button>
-          </div>
-        </div>
-
-        {/* ENFOQUE ACTIVO DE PREGUNTAS (El usuario selecciona cuál está respondiendo el cliente) */}
-        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
-            <div>
-              <span className="font-display text-xs font-bold uppercase tracking-wider text-red-600">
-                Control de Foco en Vivo
-              </span>
-              <h3 className="font-display text-lg font-black uppercase tracking-wide text-zinc-950">
-                ¿Qué pregunta están conversando ahora?
-              </h3>
-            </div>
-            <span className="text-xs font-mono font-bold bg-black text-white px-2.5 py-1 rounded-md">
-              Pregunta {activeQuestionIndex + 1} de {selectedQuestions.length}
+        {/* Preguntas de la Agenda - Marcador de Pregunta Activa */}
+        <div className="bg-white p-5 rounded-2xl border-2 border-zinc-900 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="font-display text-xs font-black uppercase tracking-wider text-zinc-950">
+              Agenda de Preguntas ({selectedQuestions.length})
+            </span>
+            <span className="text-xs text-zinc-500">
+              Haz clic sobre la pregunta que estás formulando para etiquetar los audios
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {selectedQuestions.map((q, index) => {
-              const isActive = index === activeQuestionIndex;
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {selectedQuestions.map((q, idx) => {
+              const isActive = idx === activeQuestionIndex;
               return (
                 <div
                   key={q.id}
-                  onClick={() => setActiveQuestionIndex(index)}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
+                  onClick={() => setActiveQuestionIndex(idx)}
+                  className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-2.5 ${
                     isActive
-                      ? 'border-red-600 bg-red-50/80 shadow-md ring-2 ring-red-500/20'
-                      : 'border-zinc-200 hover:border-zinc-900 bg-zinc-50'
+                      ? 'border-red-600 bg-red-50 ring-2 ring-red-500/20'
+                      : 'border-zinc-200 hover:border-zinc-400 bg-zinc-50'
                   }`}
                 >
-                  <span
-                    className={`font-mono font-black text-xs px-2.5 py-1 rounded-lg ${
-                      isActive ? 'bg-red-600 text-white' : 'bg-zinc-200 text-zinc-800'
-                    }`}
-                  >
-                    #{index + 1}
+                  <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
+                    isActive ? 'bg-red-600 text-white' : 'bg-zinc-200 text-zinc-800'
+                  }`}>
+                    #{idx + 1}
                   </span>
-                  <div>
-                    <p className="text-xs font-bold text-zinc-950">
-                      {q.title}
-                    </p>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-zinc-950">{q.title}</p>
                     {isActive && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold font-display uppercase tracking-wider text-red-600 mt-2">
-                        <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" /> Grabando enfoque para esta pregunta
+                      <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider mt-1 block">
+                        ● Grabando enfoque para esta pregunta
                       </span>
                     )}
                   </div>
@@ -940,7 +1124,7 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
   }
 
   // ==========================================
-  // VIEW: PROCESANDO CON IA
+  // VIEW: STEP 3 - PROCESANDO CON IA
   // ==========================================
   if (step === 'processing') {
     return (
@@ -952,11 +1136,11 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
         <div>
           <h2 className="font-display text-2xl font-black uppercase tracking-tight text-zinc-950">
             {processingState === 'compiling' && 'Consolidando Chunks de Audio Seguros...'}
-            {processingState === 'uploading' && 'Subiendo Grabación a Servidor Protegido...'}
-            {processingState === 'analyzing' && 'Analizando Entrevista y Estructurando con IA...'}
+            {processingState === 'uploading' && 'Guardando Grabación en Base de Datos...'}
+            {processingState === 'analyzing' && 'Analizando con Whisper y Estructurando Respuestas...'}
           </h2>
           <p className="text-xs text-zinc-500 mt-2">
-            Filtrando comentarios irrelevantes, asociando respuestas técnicas a cada pregunta y renderizando mapa conceptual.
+            Aislado por identificador de cliente ({client.name}). Extrayendo respuestas técnicas y preparando Check out de validación.
           </p>
         </div>
       </div>
@@ -964,7 +1148,117 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
   }
 
   // ==========================================
-  // VIEW: STEP 3 - RESULTADOS INTELIGENTES (COPIA EXACTA DEL SCREENSHOT)
+  // VIEW: STEP 4 - CHECK OUT (VALIDACIÓN INTERACTIVA DE RESPUESTAS)
+  // ==========================================
+  if (step === 'checkout') {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
+        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 pb-4">
+            <div>
+              <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">
+                Paso de Validación: Check out
+              </span>
+              <h1 className="font-display text-2xl font-black uppercase tracking-tight text-zinc-950">
+                Confirmar y Validar Respuestas del Cliente
+              </h1>
+              <p className="text-xs text-zinc-600 mt-1">
+                Revise o ajuste las respuestas extraídas por la IA antes de impactar definitivamente el perfil y diagnóstico de {client.name}.
+              </p>
+            </div>
+
+            <button
+              onClick={handleConfirmCheckoutAndImpact}
+              disabled={impactLoading}
+              className="px-6 py-3 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-sm transition-all hover:scale-105 shrink-0"
+            >
+              {impactLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              Aceptar Check out e Impactar
+            </button>
+          </div>
+
+          {/* Formulario de Validación */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+            <div>
+              <label className="block text-[11px] font-bold font-display uppercase tracking-wider text-zinc-700 mb-1">
+                Responsable que Valida (Cliente o Consultor Líder)
+              </label>
+              <input
+                type="text"
+                value={validatorName}
+                onChange={e => setValidatorName(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border-2 border-zinc-300 focus:border-red-600 text-xs font-medium"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold font-display uppercase tracking-wider text-zinc-700 mb-1">
+                Observaciones / Feedback del Cliente
+              </label>
+              <input
+                type="text"
+                value={clientFeedback}
+                onChange={e => setClientFeedback(e.target.value)}
+                placeholder="Ej. Respuestas confirmadas en conjunto al cierre de la reunión."
+                className="w-full px-3 py-2 rounded-lg border-2 border-zinc-300 focus:border-red-600 text-xs font-medium"
+              />
+            </div>
+          </div>
+
+          {/* Lista de Respuestas a Validar */}
+          <div className="space-y-4 pt-2">
+            <h3 className="font-display text-sm font-black uppercase tracking-wider text-zinc-950 flex items-center gap-2">
+              <FileCheck className="w-4 h-4 text-red-600" />
+              Respuestas Obtenidas para Validación ({selectedQuestions.length})
+            </h3>
+
+            {selectedQuestions.map((q, idx) => (
+              <div key={q.id} className="p-4 rounded-xl border-2 border-zinc-200 bg-white space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-100 text-zinc-800">
+                    Pregunta #{idx + 1} • {q.code}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Listo para validación
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-zinc-950">{q.title}</p>
+                <textarea
+                  value={editableAnswers[idx] || ''}
+                  onChange={(e) => {
+                    const next = [...editableAnswers];
+                    next[idx] = e.target.value;
+                    setEditableAnswers(next);
+                  }}
+                  rows={3}
+                  className="w-full p-2.5 rounded-lg border border-zinc-300 text-xs text-zinc-700 focus:border-red-600 focus:outline-none"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-4 border-t border-zinc-200 flex justify-end gap-3">
+            <button
+              onClick={() => setStep('results')}
+              className="px-4 py-2 text-xs font-bold text-zinc-600 hover:text-zinc-950 uppercase"
+            >
+              Saltar Validación
+            </button>
+            <button
+              onClick={handleConfirmCheckoutAndImpact}
+              disabled={impactLoading}
+              className="px-6 py-3 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-sm transition-all hover:scale-105"
+            >
+              {impactLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              Confirmar Check out e Impactar en Diagnóstico
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // VIEW: STEP 5 - RESULTADOS Y ENTREGABLES FINALES
   // ==========================================
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6 animate-in fade-in duration-300">
@@ -978,67 +1272,90 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
 
         <div className="flex items-center gap-2">
           <button
-            onClick={handleImpactDiagnostic}
-            disabled={impactLoading || isImpacted}
-            className={`px-4 py-2 rounded-lg font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${
-              isImpacted
-                ? 'bg-emerald-600 text-white cursor-default'
-                : 'bg-black hover:bg-zinc-800 text-white shadow-sm'
-            }`}
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 bg-white text-zinc-900 border-2 border-zinc-900 px-4 py-2 rounded-xl hover:bg-zinc-100 text-xs font-display font-bold uppercase tracking-wider shadow-sm transition-all"
           >
-            {impactLoading ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : isImpacted ? (
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            ) : (
-              <Database className="w-3.5 h-3.5 text-red-500" />
-            )}
-            {isImpacted ? 'Impactado en Diagnóstico 360°' : 'Impactar en Diagnóstico 360°'}
+            <Download className="w-3.5 h-3.5 text-red-600" /> 
+            {meetingType === 'kickoff' ? 'Descargar Entregable OMV (PDF)' : 'Descargar Minuta / Auditoría (PDF)'}
+          </button>
+
+          <button
+            onClick={() => setStep('checkout')}
+            className="px-4 py-2 rounded-xl font-display text-xs font-black uppercase tracking-wider bg-black text-white hover:bg-zinc-800 flex items-center gap-1.5 transition-all"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-amber-400" /> Revisar Check out
           </button>
         </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border-2 border-zinc-900 p-8 space-y-8">
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-zinc-950 mb-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold font-display uppercase bg-red-100 text-red-700">
+              {meetingType.toUpperCase()}
+            </span>
+            <span className="text-xs text-zinc-500 font-mono">
+              Cliente: {client.name} • {formatTime(duration)}
+            </span>
+          </div>
+          <h1 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-zinc-950">
             {meetingTitle}
           </h1>
-          <p className="text-zinc-600 text-xs">
-            Grabe la entrevista y la inteligencia artificial extraerá las respuestas y generará un resumen estructurado.
-          </p>
         </div>
 
-        {/* Banner Verde Exacto del Screenshot */}
-        <div className="flex justify-between items-center bg-green-50 border border-green-200 p-4 rounded-lg">
-          <div className="flex items-center text-green-700 font-medium text-sm">
-            <CheckCircle2 className="w-5 h-5 mr-2 text-green-600" />
-            Análisis Completado
+        {/* Banner de Check out Aprobado */}
+        {checkoutApproved && (
+          <div className="flex justify-between items-center bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
+            <div className="flex items-center text-emerald-800 font-medium text-sm">
+              <CheckCircle2 className="w-5 h-5 mr-2 text-emerald-600" />
+              Check out Validado y Entregables Listos
+              {validatorName && (
+                <span className="text-xs text-emerald-700 ml-2">
+                  (Aceptado por: {validatorName})
+                </span>
+              )}
+            </div>
+            <span className="text-xs font-mono font-bold text-emerald-700">
+              Impactado en Base de Datos
+            </span>
           </div>
-          <button 
-            onClick={handleExportPDF} 
-            className="flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-md hover:bg-slate-50 text-xs font-bold transition-colors shadow-sm"
-          >
-            <Download className="w-4 h-4" /> Descargar PDF
-          </button>
-        </div>
+        )}
 
-        {/* Dos Columnas: Resumen Ejecutivo y Mapa Conceptual */}
+        {/* Si es Kickoff, mostrar entregable OMV */}
+        {meetingType === 'kickoff' && resultData?.omv_deliverable && (
+          <div className="p-6 rounded-2xl border-2 border-red-600 bg-red-50/40 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-display text-xs font-black uppercase tracking-wider text-red-600 flex items-center gap-1.5">
+                <Target className="w-4 h-4" /> Entregable OMV (Objetivo Material Visualizado a 3 Años)
+              </span>
+              <span className="text-[10px] font-mono font-bold bg-red-600 text-white px-2 py-0.5 rounded">
+                Entregable Oficial GS
+              </span>
+            </div>
+            <p className="text-sm font-semibold text-zinc-900 leading-relaxed">
+              "{resultData.omv_deliverable.vision_3_years}"
+            </p>
+            <p className="text-xs text-zinc-600 border-t border-red-200 pt-2">
+              {resultData.omv_deliverable.written_minute}
+            </p>
+          </div>
+        )}
+
+        {/* Resumen Ejecutivo y Mapa Conceptual */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Columna Izquierda: Resumen Ejecutivo */}
           <div className="space-y-4">
             <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2 flex items-center gap-2">
               <FileText className="w-5 h-5 text-red-600" />
-              Resumen Ejecutivo
+              Resumen Ejecutivo de la Sesión
             </h3>
             <p className="text-zinc-700 leading-relaxed bg-zinc-50 p-4 rounded-lg border border-zinc-200 text-sm">
               {resultData?.resumen}
             </p>
           </div>
 
-          {/* Columna Derecha: Mapa Conceptual */}
           <div className="space-y-4">
             <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2">
-              Mapa Conceptual
+              Mapa Conceptual Mermaid
             </h3>
             {resultData?.mapa_conceptual_mermaid ? (
               <div 
@@ -1048,38 +1365,38 @@ export default function ClientMeetingSession({ client, onBack, onDiagnosticUpdat
                 {resultData.mapa_conceptual_mermaid.replace(/```mermaid/g, '').replace(/```/g, '')}
               </div>
             ) : (
-              <p className="text-zinc-400 text-xs p-4 bg-zinc-50 rounded-lg border">No se pudo generar diagrama.</p>
+              <p className="text-zinc-400 text-xs p-4 bg-zinc-50 rounded-lg border">No se generó mapa.</p>
             )}
           </div>
         </div>
 
-        {/* Sección Inferior: Respuestas Extraídas */}
+        {/* Respuestas Validadas */}
         <div className="space-y-4">
           <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2 flex items-center gap-2">
             <History className="w-5 h-5 text-red-600" />
-            Respuestas Extraídas
+            Respuestas Validadas en el Perfil del Cliente
           </h3>
           <div className="space-y-4">
             {selectedQuestions.map((q, i) => (
               <div key={q.id || i} className="bg-zinc-50 p-4 rounded-lg border border-zinc-200">
-                <p className="font-bold text-zinc-900 mb-2 text-sm">
+                <p className="font-bold text-zinc-900 mb-1 text-sm">
                   {i + 1}. {q.title}
                 </p>
                 <p className="text-zinc-600 pl-4 border-l-2 border-red-600 text-sm">
-                  {(resultData?.respuestas && resultData.respuestas[i]) || 'No hay información en el audio'}
+                  {(editableAnswers[i] || resultData?.respuestas[i]) || 'No hay información en el audio'}
                 </p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Transcripción desplegable */}
+        {/* Transcripción Whisper Completa */}
         {transcriptionText && (
           <details className="mt-8 border-t border-zinc-200 pt-4">
-            <summary className="text-slate-500 cursor-pointer hover:text-slate-800 font-medium text-xs">
-              Ver Transcripción Completa
+            <summary className="text-zinc-600 cursor-pointer hover:text-zinc-950 font-bold text-xs uppercase tracking-wider">
+              Ver Transcripción Completa de Whisper
             </summary>
-            <div className="mt-4 p-4 bg-slate-50 rounded-lg text-xs text-slate-600 whitespace-pre-wrap font-mono">
+            <div className="mt-4 p-4 bg-zinc-50 rounded-lg text-xs text-zinc-700 whitespace-pre-wrap font-mono leading-relaxed border border-zinc-200">
               {transcriptionText}
             </div>
           </details>

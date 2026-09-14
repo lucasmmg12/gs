@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { 
   X, Send, Bot, User, Loader2, 
-  Download, FileSpreadsheet, FileText, Maximize2, Minimize2, Sparkles, CheckCircle
+  Download, FileSpreadsheet, FileText, Maximize2, Minimize2, Sparkles, CheckCircle,
+  ShieldCheck, ShieldAlert
 } from 'lucide-react';
 import { generateExcelReport, generatePdfReport } from '../lib/reportGenerator';
 
@@ -19,20 +20,25 @@ interface Message {
 }
 
 const QUICK_ACTIONS = [
-  { label: '📊 Master Plan en Excel', prompt: 'Generame una planilla Excel (.xlsx) completa con todas las tareas del Master Plan Estratégico de EJEMPLO SAS organizada por ejes.' },
-  { label: '📑 Informe Diagnóstico en PDF', prompt: 'Generame un informe ejecutivo en PDF de presentación formal con el Diagnóstico 360°, el estado de madurez IME y el resumen de EJEMPLO SAS.' },
+  { label: '📊 Master Plan en Excel', prompt: 'Generame una planilla Excel (.xlsx) completa con todas las tareas del Master Plan Estratégico de la empresa organizada por ejes.' },
+  { label: '📑 Informe Diagnóstico en PDF', prompt: 'Generame un informe ejecutivo en PDF de presentación formal con el Diagnóstico 360°, el estado de madurez IME y el resumen de la empresa.' },
   { label: '🛡️ Riesgos en Excel', prompt: 'Generame un Excel con la Matriz de Riesgos de la empresa con nivel de riesgo, causas y planes de contingencia.' },
   { label: '📈 Pentágono en PDF', prompt: 'Generame un informe PDF con la evolución del Pentágono del Orden y las metas trienales de madurez.' },
   { label: '📋 Acta de Reunión en PDF', prompt: 'Generame un reporte formal en PDF de la última reunión de tutoría estratégica con sus acuerdos y compromisos.' }
 ];
 
-export default function GrowyChat() {
+interface GrowyChatProps {
+  activeClientId?: string;
+  activeClientName?: string;
+}
+
+export default function GrowyChat({ activeClientId, activeClientName }: GrowyChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { 
       role: 'assistant', 
-      content: '¡Hola! Soy Growy, tu asistente de inteligencia estratégica y metodológica de Consultora GS.\n\nTengo acceso a toda la base de datos (clientes, minutas, diagnósticos 360°, master plan, pentágono del orden y matriz de riesgos). Además, puedo redactar respuestas y generar en el momento archivos Excel (.xlsx) e informes ejecutivos en PDF presentables.' 
+      content: '¡Hola! Soy Growy, tu copiloto de inteligencia estratégica y analítica de Consultora GS.\n\nTengo acceso completo a la base de datos (grabaciones, transcripciones, minutas, diagnósticos 360°, Master Plan, Pentágono y matriz de riesgos). Todas mis consultas operan bajo estricto aislamiento de datos para garantizar confidencialidad absoluta entre clientes.' 
     }
   ]);
   const [input, setInput] = useState('');
@@ -62,7 +68,10 @@ export default function GrowyChat() {
       }));
 
       const { data, error } = await supabase.functions.invoke('growy-chat', {
-        body: { messages: currentMessages }
+        body: { 
+          messages: currentMessages,
+          organization_id: activeClientId
+        }
       });
 
       if (error) throw error;
@@ -158,6 +167,24 @@ export default function GrowyChat() {
             </button>
           </div>
         </div>
+
+        {/* Security & Multi-tenant Isolation Strip */}
+        {activeClientId ? (
+          <div className="bg-emerald-950 text-emerald-300 px-3 py-1.5 text-[10px] font-mono flex items-center justify-between border-b border-emerald-800 shrink-0">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              Aislamiento Activo: <strong className="text-white">{activeClientName || activeClientId.substring(0, 8)}</strong>
+            </span>
+            <span className="text-[9px] uppercase font-bold text-emerald-400 bg-emerald-900/50 px-1.5 py-0.5 rounded">
+              Multi-tenant Seguro
+            </span>
+          </div>
+        ) : (
+          <div className="bg-zinc-900 text-zinc-400 px-3 py-1.5 text-[10px] font-mono flex items-center gap-1.5 border-b border-zinc-800 shrink-0">
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+            <span>Modo Global • Selecciona un cliente para consultas contextuales aisladas</span>
+          </div>
+        )}
 
         {/* Quick Action Chips */}
         <div className="bg-zinc-100 border-b border-zinc-200 p-2.5 overflow-x-auto flex gap-1.5 shrink-0 no-scrollbar">

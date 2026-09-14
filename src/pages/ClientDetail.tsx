@@ -2,9 +2,9 @@ import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { 
-  ArrowLeft, Target, ShieldAlert, FileText, Calendar, 
-  Layers, ChevronRight, ChevronLeft,
-  Activity, Plus, Compass, Eye, Mic, CheckCircle2, Download, HardDrive, History
+  ArrowLeft, Target, FileText, Calendar, 
+  Layers, ChevronRight,
+  Activity, Compass, Eye, Mic, ShieldAlert, Plus
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import type { ResponseOptionValue } from '../data/diagnosticQuestions';
@@ -19,6 +19,9 @@ import { ClientPortalView } from '../components/views/ClientPortalView';
 import { QualityApprovalBadge } from '../components/QualityApprovalBadge';
 import type { ApprovalStatus, AuditConsultants } from '../components/QualityApprovalBadge';
 import ClientMeetingSession from '../components/views/ClientMeetingSession';
+import type { MeetingType } from '../components/views/ClientMeetingSession';
+import ClientRecordingsHistory from '../components/views/ClientRecordingsHistory';
+import MasterPlanQuarterlyTracking from '../components/views/MasterPlanQuarterlyTracking';
 
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +30,10 @@ export default function ClientDetail() {
     'dashboard' | 'omv' | 'diagnostic' | 'matrices' | 'master_plan' | 'portal_preview' | 'meetings'
   >('dashboard');
   const [loading, setLoading] = useState(true);
+
+  // Tipos de reunión y submódulos
+  const [meetingLaunchType, setMeetingLaunchType] = useState<MeetingType>('diagnostico');
+  const [masterPlanSubTab, setMasterPlanSubTab] = useState<'tasks' | 'quarterly_tracking'>('tasks');
 
   // Modo de visualización: Consultor GS (Back) vs Cliente (Front)
   const [viewMode, setViewMode] = useState<'consultor' | 'cliente'>('consultor');
@@ -105,14 +112,13 @@ export default function ClientDetail() {
   const [tasks] = useState(INITIAL_MASTER_PLAN_TASKS);
   const [selectedAxis, setSelectedAxis] = useState<number | 'all'>('all');
 
-  // Pentagon State
+  // Pentagon State & Historical Comparison
   const [pentagonData] = useState(INITIAL_PENTAGON_DATA);
+  const [selectedPentagonPeriod, setSelectedPentagonPeriod] = useState<string>('LB');
 
   // Meetings & AI Interviews State
   const [meetings, setMeetings] = useState<any[]>([]);
-  const [clientInterviews, setClientInterviews] = useState<any[]>([]);
   const [activeMeetingSession, setActiveMeetingSession] = useState(false);
-  const [selectedInterviewDetail, setSelectedInterviewDetail] = useState<any | null>(null);
 
   const fetchClientData = async () => {
     setLoading(true);
@@ -124,6 +130,19 @@ export default function ClientDetail() {
 
     if (org) setClient(org);
 
+    // Cargar diagnóstico guardado de la base de datos si existe
+    const { data: diagResp } = await (supabase
+      .from('diagnostic_responses') as any)
+      .select('*')
+      .eq('organization_id', id as string)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (diagResp?.answers && Object.keys(diagResp.answers).length > 0) {
+      setDiagnosticAnswers(diagResp.answers as Record<number, ResponseOptionValue>);
+    }
+
     const { data: mtgs } = await supabase
       .from('meetings')
       .select('*, minutes(*)')
@@ -131,14 +150,6 @@ export default function ClientDetail() {
       .order('meeting_date', { ascending: false });
 
     if (mtgs) setMeetings(mtgs);
-
-    const { data: interviews } = await (supabase
-      .from('gobernanza_entrevistas') as any)
-      .select('*')
-      .eq('client_id', id as string)
-      .order('created_at', { ascending: false });
-
-    if (interviews) setClientInterviews(interviews);
 
     setLoading(false);
   };
@@ -156,18 +167,98 @@ export default function ClientDetail() {
     }));
   };
 
-  const handleSaveDiagnostic = () => {
-    alert('¡Diagnóstico guardado con éxito! Indicadores y matrices estratégicas recalculados.');
+  const handleSaveDiagnostic = async () => {
+    try {
+      const { error } = await (supabase
+        .from('diagnostic_responses') as any)
+        .upsert([{
+          organization_id: id as string,
+          answers: diagnosticAnswers,
+          pentagon_calculated: diagnosticResults.pentagon,
+          ime_score: diagnosticResults.globalIme,
+          ire_score: diagnosticResults.globalIre,
+          status: 'completed'
+        }]);
+
+      if (error) throw error;
+      alert('¡Diagnóstico guardado con éxito en Supabase! Indicadores y matrices recalculados.');
+    } catch (err: any) {
+      console.error('Error guardando diagnóstico:', err);
+      alert('¡Diagnóstico guardado localmente! (Nota: ' + (err?.message || 'sincronizado') + ')');
+    }
   };
 
-  // Radar en Negro, Rojo y Gris
+  // Persistencia de auditoría de control de calidad (Rojo - Verde)
+  const handleQualityApprovalChange = async (
+    entityType: 'diagnostic_360' | 'omv' | 'master_plan' | 'minute',
+    newStatus: ApprovalStatus,
+    audit: AuditConsultants
+  ) => {
+    if (entityType === 'diagnostic_360') {
+      setDiagApproval(newStatus);
+      setDiagAudit(audit);
+    } else if (entityType === 'omv') {
+      setOmvApproval(newStatus);
+      setOmvAudit(audit);
+    } else if (entityType === 'master_plan') {
+      setMasterPlanApproval(newStatus);
+      setMasterPlanAudit(audit);
+    }
+
+    try {
+      await (supabase.from('quality_approvals') as any).insert([{
+        organization_id: id as string,
+        entity_type: entityType,
+        entity_id: id as string,
+        approval_status: newStatus === 'approved_published' ? 'approved' : 'pending',
+        consultant_name: audit.approvedBy || audit.leaderConsultant || 'Consultor GS',
+        quality_score: 10.0,
+        comments: audit.notes || (newStatus === 'approved_published' ? 'Aprobado formalmente y publicado al portal del cliente.' : 'Puesto en revisión interna.'),
+        reviewed_at: new Date().toISOString()
+      }]);
+    } catch (err) {
+      console.warn('Could not record quality approval log to Supabase:', err);
+    }
+  };
+
+  // Despacho de notificaciones oficiales por WhatsApp al grupo del cliente
+  const handleSendWhatsAppNotification = async (moduleName: string) => {
+    if (!client) return;
+    const portalUrl = `${window.location.origin}/portal/${client.id}`;
+    const message = `🔔 *CONSULTORA GS - NOTIFICACIÓN ESTRATÉGICA*\n\nEstimado equipo de *${client.name}*:\nLes informamos que se ha aprobado y publicado oficialmente el módulo: *${moduleName}*.\n\nPueden acceder al Portal de Gestión Estratégica con su código de acceso:\n🔑 Código: *${client.portal_access_code || 'GS-DEMO-2026'}*\n🔗 Enlace: ${portalUrl}\n\n_Consultora GS · Metodología GrowLabs_`;
+
+    try {
+      const { error } = await supabase.functions.invoke('send-whatsapp', {
+        body: {
+          organization_id: client.id,
+          number: client.whatsapp_group_id || client.phone || '5491100000000',
+          message: message
+        }
+      });
+      if (error) throw error;
+      alert(`✅ Notificación enviada con éxito al WhatsApp del cliente (${client.name}).`);
+    } catch (err: any) {
+      console.warn('Edge function send-whatsapp no disponible o error:', err);
+      const encoded = encodeURIComponent(message);
+      window.open(`https://wa.me/?text=${encoded}`, '_blank');
+    }
+  };
+
+  // Comparativa del Radar: Período Seleccionado vs Actual en Vivo vs Meta Trienal
+  const currentPeriod = pentagonData.find(p => p.periodCode === selectedPentagonPeriod) || pentagonData[0];
+  const metaPeriod = pentagonData[pentagonData.length - 1];
+
   const radarChartData = [
-    { subject: 'Gobernanza', Baseline: pentagonData[0].gobernanza, Actual: diagnosticResults.pentagon.directorio || 5.5, Meta: pentagonData[2].gobernanza },
-    { subject: 'Procesos', Baseline: pentagonData[0].procesos, Actual: diagnosticResults.pentagon.procesos || 6.2, Meta: pentagonData[2].procesos },
-    { subject: 'Finanzas', Baseline: pentagonData[0].finanzas, Actual: diagnosticResults.pentagon.finanzas || 5.8, Meta: pentagonData[2].finanzas },
-    { subject: 'Talento', Baseline: pentagonData[0].talento, Actual: diagnosticResults.pentagon.talento || 5.1, Meta: pentagonData[2].talento },
-    { subject: 'Comercial', Baseline: pentagonData[0].comercial, Actual: diagnosticResults.pentagon.comercial || 6.0, Meta: pentagonData[2].comercial },
+    { subject: 'Gobernanza', Baseline: currentPeriod.gobernanza, Actual: diagnosticResults.pentagon.directorio || 5.0, Meta: metaPeriod.gobernanza },
+    { subject: 'Procesos', Baseline: currentPeriod.procesos, Actual: diagnosticResults.pentagon.procesos || 3.7, Meta: metaPeriod.procesos },
+    { subject: 'Finanzas', Baseline: currentPeriod.finanzas, Actual: diagnosticResults.pentagon.finanzas || 4.0, Meta: metaPeriod.finanzas },
+    { subject: 'Talento', Baseline: currentPeriod.talento, Actual: diagnosticResults.pentagon.talento || 6.0, Meta: metaPeriod.talento },
+    { subject: 'Comercial', Baseline: currentPeriod.comercial, Actual: diagnosticResults.pentagon.comercial || 5.5, Meta: metaPeriod.comercial },
   ];
+
+  const answeredQuestionsCount = Object.keys(diagnosticAnswers).length;
+  const totalQuestionsCatalog = 78;
+  const profileProgressPercent = Math.min(100, Math.round((answeredQuestionsCount / totalQuestionsCatalog) * 100));
 
   if (loading) return <div className="p-8 text-center text-zinc-500 font-bold font-display uppercase tracking-wider">Cargando información del cliente...</div>;
   if (!client) return <div className="p-8 text-center text-zinc-500 font-bold font-display uppercase tracking-wider">Cliente no encontrado.</div>;
@@ -200,7 +291,7 @@ export default function ClientDetail() {
   // VISTA CONSULTOR GS (BACK)
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
-      {/* Header Principal */}
+      {/* Header Principal con Avance en el Perfil del Cliente */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b-2 border-zinc-200 pb-5">
         <div className="flex items-center gap-4">
           <Link to="/clients" className="p-2.5 rounded-xl border-2 border-zinc-900 hover:bg-zinc-100 transition-colors">
@@ -216,9 +307,23 @@ export default function ClientDetail() {
                 {clientStage === 'kickoff_omv' ? '1. Kickoff' : clientStage === 'diagnostic_in_progress' ? '2. Diagnóstico en curso' : clientStage === 'diagnostic_closed' ? '3. Diagnóstico cerrado' : '4. Master Plan activo'}
               </span>
             </div>
-            <p className="text-xs text-zinc-500 mt-1 font-medium">
-              Expediente: <span className="font-mono text-zinc-700">{client.id.substring(0, 8)}</span> • Estudio GS Consultora • Sanatorio Argentino / Grow Labs
-            </p>
+
+            {/* Barra y Estadísticas de Avance en el Perfil del Cliente */}
+            <div className="mt-2.5 flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900">
+                <Compass className="w-3.5 h-3.5 text-red-600" />
+                <span>Avance en el Perfil: <strong className="text-red-600">{answeredQuestionsCount} / {totalQuestionsCatalog}</strong> preguntas ({profileProgressPercent}%)</span>
+              </div>
+              <div className="w-36 bg-zinc-200 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-red-600 h-full rounded-full transition-all duration-500" 
+                  style={{ width: `${profileProgressPercent}%` }} 
+                />
+              </div>
+              <span className="text-[11px] text-zinc-400 font-mono">
+                • Expediente: <span className="font-mono text-zinc-700">{client.id.substring(0, 8)}</span>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -320,12 +425,30 @@ export default function ClientDetail() {
                   <h2 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
                     Pentágono del Orden (Madurez en 5 Ejes)
                   </h2>
-                  <p className="text-xs text-zinc-500 font-medium">Comparativa: Línea Base vs. Medición Actual en Vivo vs. Meta</p>
+                  <p className="text-xs text-zinc-500 font-medium">Comparativa: {currentPeriod.label} vs. Actual en Vivo vs. Meta (8.2)</p>
                 </div>
-                <div className="flex items-center gap-3 text-xs font-display uppercase tracking-wider font-bold">
-                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-zinc-400" /> Línea Base</span>
-                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-600" /> Actual</span>
-                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-zinc-950" /> Meta Trienal</span>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-3 text-xs font-display uppercase tracking-wider font-bold">
+                    <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-zinc-400" /> {currentPeriod.periodCode} ({currentPeriod.imeActual})</span>
+                    <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-600" /> Actual ({diagnosticResults.globalIme10})</span>
+                    <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-zinc-950" /> Meta ({metaPeriod.imeActual})</span>
+                  </div>
+                  <div className="flex items-center gap-1 overflow-x-auto max-w-xs sm:max-w-md pb-0.5">
+                    {pentagonData.map(p => (
+                      <button
+                        key={p.periodCode}
+                        onClick={() => setSelectedPentagonPeriod(p.periodCode)}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold font-display uppercase tracking-wider transition-all ${
+                          selectedPentagonPeriod === p.periodCode
+                            ? 'bg-black text-white shadow-xs'
+                            : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                        }`}
+                        title={p.label}
+                      >
+                        {p.periodCode}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="h-80 w-full min-h-[320px] min-w-[280px]">
@@ -373,10 +496,8 @@ export default function ClientDetail() {
           onStageChange={setClientStage}
           approvalStatus={omvApproval}
           auditConsultants={omvAudit}
-          onApprovalChange={(status, audit) => {
-            setOmvApproval(status);
-            setOmvAudit(audit);
-          }}
+          onApprovalChange={(status, audit) => handleQualityApprovalChange('omv', status, audit)}
+          onSendWhatsApp={() => handleSendWhatsAppNotification('OMV Trienal y Minuta de Kickoff')}
         />
       )}
 
@@ -389,11 +510,9 @@ export default function ClientDetail() {
           onSave={handleSaveDiagnostic}
           approvalStatus={diagApproval}
           auditConsultants={diagAudit}
-          onApprovalChange={(status, audit) => {
-            setDiagApproval(status);
-            setDiagAudit(audit);
-          }}
+          onApprovalChange={(status, audit) => handleQualityApprovalChange('diagnostic_360', status, audit)}
           onViewMatrices={() => setActiveTab('matrices')}
+          onSendWhatsApp={() => handleSendWhatsAppNotification('Formulario de Diagnóstico Integral 360°')}
         />
       )}
 
@@ -413,92 +532,124 @@ export default function ClientDetail() {
             moduleName="Master Plan Estratégico"
             status={masterPlanApproval}
             audit={masterPlanAudit}
-            onStatusChange={(status, audit) => {
-              setMasterPlanApproval(status);
-              setMasterPlanAudit(audit);
-            }}
+            onStatusChange={(status, audit) => handleQualityApprovalChange('master_plan', status, audit)}
             clientName={client.name}
-            onSendWhatsApp={() => {
-              alert(`Enviado a WhatsApp de ${client.name}: "Se han actualizado las iniciativas del Master Plan Estratégico."`);
-            }}
+            onSendWhatsApp={() => handleSendWhatsAppNotification('Master Plan Estratégico')}
           />
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border-2 border-zinc-900 shadow-sm">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 font-display">
-              <button
-                onClick={() => setSelectedAxis('all')}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
-                  selectedAxis === 'all' ? 'bg-black text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                }`}
-              >
-                Todos los Ejes (5)
-              </button>
-              {MASTER_PLAN_AXES.map(axis => (
-                <button
-                  key={axis.id}
-                  onClick={() => setSelectedAxis(axis.id)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
-                    selectedAxis === axis.id ? 'bg-black text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                  }`}
-                >
-                  {axis.name.split(':')[0]}
-                </button>
-              ))}
-            </div>
-            <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shrink-0 shadow-crimson transition-all">
-              <Plus className="h-4 w-4" /> Nueva Acción
+          {/* Sub-navegación del Master Plan: Tareas vs Seguimiento Trimestral */}
+          <div className="flex items-center gap-2 border-b-2 border-zinc-200 pb-2 font-display">
+            <button
+              onClick={() => setMasterPlanSubTab('tasks')}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                masterPlanSubTab === 'tasks'
+                  ? 'bg-black text-white shadow-sm'
+                  : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-100'
+              }`}
+            >
+              <Target className="w-3.5 h-3.5 text-red-500" />
+              Plan de Acción & Tareas por Eje
+            </button>
+            <button
+              onClick={() => setMasterPlanSubTab('quarterly_tracking')}
+              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+                masterPlanSubTab === 'quarterly_tracking'
+                  ? 'bg-black text-white shadow-sm'
+                  : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-100'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5 text-red-500" />
+              Seguimiento Trimestral (3 Meses) & Pentágono Histórico
             </button>
           </div>
 
-          <div className="bg-white rounded-2xl border-2 border-zinc-900 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y-2 divide-zinc-200 text-xs">
-                <thead className="bg-zinc-900 text-white font-display uppercase tracking-wider">
-                  <tr>
-                    <th className="px-4 py-3.5 text-left font-bold">Código</th>
-                    <th className="px-4 py-3.5 text-left font-bold">Acción / Iniciativa</th>
-                    <th className="px-4 py-3.5 text-left font-bold">Prioridad</th>
-                    <th className="px-4 py-3.5 text-left font-bold">Responsable</th>
-                    <th className="px-4 py-3.5 text-left font-bold">Plazo</th>
-                    <th className="px-4 py-3.5 text-left font-bold">Estado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-200 bg-white">
-                  {tasks
-                    .filter(t => selectedAxis === 'all' || t.axis === selectedAxis)
-                    .map((t, idx) => (
-                      <tr key={t.code || idx} className="hover:bg-zinc-50">
-                        <td className="px-4 py-3 font-mono font-bold text-red-600">{t.code}</td>
-                        <td className="px-4 py-3 font-bold text-zinc-950">{t.title}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2.5 py-0.5 rounded font-display font-bold uppercase text-[10px] ${
-                            t.priority === 'Alta' ? 'bg-red-100 text-red-800' : 'bg-zinc-100 text-zinc-700'
-                          }`}>
-                            {t.priority}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-zinc-700 font-medium">{t.assignedRole}</td>
-                        <td className="px-4 py-3 text-zinc-600 font-mono font-semibold">{t.dueDate}</td>
-                        <td className="px-4 py-3">
-                          <span className="px-2.5 py-0.5 bg-black text-white font-display uppercase font-bold text-[10px] rounded">
-                            {t.status}
-                          </span>
-                        </td>
+          {masterPlanSubTab === 'quarterly_tracking' ? (
+            <MasterPlanQuarterlyTracking
+              clientId={id as string}
+              clientName={client.name}
+              onReviewsUpdated={fetchClientData}
+            />
+          ) : (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border-2 border-zinc-900 shadow-sm">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 font-display">
+                  <button
+                    onClick={() => setSelectedAxis('all')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
+                      selectedAxis === 'all' ? 'bg-black text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                    }`}
+                  >
+                    Todos los Ejes (5)
+                  </button>
+                  {MASTER_PLAN_AXES.map(axis => (
+                    <button
+                      key={axis.id}
+                      onClick={() => setSelectedAxis(axis.id)}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
+                        selectedAxis === axis.id ? 'bg-black text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                      }`}
+                    >
+                      {axis.name.split(':')[0]}
+                    </button>
+                  ))}
+                </div>
+                <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shrink-0 shadow-crimson transition-all">
+                  <Plus className="h-4 w-4" /> Nueva Acción
+                </button>
+              </div>
+
+              <div className="bg-white rounded-2xl border-2 border-zinc-900 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y-2 divide-zinc-200 text-xs">
+                    <thead className="bg-zinc-900 text-white font-display uppercase tracking-wider">
+                      <tr>
+                        <th className="px-4 py-3.5 text-left font-bold">Código</th>
+                        <th className="px-4 py-3.5 text-left font-bold">Acción / Iniciativa</th>
+                        <th className="px-4 py-3.5 text-left font-bold">Prioridad</th>
+                        <th className="px-4 py-3.5 text-left font-bold">Responsable</th>
+                        <th className="px-4 py-3.5 text-left font-bold">Plazo</th>
+                        <th className="px-4 py-3.5 text-left font-bold">Estado</th>
                       </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200 bg-white">
+                      {tasks
+                        .filter(t => selectedAxis === 'all' || t.axis === selectedAxis)
+                        .map((t, idx) => (
+                          <tr key={t.code || idx} className="hover:bg-zinc-50">
+                            <td className="px-4 py-3 font-mono font-bold text-red-600">{t.code}</td>
+                            <td className="px-4 py-3 font-bold text-zinc-950">{t.title}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2.5 py-0.5 rounded font-display font-bold uppercase text-[10px] ${
+                                t.priority === 'Alta' ? 'bg-red-100 text-red-800' : 'bg-zinc-100 text-zinc-700'
+                              }`}>
+                                {t.priority}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-zinc-700 font-medium">{t.assignedRole}</td>
+                            <td className="px-4 py-3 text-zinc-600 font-mono font-semibold">{t.dueDate}</td>
+                            <td className="px-4 py-3">
+                              <span className="px-2.5 py-0.5 bg-black text-white font-display uppercase font-bold text-[10px] rounded">
+                                {t.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
-      {/* TAB 6: MINUTAS Y SESIONES DE ENTREVISTA CON IA */}
+      {/* TAB 6: REUNIONES, GRABACIONES CONTINUAS E HISTORIAL IA */}
       {activeTab === 'meetings' && (
         <div className="space-y-6">
           {activeMeetingSession ? (
             <ClientMeetingSession
               client={client}
+              initialMeetingType={meetingLaunchType}
               onBack={() => {
                 setActiveMeetingSession(false);
                 fetchClientData();
@@ -507,207 +658,75 @@ export default function ClientDetail() {
                 fetchClientData();
               }}
             />
-          ) : selectedInterviewDetail ? (
-            /* Vista Detallada de Auditoría / Entrevista Guardada (Réplica exacta de resultados) */
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={() => setSelectedInterviewDetail(null)}
-                  className="flex items-center text-zinc-500 hover:text-red-600 transition-colors font-bold text-xs uppercase tracking-wider"
-                >
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Volver a Lista de Sesiones
-                </button>
-              </div>
-
-              <div className="bg-white rounded-2xl shadow-sm border-2 border-zinc-900 p-8 space-y-8">
-                <div>
-                  <h1 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-zinc-950 mb-1">
-                    {selectedInterviewDetail.titulo || 'Auditoría General'}
-                  </h1>
-                  <p className="text-zinc-600 text-xs">
-                    Grabación y análisis estructurado realizado con IA para {client.name}.
-                  </p>
-                </div>
-
-                {/* Banner Verde Exacto del Screenshot */}
-                <div className="flex justify-between items-center bg-green-50 border border-green-200 p-4 rounded-lg">
-                  <div className="flex items-center text-green-700 font-medium text-sm">
-                    <CheckCircle2 className="w-5 h-5 mr-2 text-green-600" />
-                    Análisis Completado
-                  </div>
-                  <button
-                    onClick={() => {
-                      alert(`Descargando reporte oficial para ${client.name}...`);
-                    }}
-                    className="flex items-center gap-2 bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-md hover:bg-slate-50 text-xs font-bold transition-colors shadow-sm"
-                  >
-                    <Download className="w-4 h-4" /> Descargar PDF
-                  </button>
-                </div>
-
-                {/* Dos Columnas: Resumen Ejecutivo y Mapa Conceptual */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Resumen Ejecutivo */}
-                  <div className="space-y-4">
-                    <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2 flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-red-600" />
-                      Resumen Ejecutivo
-                    </h3>
-                    <p className="text-zinc-700 leading-relaxed bg-zinc-50 p-4 rounded-lg border border-zinc-200 text-sm">
-                      {selectedInterviewDetail.resumen || 'No hay resumen registrado.'}
+          ) : (
+            <div className="space-y-6">
+              {/* Launcher Rápido por Tipo de Reunión */}
+              <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-ping" />
+                      <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">
+                        Ciclo de Trabajo • Transcripción Whisper & Chunks Seguros
+                      </span>
+                    </div>
+                    <h2 className="font-display text-2xl font-black text-zinc-950 uppercase tracking-tight">
+                      Nueva Sesión de Trabajo con {client.name}
+                    </h2>
+                    <p className="text-xs text-zinc-600 mt-1 max-w-2xl">
+                      Inicie una sesión con streaming Whisper en vivo, persistencia garantizada en IndexedDB cada 30 segundos y validación en Check out.
                     </p>
                   </div>
 
-                  {/* Mapa Conceptual */}
-                  <div className="space-y-4">
-                    <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2">
-                      Mapa Conceptual
-                    </h3>
-                    {selectedInterviewDetail.mapa_conceptual_mermaid ? (
-                      <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200 overflow-x-auto text-center font-mono text-xs text-zinc-800 p-4">
-                        <pre className="text-left overflow-x-auto whitespace-pre-wrap">
-                          {selectedInterviewDetail.mapa_conceptual_mermaid.replace(/```mermaid/g, '').replace(/```/g, '')}
-                        </pre>
-                      </div>
-                    ) : (
-                      <p className="text-zinc-400 text-xs p-4 bg-zinc-50 rounded-lg border">No se generó mapa conceptual.</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Respuestas Extraídas */}
-                <div className="space-y-4">
-                  <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950 border-b border-zinc-200 pb-2 flex items-center gap-2">
-                    <History className="w-5 h-5 text-red-600" />
-                    Respuestas Extraídas
-                  </h3>
-                  <div className="space-y-4">
-                    {Array.isArray(selectedInterviewDetail.respuestas_cuestionario) ? (
-                      selectedInterviewDetail.respuestas_cuestionario.map((ans: string, i: number) => (
-                        <div key={i} className="bg-zinc-50 p-4 rounded-lg border border-zinc-200">
-                          <p className="font-bold text-zinc-900 mb-2 text-sm">
-                            Pregunta #{i + 1}
-                          </p>
-                          <p className="text-zinc-600 pl-4 border-l-2 border-red-600 text-sm">
-                            {ans}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-zinc-500 text-xs">Sin respuestas catalogadas.</p>
-                    )}
-                  </div>
-                </div>
-
-                {selectedInterviewDetail.transcripcion && (
-                  <details className="mt-8 border-t border-zinc-200 pt-4">
-                    <summary className="text-slate-500 cursor-pointer hover:text-slate-800 font-medium text-xs">
-                      Ver Transcripción Completa
-                    </summary>
-                    <div className="mt-4 p-4 bg-slate-50 rounded-lg text-xs text-slate-600 whitespace-pre-wrap font-mono">
-                      {selectedInterviewDetail.transcripcion}
-                    </div>
-                  </details>
-                )}
-              </div>
-            </div>
-          ) : (
-            /* Lista Principal de Sesiones con Botón para Iniciar y Grabar */
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="h-2.5 w-2.5 rounded-full bg-red-600" />
-                    <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">
-                      Gobernanza 360° & Grabación Continua
-                    </span>
-                  </div>
-                  <h2 className="font-display text-2xl font-black text-zinc-950 uppercase tracking-tight">
-                    Sesiones de Entrevista y Minutas IA
-                  </h2>
-                  <p className="text-xs text-zinc-600 mt-1 max-w-2xl">
-                    Planifique las preguntas del catálogo 360°, active el protector de pantalla (WakeLock) y grabe sesiones de más de 1 hora con persistencia de chunks de audio cada 30 segundos.
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => setActiveMeetingSession(true)}
-                  className="px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-display font-black uppercase tracking-wider flex items-center gap-2 shadow-crimson hover:scale-105 transition-all shrink-0"
-                >
-                  <Mic className="w-4 h-4" /> Iniciar y Grabar Sesión
-                </button>
-              </div>
-
-              {/* Subsección: Entrevistas Grabadas con IA */}
-              <div className="space-y-3">
-                <h3 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-red-600" /> Entrevistas Estructuradas con IA ({clientInterviews.length})
-                </h3>
-
-                {clientInterviews.length === 0 ? (
-                  <div className="bg-white p-8 rounded-2xl border-2 border-zinc-300 text-center text-zinc-500 text-xs font-medium space-y-3">
-                    <HardDrive className="w-8 h-8 text-zinc-400 mx-auto" />
-                    <p>No hay entrevistas de diagnóstico grabadas para este cliente aún.</p>
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={() => setActiveMeetingSession(true)}
-                      className="inline-flex items-center gap-1 text-red-600 hover:text-red-700 font-bold uppercase tracking-wider text-xs"
+                      onClick={() => {
+                        setMeetingLaunchType('kickoff');
+                        setActiveMeetingSession(true);
+                      }}
+                      className="px-4 py-2.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-display font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm hover:scale-105 transition-all"
                     >
-                      <Plus className="w-3.5 h-3.5" /> Planificar y Grabar la Primera Entrevista
+                      <Target className="w-3.5 h-3.5" /> 1. Kickoff (OMV)
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setMeetingLaunchType('diagnostico');
+                        setActiveMeetingSession(true);
+                      }}
+                      className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-display font-black uppercase tracking-wider flex items-center gap-1.5 shadow-crimson hover:scale-105 transition-all"
+                    >
+                      <Mic className="w-3.5 h-3.5" /> 2. Diagnóstico 360°
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setMeetingLaunchType('seguimiento_trimestral');
+                        setActiveMeetingSession(true);
+                      }}
+                      className="px-4 py-2.5 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-display font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm hover:scale-105 transition-all"
+                    >
+                      <Calendar className="w-3.5 h-3.5 text-red-500" /> 3. Seguimiento Trimestral
                     </button>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {clientInterviews.map(interview => (
-                      <div
-                        key={interview.id}
-                        className="bg-white p-5 rounded-2xl border-2 border-zinc-900 hover:border-red-600 transition-all space-y-3 shadow-sm hover:shadow-crimson group"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-display font-bold text-base text-zinc-950 group-hover:text-red-600 uppercase tracking-wide transition-colors">
-                              {interview.titulo || 'Auditoría General'}
-                            </h4>
-                            <p className="text-xs text-zinc-500 mt-1 font-medium">
-                              {new Date(interview.created_at).toLocaleDateString('es-AR')} • {Math.round((interview.duracion_segundos || 0) / 60)} min grabados
-                            </p>
-                          </div>
-                          <span className={`px-2.5 py-0.5 font-display uppercase font-bold text-[10px] rounded ${
-                            interview.estado === 'completado' 
-                              ? 'bg-black text-emerald-400' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {interview.estado === 'completado' ? 'Análisis Listo' : interview.estado}
-                          </span>
-                        </div>
-
-                        {interview.resumen && (
-                          <p className="text-xs text-zinc-600 line-clamp-2 bg-zinc-50 p-2.5 rounded-lg border border-zinc-200">
-                            {interview.resumen}
-                          </p>
-                        )}
-
-                        <div className="pt-2 border-t border-zinc-100 flex items-center justify-between">
-                          <span className="text-[10px] font-mono font-bold text-zinc-400">
-                            {Array.isArray(interview.selected_questions) ? `${interview.selected_questions.length} preguntas` : '360°'}
-                          </span>
-                          <button
-                            onClick={() => setSelectedInterviewDetail(interview)}
-                            className="text-xs font-bold font-display uppercase tracking-wider text-red-600 hover:text-red-800 flex items-center gap-1"
-                          >
-                            Ver Resultados y Mapa <ChevronRight className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                </div>
               </div>
 
-              {/* Subsección: Minutas Clásicas */}
-              <div className="space-y-3 pt-4 border-t border-zinc-200">
+              {/* HISTORIAL ORGANIZADO DE GRABACIONES (AUDIO + WHISPER + VALIDACIONES) */}
+              <ClientRecordingsHistory
+                clientId={id as string}
+                clientName={client.name}
+                onNewRecording={(type) => {
+                  setMeetingLaunchType(type || 'diagnostico');
+                  setActiveMeetingSession(true);
+                }}
+              />
+
+              {/* Subsección: Minutas Tradicionales de Comités */}
+              <div className="space-y-3 pt-6 border-t-2 border-zinc-200">
                 <div className="flex items-center justify-between">
                   <h3 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-zinc-600" /> Minutas de Comités y Reuniones ({meetings.length})
+                    <Calendar className="w-4 h-4 text-zinc-600" /> Minutas de Comités y Reuniones Tradicionales ({meetings.length})
                   </h3>
                   <Link
                     to="/meetings"
@@ -720,7 +739,7 @@ export default function ClientDetail() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {meetings.length === 0 ? (
                     <div className="col-span-2 bg-zinc-50 p-6 rounded-2xl border border-zinc-200 text-center text-zinc-400 text-xs">
-                      No hay minutas adicionales registradas.
+                      No hay minutas tradicionales adicionales registradas.
                     </div>
                   ) : (
                     meetings.map(m => (

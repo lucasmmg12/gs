@@ -16,6 +16,7 @@ interface OMVModuleProps {
   approvalStatus: ApprovalStatus;
   auditConsultants: AuditConsultants;
   onApprovalChange: (status: ApprovalStatus, audit: AuditConsultants) => void;
+  onSendWhatsApp?: () => void;
 }
 
 export const OMVModule: React.FC<OMVModuleProps> = ({
@@ -24,7 +25,8 @@ export const OMVModule: React.FC<OMVModuleProps> = ({
   onStageChange,
   approvalStatus,
   auditConsultants,
-  onApprovalChange
+  onApprovalChange,
+  onSendWhatsApp
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
@@ -52,9 +54,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
         audit={auditConsultants}
         onStatusChange={onApprovalChange}
         clientName={client.name}
-        onSendWhatsApp={() => {
-          alert(`Enviado al grupo de WhatsApp de ${client.name}: "Se ha validado y publicado el OMV a 3 años y la Minuta de Kickoff oficial."`);
-        }}
+        onSendWhatsApp={onSendWhatsApp}
       />
 
       {/* 1. Hoja de Ruta del Cliente (4 Etapas del Documento) */}

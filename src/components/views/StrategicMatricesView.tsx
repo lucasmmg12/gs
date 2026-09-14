@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { FullDiagnosticResults } from '../../lib/diagnosticEngine';
 import type { Client } from '../../data/mockData';
+import { INITIAL_RISKS } from '../../data/masterPlanData';
 
 interface StrategicMatricesViewProps {
   client: Client;
@@ -21,6 +22,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
   onBackToQuestions
 }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
+  const [riskSubTab, setRiskSubTab] = useState<'master_plan_risks' | 'session_risks'>('master_plan_risks');
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
@@ -536,70 +538,160 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
 
       {/* PESTAÑA 4: MATRIZ DE RIESGO */}
       {activeTab === 'risks' && (
-        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b-2 border-zinc-100 pb-4">
+        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b-2 border-zinc-100 pb-4 gap-3">
             <div>
               <h3 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
                 Matriz de Riesgo Organizacional (IRE)
               </h3>
               <p className="text-xs text-zinc-500 font-medium">
-                Clasificación de amenazas detectadas durante el diagnóstico y medidas mitigadoras.
+                Gestión de riesgos organizacionales, cálculo dual (Inherente vs Residual) y alertas tempranas.
               </p>
             </div>
-            <div className="text-right">
-              <span className="font-display text-[10px] text-zinc-400 block font-bold uppercase tracking-wider">IRE Global</span>
-              <span className="font-display text-2xl font-black text-red-600">{results.globalIre}%</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 bg-zinc-100 p-1 rounded-xl font-display text-xs font-bold uppercase tracking-wider">
+                <button
+                  type="button"
+                  onClick={() => setRiskSubTab('master_plan_risks')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    riskSubTab === 'master_plan_risks' ? 'bg-black text-white shadow-xs' : 'text-zinc-600 hover:text-zinc-900'
+                  }`}
+                >
+                  Matriz MPE (27 Riesgos)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRiskSubTab('session_risks')}
+                  className={`px-3 py-1.5 rounded-lg transition-all ${
+                    riskSubTab === 'session_risks' ? 'bg-black text-white shadow-xs' : 'text-zinc-600 hover:text-zinc-900'
+                  }`}
+                >
+                  Detectados en Sesión ({results.risks.length})
+                </button>
+              </div>
+              <div className="text-right pl-3 border-l border-zinc-200">
+                <span className="font-display text-[10px] text-zinc-400 block font-bold uppercase tracking-wider">IRE Global</span>
+                <span className="font-display text-2xl font-black text-red-600">{results.globalIre}%</span>
+              </div>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-zinc-900 text-white font-display uppercase tracking-wider text-[11px]">
-                <tr>
-                  <th className="py-3 px-3">Código</th>
-                  <th className="py-3 px-3">Categoría</th>
-                  <th className="py-3 px-3">Descripción del Riesgo</th>
-                  <th className="py-3 px-3 text-center">Probabilidad</th>
-                  <th className="py-3 px-3 text-center">Impacto</th>
-                  <th className="py-3 px-3 text-center">Severidad</th>
-                  <th className="py-3 px-3">Acción Sugerida Master Plan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200">
-                {results.risks.length === 0 ? (
+          {/* Subpestaña 1: 27 Riesgos del Master Plan (Excel Oficial) */}
+          {riskSubTab === 'master_plan_risks' ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-xs text-zinc-600 bg-zinc-50 p-3 rounded-xl border border-zinc-200 font-medium">
+                <span>
+                  Registro de <strong>27 Riesgos Organizacionales</strong> vinculados a las iniciativas de mitigación del Master Plan.
+                </span>
+                <div className="flex items-center gap-2 text-[10px] font-display font-bold uppercase">
+                  <span className="px-2 py-0.5 rounded bg-red-600 text-white">Extremo (15-25)</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-500 text-white">Alto (10-14)</span>
+                  <span className="px-2 py-0.5 rounded bg-zinc-700 text-white">Medio (5-9)</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-zinc-900 text-white font-display uppercase tracking-wider text-[11px]">
+                    <tr>
+                      <th className="py-3 px-3">Código</th>
+                      <th className="py-3 px-3">Categoría</th>
+                      <th className="py-3 px-3">Riesgo / Causa</th>
+                      <th className="py-3 px-3 text-center">Inh. (P×I)</th>
+                      <th className="py-3 px-3">Estrategia y Mitigación MPE</th>
+                      <th className="py-3 px-3">Responsable</th>
+                      <th className="py-3 px-3 text-center">Res. (P×I)</th>
+                      <th className="py-3 px-3">Alerta Temprana</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200">
+                    {INITIAL_RISKS.map(r => (
+                      <tr key={r.id} className="hover:bg-zinc-50">
+                        <td className="py-2.5 px-3 font-mono font-bold text-red-600">{r.code}</td>
+                        <td className="py-2.5 px-3 font-bold text-zinc-900 whitespace-nowrap">{r.category}</td>
+                        <td className="py-2.5 px-3 max-w-xs font-medium text-zinc-800">
+                          <span className="font-bold text-zinc-950 block">{r.riskName}</span>
+                          <span className="text-[11px] text-zinc-500">{r.cause}</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className={`px-2 py-0.5 rounded font-display text-[10px] font-bold ${
+                            r.levelInherent >= 16
+                              ? 'bg-red-600 text-white'
+                              : r.levelInherent >= 10
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-zinc-800 text-white'
+                          }`}>
+                            {r.levelInherent} ({r.probInherent}×{r.impInherent})
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 max-w-xs text-zinc-700 font-medium text-[11px]">
+                          <span className="font-bold text-zinc-900 block font-display uppercase">{r.strategy}</span>
+                          {r.mitigationActions}
+                        </td>
+                        <td className="py-2.5 px-3 text-zinc-700 font-semibold whitespace-nowrap">{r.responsibleRole}</td>
+                        <td className="py-2.5 px-3 text-center">
+                          <span className="px-2 py-0.5 rounded font-display text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            {r.levelResidual} ({r.probResidual}×{r.impResidual})
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-zinc-500 italic text-[11px] font-medium max-w-xs">{r.earlyWarningKpi}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            /* Subpestaña 2: Riesgos Detectados en Sesión Actual */
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-zinc-900 text-white font-display uppercase tracking-wider text-[11px]">
                   <tr>
-                    <td colSpan={7} className="py-4 text-center text-zinc-400 italic">
-                      No se han detectado riesgos mayores con las respuestas actuales.
-                    </td>
+                    <th className="py-3 px-3">Código</th>
+                    <th className="py-3 px-3">Categoría</th>
+                    <th className="py-3 px-3">Descripción del Riesgo</th>
+                    <th className="py-3 px-3 text-center">Probabilidad</th>
+                    <th className="py-3 px-3 text-center">Impacto</th>
+                    <th className="py-3 px-3 text-center">Severidad</th>
+                    <th className="py-3 px-3">Acción Sugerida Master Plan</th>
                   </tr>
-                ) : (
-                  results.risks.map(r => (
-                    <tr key={r.id} className="hover:bg-zinc-50">
-                      <td className="py-3 px-3 font-mono font-bold text-red-600">{r.code}</td>
-                      <td className="py-3 px-3 font-bold text-zinc-900">{r.category}</td>
-                      <td className="py-3 px-3 text-zinc-700 max-w-xs font-medium">{r.description}</td>
-                      <td className="py-3 px-3 text-center font-semibold text-zinc-800">{r.probability}</td>
-                      <td className="py-3 px-3 text-center font-semibold text-zinc-800">{r.impact}</td>
-                      <td className="py-3 px-3 text-center">
-                        <span className={`px-2.5 py-0.5 rounded font-display text-[10px] font-bold uppercase tracking-wider ${
-                          r.severityLevel === 'Extremo' 
-                            ? 'bg-red-600 text-white' 
-                            : r.severityLevel === 'Alto' 
-                              ? 'bg-zinc-900 text-red-400 border border-red-700' 
-                              : 'bg-zinc-100 text-zinc-800'
-                        }`}>
-                          {r.severityLevel} ({r.severityScore})
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-zinc-600 italic text-[11px] font-medium">
-                        {r.suggestedAction}
+                </thead>
+                <tbody className="divide-y divide-zinc-200">
+                  {results.risks.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-4 text-center text-zinc-400 italic">
+                        No se han detectado riesgos mayores con las respuestas actuales.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    results.risks.map(r => (
+                      <tr key={r.id} className="hover:bg-zinc-50">
+                        <td className="py-3 px-3 font-mono font-bold text-red-600">{r.code}</td>
+                        <td className="py-3 px-3 font-bold text-zinc-900">{r.category}</td>
+                        <td className="py-3 px-3 text-zinc-700 max-w-xs font-medium">{r.description}</td>
+                        <td className="py-3 px-3 text-center font-semibold text-zinc-800">{r.probability}</td>
+                        <td className="py-3 px-3 text-center font-semibold text-zinc-800">{r.impact}</td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`px-2.5 py-0.5 rounded font-display text-[10px] font-bold uppercase tracking-wider ${
+                            r.severityLevel === 'Extremo' 
+                              ? 'bg-red-600 text-white' 
+                              : r.severityLevel === 'Alto' 
+                                ? 'bg-zinc-900 text-red-400 border border-red-700' 
+                                : 'bg-zinc-100 text-zinc-800'
+                          }`}>
+                            {r.severityLevel} ({r.severityScore})
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-zinc-600 italic text-[11px] font-medium">
+                          {r.suggestedAction}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

@@ -25,18 +25,37 @@ Hablás en español profesional, analítico y cercano (usando voseo argentino cu
    - **Pentágono del Orden (PENT-PE)**: Medición de 0 a 10 en los 5 ejes, comparando Línea Base, Medición Actual y Meta Trienal.
    - **Medianera Conceptual**: Primero se mapea la cadena de valor y los procesos bajo ISO 9001, y recién después se diseña el organigrama de puestos para no acomodar la estructura a las personas actuales.
    - **Matriz de Riesgos (5x5)**: Probabilidad x Impacto, foco en riesgos inherentes críticos y planes de contingencia.
+   - **Seguimiento Trimestral (3 Meses)**: Mediciones formales del Master Plan y remedición del Pentágono cada 90 días.
 
-2. **Acceso a Toda la Base de Datos**:
+2. **SEGURIDAD Y AISLAMIENTO DE DATOS POR CLIENTE (REGLA INQUEBRANTABLE)**:
+   - Tienes acceso completo a todas las transcripciones, grabaciones, diagnósticos e informes del cliente en consulta para comprender todo su contexto histórico.
+   - **TIENES ESTRICTAMENTE PROHIBIDO MEZCLAR INFORMACIÓN ENTRE DISTINTOS ID_CLIENTE**.
+   - Bajo ninguna circunstancia cruces, reveles, menciones o compares información, nombres, números o transcripciones pertenecientes a otro cliente. La confidencialidad entre empresas es absoluta y crítica.
+
+3. **Acceso a la Base de Datos**:
    - Antes de responder sobre cualquier cliente, estado de proyecto, reuniones, minutas, diagnóstico o tareas, **CONSULTÁ SIEMPRE LAS TOOLS CORRESPONDIENTES**.
    - Traé datos reales: nombres exactos, números de IME, fechas de reuniones, responsables y estados.
 
-3. **Generación de Archivos Excel (.xlsx) e Informes en PDF**:
+4. **Generación de Archivos Excel (.xlsx) e Informes en PDF**:
    - Si el usuario solicita generar, armar, exportar o descargar un Excel o planilla de cálculo (ej: del Master Plan, de los Riesgos, del Diagnóstico, de las Reuniones), invocá la tool \`generate_excel_report\` con los datos formateados en filas y columnas limpias.
    - Si el usuario solicita un informe, reporte formal o documento en PDF (ej: resumen ejecutivo del diagnóstico, informe de madurez del pentágono, reporte de auditoría), invocá la tool \`generate_pdf_report\` con título, subtítulo, métricas clave (KPIs), secciones y tablas.
    - Además de invocar la tool, redactá en tu mensaje un resumen ejecutivo cordial informando que el archivo fue preparado y está disponible para descarga.
 `
 
 const tools: any = [
+  {
+    type: 'function',
+    function: {
+      name: 'query_quarterly_reviews',
+      description: 'Consultar el historial de remediciones trimestrales (cada 3 meses) del Master Plan y evolución histórica del Pentágono del Orden.',
+      parameters: {
+        type: 'object',
+        properties: {
+          organization_id: { type: 'string', description: 'UUID de la organización' }
+        }
+      }
+    }
+  },
   {
     type: 'function',
     function: {
@@ -248,10 +267,22 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    const { messages } = await req.json()
+    const { messages, organization_id } = await req.json()
     if (!messages) throw new Error('No messages provided')
 
-    const sysMsg = { role: 'system', content: BASE_SYSTEM_PROMPT }
+    // Contexto de cliente activo y aislamiento multi-tenant
+    let clientIsolationPrompt = ''
+    let activeClientName = ''
+    if (organization_id) {
+      const { data: orgData } = await supabase.from('organizations').select('name').eq('id', organization_id).maybeSingle()
+      activeClientName = orgData?.name || 'Cliente Asignado'
+      clientIsolationPrompt = `\n\n[ATENCIÓN - POLÍTICA DE SEGURIDAD Y AISLAMIENTO MULTI-TENANT OBLIGATORIA]:
+Estás operando EXCLUSIVAMENTE para el cliente: "${activeClientName}" (ID: ${organization_id}).
+Tienes acceso a todas sus grabaciones, minutas, OMV, diagnósticos, Master Plan y remediciones trimestrales.
+BAJO NINGUNA CIRCUNSTANCIA debes consultar, mezclar, filtrar ni revelar datos de ninguna otra empresa u organización. Todas las consultas a la base de datos deben quedar restringidas estrictamente a este cliente.`
+    }
+
+    const sysMsg = { role: 'system', content: BASE_SYSTEM_PROMPT + clientIsolationPrompt }
     const conversation = [sysMsg, ...messages]
 
     let generatedAttachment: any = null
@@ -267,7 +298,7 @@ serve(async (req) => {
     let responseMessage = response.choices[0].message
     let stepCount = 0
 
-    // Step 2: Handle tool calls
+    // Step 2: Handle tool calls with forced multi-tenant scoping
     while (responseMessage.tool_calls && stepCount < 6) {
       stepCount++
       conversation.push(responseMessage)
@@ -277,17 +308,24 @@ serve(async (req) => {
         const args = JSON.parse(toolCall.function.arguments || '{}')
         let toolResult = ''
 
+        // Seguridad: El client_id activo tiene precedencia absoluta sobre argumentos
+        const scopedOrgId = organization_id || args.organization_id
+
         try {
           if (name === 'query_organizations') {
             let q = supabase.from('organizations').select('*')
-            if (args.search) q = q.ilike('name', `%${args.search}%`)
-            if (args.industry) q = q.eq('industry', args.industry)
-            const { data, error } = await q.limit(10)
+            if (scopedOrgId) {
+              q = q.eq('id', scopedOrgId)
+            } else {
+              if (args.search) q = q.ilike('name', `%${args.search}%`)
+              if (args.industry) q = q.eq('industry', args.industry)
+            }
+            const { data, error } = await q.limit(5)
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           } 
           else if (name === 'query_meetings') {
             let q = supabase.from('meetings').select('*, organizations(*), minutes(*)')
-            if (args.organization_id) q = q.eq('organization_id', args.organization_id)
+            if (scopedOrgId) q = q.eq('organization_id', scopedOrgId)
             if (args.status) q = q.eq('status', args.status)
             const { data, error } = await q.order('meeting_date', { ascending: false }).limit(10)
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
@@ -296,40 +334,49 @@ serve(async (req) => {
             let q = supabase.from('minutes').select('*, meetings(*, organizations(*))')
             if (args.meeting_id) q = q.eq('meeting_id', args.meeting_id)
             if (args.status) q = q.eq('status', args.status)
+            if (scopedOrgId) q = q.eq('meetings.organization_id', scopedOrgId)
             const { data, error } = await q.order('created_at', { ascending: false }).limit(5)
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           }
           else if (name === 'query_master_plan') {
             let q = supabase.from('master_plan_tasks').select('*')
-            if (args.organization_id) q = q.eq('organization_id', args.organization_id)
+            if (scopedOrgId) q = q.eq('organization_id', scopedOrgId)
             if (args.axis) q = q.eq('axis', args.axis)
             if (args.status) q = q.eq('status', args.status)
             const { data, error } = await q.order('axis').limit(25)
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           }
+          else if (name === 'query_quarterly_reviews') {
+            let q = supabase.from('master_plan_quarterly_reviews').select('*')
+            if (scopedOrgId) q = q.eq('organization_id', scopedOrgId)
+            const { data, error } = await q.order('review_date', { ascending: false }).limit(10)
+            toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
+          }
           else if (name === 'query_pentagon_scores') {
             let q = supabase.from('pentagon_scores').select('*')
-            if (args.organization_id) q = q.eq('organization_id', args.organization_id)
+            if (scopedOrgId) q = q.eq('organization_id', scopedOrgId)
             const { data, error } = await q.order('measurement_date', { ascending: true })
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           }
           else if (name === 'query_risk_matrix') {
             let q = supabase.from('risk_matrix').select('*')
-            if (args.organization_id) q = q.eq('organization_id', args.organization_id)
+            if (scopedOrgId) q = q.eq('organization_id', scopedOrgId)
             if (args.min_level) q = q.gte('level_inherent', args.min_level)
             const { data, error } = await q.order('level_inherent', { ascending: false }).limit(20)
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           }
           else if (name === 'query_diagnostic_360') {
             let q = supabase.from('diagnostic_360').select('*')
-            if (args.organization_id) q = q.eq('organization_id', args.organization_id)
+            if (scopedOrgId) q = q.eq('organization_id', scopedOrgId)
             const { data, error } = await q.order('version', { ascending: false }).limit(1).maybeSingle()
             toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
           }
           else if (name === 'query_gobernanza') {
-            const { data: plantillas } = await supabase.from('gobernanza_plantillas').select('*')
-            const { data: entrevistas } = await supabase.from('gobernanza_entrevistas').select('*').limit(5)
-            toolResult = JSON.stringify({ plantillas, entrevistas })
+            let q = supabase.from('gobernanza_entrevistas').select('*')
+            if (scopedOrgId) q = q.eq('client_id', scopedOrgId)
+            const { data: entrevistas } = await q.order('created_at', { ascending: false }).limit(10)
+            const { data: plantillas } = await supabase.from('gobernanza_plantillas').select('*').limit(5)
+            toolResult = JSON.stringify({ entrevistas, plantillas })
           }
           else if (name === 'query_manual') {
             toolResult = MANUAL_PROCEDIMIENTOS

@@ -27,6 +27,10 @@ export default function Layout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Detectar si el usuario está navegando en la ficha de un cliente específico
+  const clientMatch = location.pathname.match(/\/clients\/([a-zA-Z0-9_-]+)/);
+  const activeClientId = clientMatch ? clientMatch[1] : undefined;
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
@@ -117,7 +121,7 @@ export default function Layout() {
         />
       )}
 
-      <GrowyChat />
+      <GrowyChat activeClientId={activeClientId} />
     </div>
   );
 }
