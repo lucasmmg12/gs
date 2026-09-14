@@ -167,8 +167,11 @@ export default function ClientRecordingsHistory({
           <h2 className="font-display text-xl sm:text-2xl font-black text-zinc-950 uppercase tracking-tight">
             Historial de Grabaciones ({filtered.length})
           </h2>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Grabaciones de audio seguras, transcripciones completas de Whisper y validaciones en Check out de {clientName}.
+          <p className="text-xs text-zinc-500 mt-0.5 flex flex-wrap items-center gap-2">
+            <span>Grabaciones seguras, transcripciones de Whisper y validaciones de {clientName}.</span>
+            <span className="font-mono text-[10px] text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-300 font-bold">
+              id_cliente: {clientId}
+            </span>
           </p>
         </div>
 

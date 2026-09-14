@@ -335,6 +335,7 @@ export default function ClientMeetingSession({
           
           // Save chunk in IndexedDB (immune to crash/network drop)
           const record = await saveLocalChunk(
+            client.id,
             sessionId,
             currentIndex,
             e.data,
@@ -399,7 +400,7 @@ export default function ClientMeetingSession({
       await new Promise(r => setTimeout(r, 600));
 
       // 1. Compile audio chunks into full webm blob
-      const combinedBlob = await compileSessionAudioBlob(sessionId);
+      const combinedBlob = await compileSessionAudioBlob(sessionId, client.id);
       const fullFileName = `${client.id}/${sessionId}_full.webm`;
 
       setProcessingState('uploading');

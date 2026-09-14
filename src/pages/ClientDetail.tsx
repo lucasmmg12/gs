@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { 
   ArrowLeft, Target, FileText, Calendar, 
   Layers, ChevronRight,
-  Activity, Compass, Eye, Mic, ShieldAlert, Plus
+  Activity, Compass, Eye, Mic, ShieldAlert, Plus, ShieldCheck
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import type { ResponseOptionValue } from '../data/diagnosticQuestions';
@@ -348,9 +348,13 @@ export default function ClientDetail() {
                   style={{ width: `${profileProgressPercent}%` }} 
                 />
               </div>
-              <span className="text-[11px] text-zinc-400 font-mono">
-                • Expediente: <span className="font-mono text-zinc-700">{client.id.substring(0, 8)}</span>
-              </span>
+              <div 
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-950 text-white font-mono text-[11px] border border-zinc-800 shadow-sm"
+                title="Identificador único del cliente para blindaje de grabaciones y datos"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>id_cliente: <strong className="text-emerald-400 font-mono">{client.id}</strong></span>
+              </div>
             </div>
           </div>
         </div>

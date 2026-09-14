@@ -2,7 +2,8 @@ import { createStore, set, values, del } from 'idb-keyval';
 import { supabase } from './supabase';
 
 export interface AudioChunkRecord {
-  id: string; // `${sessionId}_${index}`
+  id: string; // `client_${clientId}_session_${sessionId}_chunk_${chunkIndex}`
+  clientId: string; // ID único e inmutable del cliente (id_cliente)
   sessionId: string;
   chunkIndex: number;
   timestamp: number;
@@ -19,10 +20,11 @@ export interface AudioChunkRecord {
 const audioDbStore = createStore('gs_recording_db', 'interview_chunks');
 
 /**
- * Persists a 30s chunk to IndexedDB immediately.
+ * Persists a 30s chunk to IndexedDB immediately, strictly indexed by clientId.
  * Guaranteed against browser crashes or network loss.
  */
 export async function saveLocalChunk(
+  clientId: string,
   sessionId: string,
   chunkIndex: number,
   blob: Blob,
@@ -30,7 +32,8 @@ export async function saveLocalChunk(
   activeQuestionTitle?: string
 ): Promise<AudioChunkRecord> {
   const record: AudioChunkRecord = {
-    id: `${sessionId}_chunk_${chunkIndex}`,
+    id: `client_${clientId}_session_${sessionId}_chunk_${chunkIndex}`,
+    clientId,
     sessionId,
     chunkIndex,
     timestamp: Date.now(),
@@ -46,14 +49,14 @@ export async function saveLocalChunk(
 }
 
 /**
- * Uploads a chunk to Supabase Storage 'gobernanza_audios' in background.
- * Updates the IndexedDB record with upload status.
+ * Uploads a chunk to Supabase Storage 'gobernanza_audios' under client-isolated directory.
+ * Path format: gobernanza_audios/${clientId}/${sessionId}/chunk_XXXX.webm
  */
 export async function uploadChunkToStorage(
   record: AudioChunkRecord
 ): Promise<{ success: boolean; storagePath?: string; error?: string }> {
   try {
-    const storagePath = `${record.sessionId}/chunk_${String(record.chunkIndex).padStart(4, '0')}.webm`;
+    const storagePath = `${record.clientId}/${record.sessionId}/chunk_${String(record.chunkIndex).padStart(4, '0')}.webm`;
 
     const { error: uploadErr } = await supabase.storage
       .from('gobernanza_audios')
@@ -86,11 +89,11 @@ export async function uploadChunkToStorage(
 /**
  * Retrieves all stored chunks for a given session sorted by chunkIndex.
  */
-export async function getSessionChunks(sessionId: string): Promise<AudioChunkRecord[]> {
+export async function getSessionChunks(sessionId: string, clientId?: string): Promise<AudioChunkRecord[]> {
   try {
     const all = await values<AudioChunkRecord>(audioDbStore);
     return (all || [])
-      .filter(item => item && item.sessionId === sessionId)
+      .filter(item => item && item.sessionId === sessionId && (!clientId || item.clientId === clientId))
       .sort((a, b) => a.chunkIndex - b.chunkIndex);
   } catch (err) {
     console.error('[AudioChunker] Failed to read chunks from IndexedDB:', err);
@@ -103,9 +106,10 @@ export async function getSessionChunks(sessionId: string): Promise<AudioChunkRec
  */
 export async function syncPendingChunks(
   sessionId: string,
+  clientId?: string,
   onProgress?: (synced: number, total: number) => void
 ): Promise<{ total: number; synced: number; failed: number }> {
-  const chunks = await getSessionChunks(sessionId);
+  const chunks = await getSessionChunks(sessionId, clientId);
   const pending = chunks.filter(c => !c.uploaded);
   let synced = 0;
   let failed = 0;
@@ -129,8 +133,8 @@ export async function syncPendingChunks(
 /**
  * Combines all recorded chunks into a single monolithic Blob for final playback or backup download.
  */
-export async function compileSessionAudioBlob(sessionId: string): Promise<Blob> {
-  const chunks = await getSessionChunks(sessionId);
+export async function compileSessionAudioBlob(sessionId: string, clientId?: string): Promise<Blob> {
+  const chunks = await getSessionChunks(sessionId, clientId);
   if (chunks.length === 0) {
     throw new Error('No chunks found for session ' + sessionId);
   }
@@ -141,8 +145,8 @@ export async function compileSessionAudioBlob(sessionId: string): Promise<Blob> 
 /**
  * Clears session chunks from IndexedDB after successful processing.
  */
-export async function clearSessionChunks(sessionId: string): Promise<void> {
-  const chunks = await getSessionChunks(sessionId);
+export async function clearSessionChunks(sessionId: string, clientId?: string): Promise<void> {
+  const chunks = await getSessionChunks(sessionId, clientId);
   for (const c of chunks) {
     await del(c.id, audioDbStore);
   }
