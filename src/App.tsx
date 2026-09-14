@@ -14,6 +14,8 @@ import Minutes from './pages/Minutes';
 import VoiceRecorder from './components/VoiceRecorder';
 import KnowledgeBase from './pages/KnowledgeBase';
 
+import ClientPortalPage from './pages/ClientPortalPage';
+
 function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,12 +46,20 @@ function App() {
           path="/login" 
           element={!session ? <Login /> : <Navigate to="/" replace />} 
         />
+
+        {/* Public Client Portal Route */}
+        <Route path="/portal/:id" element={<ClientPortalPage />} />
         
         {/* Protected Routes with Layout */}
         <Route element={session ? <Layout /> : <Navigate to="/login" replace />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/clients" element={<Clients />} />
+          
+          {/* Client Dedicated Sub-Pages */}
           <Route path="/clients/:id" element={<ClientDetail />} />
+          <Route path="/clients/:id/:section" element={<ClientDetail />} />
+          <Route path="/clients/:id/meetings/:subAction" element={<ClientDetail />} />
+
           <Route path="/meetings" element={<Meetings />} />
           <Route path="/meetings/:id" element={<MeetingDetail />} />
           <Route path="/minutes" element={<Minutes />} />

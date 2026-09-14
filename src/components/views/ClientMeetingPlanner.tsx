@@ -15,6 +15,7 @@ import {
   Search, 
   Sparkles, 
   ArrowRight, 
+  ArrowLeft,
   CheckCircle2, 
   Save, 
   X
@@ -271,13 +272,22 @@ export default function ClientMeetingPlanner({
           </p>
         </div>
 
-        <button
-          onClick={onCancel}
-          className="self-start sm:self-center p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 transition-colors"
-          title="Cancelar planificación"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2.5 self-start sm:self-center">
+          <button
+            onClick={onCancel}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 text-xs font-semibold transition-all shadow-xs"
+            title="Volver a la lista de reuniones"
+          >
+            <ArrowLeft className="w-4 h-4" /> Volver a Reuniones
+          </button>
+          <button
+            onClick={onCancel}
+            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 transition-colors"
+            title="Cancelar planificación"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       <div className="p-6 sm:p-8 space-y-8">

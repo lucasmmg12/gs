@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { 
   ArrowLeft, Target, FileText, Calendar, 
@@ -92,19 +92,34 @@ function RiskIndexMeter({ riskPercentage = 22 }: { riskPercentage: number }) {
 }
 
 export default function ClientDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id, section, subAction } = useParams<{ id: string; section?: string; subAction?: string }>();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
   const [client, setClient] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'omv' | 'diagnostic' | 'matrices' | 'master_plan' | 'portal_preview' | 'meetings'
-  >('dashboard');
   const [loading, setLoading] = useState(true);
 
-  // Tipos de reunión y submódulos
-  const [meetingLaunchType, setMeetingLaunchType] = useState<MeetingType>('diagnostico');
+  // Active section derived directly from URL route for native browser back/forward history
+  const activeTab: 'dashboard' | 'omv' | 'diagnostic' | 'matrices' | 'master_plan' | 'portal_preview' | 'meetings' = useMemo(() => {
+    if (!section || section === 'dashboard') return 'dashboard';
+    if (section === 'omv') return 'omv';
+    if (section === 'diagnostic') return 'diagnostic';
+    if (section === 'matrices') return 'matrices';
+    if (section === 'master-plan' || section === 'master_plan') return 'master_plan';
+    if (section === 'meetings') return 'meetings';
+    if (section === 'portal' || section === 'portal_preview') return 'portal_preview';
+    return 'dashboard';
+  }, [section]);
+
+  const isPlanningMeeting = section === 'meetings' && subAction === 'plan';
+  const activeMeetingSession = section === 'meetings' && subAction === 'live';
+
+  // Tipos de reunión y submódulos (lee del query string si existe e.g. ?type=kickoff)
+  const meetingLaunchType: MeetingType = (searchParams.get('type') as MeetingType) || 'diagnostico';
   const [masterPlanSubTab, setMasterPlanSubTab] = useState<'tasks' | 'quarterly_tracking'>('tasks');
 
   // Modo de visualización: Consultor GS (Back) vs Cliente (Front)
-  const [viewMode, setViewMode] = useState<'consultor' | 'cliente'>('consultor');
+  const viewMode: 'consultor' | 'cliente' = activeTab === 'portal_preview' ? 'cliente' : 'consultor';
 
   // Client Stage (Roadmap)
   const [clientStage, setClientStage] = useState<ClientStage>('diagnostic_in_progress');
@@ -186,14 +201,11 @@ export default function ClientDetail() {
 
   // Meetings & Planning State
   const [meetings, setMeetings] = useState<any[]>([]);
-  const [isPlanningMeeting, setIsPlanningMeeting] = useState(false);
   const [plannedSession, setPlannedSession] = useState<PlannedMeetingData | null>(null);
-  const [activeMeetingSession, setActiveMeetingSession] = useState(false);
 
   const handleStartLiveMeeting = (planned: PlannedMeetingData) => {
     setPlannedSession(planned);
-    setIsPlanningMeeting(false);
-    setActiveMeetingSession(true);
+    navigate(`/clients/${id}/meetings/live`);
   };
 
   const handleSavePlannedMeeting = async (planned: PlannedMeetingData) => {
@@ -205,12 +217,12 @@ export default function ClientDetail() {
         status: 'scheduled'
       });
       alert(`✅ Reunión "${planned.title}" guardada exitosamente en la agenda del cliente.`);
-      setIsPlanningMeeting(false);
+      navigate(`/clients/${id}/meetings`);
       fetchClientData();
     } catch (err: any) {
       console.error('Error saving planned meeting:', err);
       alert('Planificación registrada con éxito.');
-      setIsPlanningMeeting(false);
+      navigate(`/clients/${id}/meetings`);
     }
   };
 
@@ -367,7 +379,7 @@ export default function ClientDetail() {
             Modo Portal Cliente (Front Activo) • Visualización de datos oficiales aprobados
           </span>
           <button
-            onClick={() => setViewMode('consultor')}
+            onClick={() => navigate(`/clients/${id}`)}
             className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors border border-red-500"
           >
             Volver a Modo Consultor GS (Back)
@@ -388,9 +400,21 @@ export default function ClientDetail() {
       {/* Header Principal con Avance en el Perfil del Cliente & Executive Gauges */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 border-b border-slate-200 pb-5 bg-white p-5 rounded-2xl shadow-xs">
         <div className="flex items-center gap-4">
-          <Link to="/clients" className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors shadow-xs">
+          <button 
+            onClick={() => {
+              if (subAction) {
+                navigate(`/clients/${id}/meetings`);
+              } else if (section) {
+                navigate(`/clients/${id}`);
+              } else {
+                navigate('/clients');
+              }
+            }}
+            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors shadow-xs"
+            title={subAction ? "Volver a Reuniones" : section ? "Volver al Dashboard del Cliente" : "Volver al Directorio de Clientes"}
+          >
             <ArrowLeft className="h-5 w-5" />
-          </Link>
+          </button>
           <div>
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-2xl font-bold font-display tracking-tight text-slate-900">{client.name}</h1>
@@ -425,7 +449,7 @@ export default function ClientDetail() {
           </div>
         </div>
 
-        {/* Top Gauges: IME 7.8/10 circular meter, Risk Index 22% & Switch Modo Portal Cliente */}
+        {/* Top Gauges: IME 7.8/10 circular meter, Risk Index 22% & Link al Portal Cliente */}
         <div className="flex flex-wrap items-center gap-3 shrink-0">
           <CircularImeMeter 
             score={diagnosticResults.globalIme10 || 7.8} 
@@ -434,32 +458,32 @@ export default function ClientDetail() {
           <RiskIndexMeter 
             riskPercentage={diagnosticResults.globalIre || 22} 
           />
-          <button
-            onClick={() => setViewMode('cliente')}
+          <Link
+            to={`/portal/${client.id}`}
             className="px-3.5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all"
-            title="Previsualizar portal como lo ve el cliente"
+            title="Abrir portal oficial del cliente en su propia página"
           >
             <Eye className="w-4 h-4 text-[#B91C1C]" />
             Ver Portal
-          </button>
+          </Link>
         </div>
       </div>
 
-      {/* Tabs Principales de la Plataforma */}
+      {/* Tabs Principales de la Plataforma con URLs Propias para Historial de Navegación */}
       <div className="border-b border-slate-200">
         <nav className="-mb-px flex space-x-2 overflow-x-auto" aria-label="Tabs">
           {[
-            { id: 'dashboard', name: 'Dashboard 360', icon: Activity },
-            { id: 'omv', name: '1. Kickoff & OMV', icon: Compass },
-            { id: 'diagnostic', name: '2. Diagnóstico Dinámico', icon: FileText, badge: `${diagnosticResults.progressPercentage}%` },
-            { id: 'matrices', name: '3. Matrices & FODA', icon: Layers },
-            { id: 'master_plan', name: '4. Master Plan', icon: Target },
-            { id: 'meetings', name: 'Reuniones & Ciclo de Vida', icon: Calendar },
-            { id: 'portal_preview', name: 'Portal Cliente', icon: Eye }
+            { id: 'dashboard', path: `/clients/${id}`, name: 'Dashboard 360', icon: Activity },
+            { id: 'omv', path: `/clients/${id}/omv`, name: '1. Kickoff & OMV', icon: Compass },
+            { id: 'diagnostic', path: `/clients/${id}/diagnostic`, name: '2. Diagnóstico Dinámico', icon: FileText, badge: `${diagnosticResults.progressPercentage}%` },
+            { id: 'matrices', path: `/clients/${id}/matrices`, name: '3. Matrices & FODA', icon: Layers },
+            { id: 'master_plan', path: `/clients/${id}/master-plan`, name: '4. Master Plan', icon: Target },
+            { id: 'meetings', path: `/clients/${id}/meetings`, name: 'Reuniones & Ciclo de Vida', icon: Calendar },
+            { id: 'portal_preview', path: `/clients/${id}/portal`, name: 'Portal Cliente', icon: Eye }
           ].map(tab => (
-            <button
+            <Link
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              to={tab.path}
               className={`flex items-center gap-2 whitespace-nowrap py-2.5 px-3.5 border-b-2 text-xs font-medium transition-all ${
                 activeTab === tab.id
                   ? 'border-[#B91C1C] text-[#B91C1C] font-semibold bg-white rounded-t-xl shadow-xs'
@@ -475,7 +499,7 @@ export default function ClientDetail() {
                   {tab.badge}
                 </span>
               )}
-            </button>
+            </Link>
           ))}
         </nav>
       </div>
@@ -528,11 +552,7 @@ export default function ClientDetail() {
                 <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-[11px] font-medium text-slate-400">Entregable: OMV</span>
                   <button
-                    onClick={() => {
-                      setMeetingLaunchType('kickoff');
-                      setIsPlanningMeeting(true);
-                      setActiveTab('meetings');
-                    }}
+                    onClick={() => navigate(`/clients/${id}/meetings/plan?type=kickoff`)}
                     className="px-3.5 py-1.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
                   >
                     Planificar Kick off
@@ -572,11 +592,7 @@ export default function ClientDetail() {
                 <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-[11px] font-medium text-slate-400">Avance: {profileProgressPercent}%</span>
                   <button
-                    onClick={() => {
-                      setMeetingLaunchType('diagnostico');
-                      setIsPlanningMeeting(true);
-                      setActiveTab('meetings');
-                    }}
+                    onClick={() => navigate(`/clients/${id}/meetings/plan?type=diagnostico`)}
                     className="px-3.5 py-1.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
                   >
                     Planificar Diagnóstico
@@ -616,11 +632,7 @@ export default function ClientDetail() {
                 <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-[11px] font-medium text-slate-400">Ciclo: Q+1</span>
                   <button
-                    onClick={() => {
-                      setMeetingLaunchType('seguimiento_trimestral');
-                      setIsPlanningMeeting(true);
-                      setActiveTab('meetings');
-                    }}
+                    onClick={() => navigate(`/clients/${id}/meetings/plan?type=seguimiento_trimestral`)}
                     className="px-3.5 py-1.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
                   >
                     Planificar Trimestral
@@ -711,7 +723,7 @@ export default function ClientDetail() {
               <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-xs text-slate-500">Total detectados: {diagnosticResults.risks.length}</span>
                 <button
-                  onClick={() => setActiveTab('matrices')}
+                  onClick={() => navigate(`/clients/${id}/matrices`)}
                   className="text-xs font-semibold text-[#B91C1C] hover:underline"
                 >
                   Ver Matriz de Riesgos →
@@ -730,7 +742,7 @@ export default function ClientDetail() {
                 </h3>
               </div>
               <button
-                onClick={() => setActiveTab('meetings')}
+                onClick={() => navigate(`/clients/${id}/meetings`)}
                 className="text-xs font-semibold text-[#B91C1C] hover:underline flex items-center gap-1"
               >
                 Ir a Grabaciones & Minutas →
@@ -741,9 +753,7 @@ export default function ClientDetail() {
               clientId={id as string}
               clientName={client.name}
               onNewRecording={(type) => {
-                setMeetingLaunchType(type || 'diagnostico');
-                setIsPlanningMeeting(true);
-                setActiveTab('meetings');
+                navigate(`/clients/${id}/meetings/plan?type=${type || 'diagnostico'}`);
               }}
             />
           </div>
@@ -773,7 +783,7 @@ export default function ClientDetail() {
           approvalStatus={diagApproval}
           auditConsultants={diagAudit}
           onApprovalChange={(status, audit) => handleQualityApprovalChange('diagnostic_360', status, audit)}
-          onViewMatrices={() => setActiveTab('matrices')}
+          onViewMatrices={() => navigate(`/clients/${id}/matrices`)}
           onSendWhatsApp={() => handleSendWhatsAppNotification('Formulario de Diagnóstico Integral 360°')}
         />
       )}
@@ -783,7 +793,7 @@ export default function ClientDetail() {
         <StrategicMatricesView
           client={client}
           results={diagnosticResults}
-          onBackToQuestions={() => setActiveTab('diagnostic')}
+          onBackToQuestions={() => navigate(`/clients/${id}/diagnostic`)}
         />
       )}
 
@@ -916,7 +926,7 @@ export default function ClientDetail() {
               initialQuestions={plannedSession?.selectedQuestions}
               initialStep="recording"
               onBack={() => {
-                setActiveMeetingSession(false);
+                navigate(`/clients/${id}/meetings`);
                 setPlannedSession(null);
                 fetchClientData();
               }}
@@ -931,7 +941,7 @@ export default function ClientDetail() {
               initialType={meetingLaunchType}
               onStartLiveMeeting={handleStartLiveMeeting}
               onSavePlannedMeeting={handleSavePlannedMeeting}
-              onCancel={() => setIsPlanningMeeting(false)}
+              onCancel={() => navigate(`/clients/${id}/meetings`)}
             />
           ) : (
             <div className="space-y-6">
@@ -955,8 +965,7 @@ export default function ClientDetail() {
 
                   <button
                     onClick={() => {
-                      setMeetingLaunchType('diagnostico');
-                      setIsPlanningMeeting(true);
+                      navigate(`/clients/${id}/meetings/plan?type=diagnostico`);
                     }}
                     className="px-4 py-2.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all self-start sm:self-center"
                   >
@@ -969,8 +978,7 @@ export default function ClientDetail() {
                   {/* Tipo 1: Kick off */}
                   <div
                     onClick={() => {
-                      setMeetingLaunchType('kickoff');
-                      setIsPlanningMeeting(true);
+                      navigate(`/clients/${id}/meetings/plan?type=kickoff`);
                     }}
                     className="p-5 rounded-2xl border border-slate-200 hover:border-purple-300 bg-white hover:bg-purple-50/20 shadow-xs hover:shadow-md cursor-pointer transition-all space-y-2.5 group flex flex-col justify-between"
                   >
@@ -998,8 +1006,7 @@ export default function ClientDetail() {
                   {/* Tipo 2: Diagnóstico 360 */}
                   <div
                     onClick={() => {
-                      setMeetingLaunchType('diagnostico');
-                      setIsPlanningMeeting(true);
+                      navigate(`/clients/${id}/meetings/plan?type=diagnostico`);
                     }}
                     className="p-5 rounded-2xl border border-slate-200 hover:border-rose-300 bg-white hover:bg-rose-50/20 shadow-xs hover:shadow-md cursor-pointer transition-all space-y-2.5 group flex flex-col justify-between"
                   >
@@ -1027,8 +1034,7 @@ export default function ClientDetail() {
                   {/* Tipo 3: Revisión Trimestral */}
                   <div
                     onClick={() => {
-                      setMeetingLaunchType('seguimiento_trimestral');
-                      setIsPlanningMeeting(true);
+                      navigate(`/clients/${id}/meetings/plan?type=seguimiento_trimestral`);
                     }}
                     className="p-5 rounded-2xl border border-slate-200 hover:border-slate-400 bg-white hover:bg-slate-50 shadow-xs hover:shadow-md cursor-pointer transition-all space-y-2.5 group flex flex-col justify-between"
                   >
@@ -1060,8 +1066,7 @@ export default function ClientDetail() {
                 clientId={id as string}
                 clientName={client.name}
                 onNewRecording={(type) => {
-                  setMeetingLaunchType(type || 'diagnostico');
-                  setIsPlanningMeeting(true);
+                  navigate(`/clients/${id}/meetings/plan?type=${type || 'diagnostico'}`);
                 }}
               />
 
