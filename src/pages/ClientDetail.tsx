@@ -25,6 +25,72 @@ import type { PlannedMeetingData } from '../components/views/ClientMeetingPlanne
 import ClientRecordingsHistory from '../components/views/ClientRecordingsHistory';
 import MasterPlanQuarterlyTracking from '../components/views/MasterPlanQuarterlyTracking';
 
+// Circular Gauge Meter for IME Score (e.g. 7.8 / 10)
+function CircularImeMeter({ score = 7.8, maxScore = 10 }: { score: number; maxScore?: number }) {
+  const size = 62;
+  const strokeWidth = 5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const normalizedScore = Math.min(maxScore, Math.max(0, score));
+  const progressPercent = (normalizedScore / maxScore) * 100;
+  const strokeDashoffset = circumference - (progressPercent / 100) * circumference;
+
+  return (
+    <div className="flex items-center gap-3 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs">
+      <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="transform -rotate-90">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="#E2E8F0"
+            strokeWidth={strokeWidth}
+            fill="transparent"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="#B91C1C"
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            fill="transparent"
+            className="transition-all duration-700 ease-out"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+          <span className="text-xs font-bold text-slate-900 leading-none font-display">{score}</span>
+          <span className="text-[8px] text-slate-400 font-medium">/{maxScore}</span>
+        </div>
+      </div>
+      <div className="flex flex-col">
+        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Madurez IME</span>
+        <span className="text-xs font-bold text-slate-900">Score {score} / 10</span>
+        <span className="text-[10px] text-slate-400">Meta trienal: 8.0</span>
+      </div>
+    </div>
+  );
+}
+
+// Risk Index Card (e.g. 22%)
+function RiskIndexMeter({ riskPercentage = 22 }: { riskPercentage: number }) {
+  return (
+    <div className="flex items-center gap-3 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs">
+      <div className="w-11 h-11 rounded-xl bg-rose-50 border border-rose-200 flex flex-col items-center justify-center shrink-0">
+        <span className="text-xs font-bold font-display text-[#B91C1C] leading-none">{riskPercentage}%</span>
+        <span className="text-[7px] font-bold text-[#B91C1C] uppercase mt-0.5">IRE</span>
+      </div>
+      <div className="flex flex-col">
+        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Índice Riesgo</span>
+        <span className="text-xs font-bold text-slate-900">{riskPercentage < 30 ? 'Bajo / Moderado' : 'Crítico'}</span>
+        <span className="text-[10px] text-slate-400">Matriz Contingencias</span>
+      </div>
+    </div>
+  );
+}
+
 export default function ClientDetail() {
   const { id } = useParams<{ id: string }>();
   const [client, setClient] = useState<any>(null);
@@ -319,85 +385,92 @@ export default function ClientDetail() {
   // VISTA CONSULTOR GS (BACK)
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
-      {/* Header Principal con Avance en el Perfil del Cliente */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b-2 border-zinc-200 pb-5">
+      {/* Header Principal con Avance en el Perfil del Cliente & Executive Gauges */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 border-b border-slate-200 pb-5 bg-white p-5 rounded-2xl shadow-xs">
         <div className="flex items-center gap-4">
-          <Link to="/clients" className="p-2.5 rounded-xl border-2 border-zinc-900 hover:bg-zinc-100 transition-colors">
-            <ArrowLeft className="h-5 w-5 text-zinc-900" />
+          <Link to="/clients" className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors shadow-xs">
+            <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-black font-display tracking-wide text-zinc-950 uppercase">{client.name}</h1>
-              <span className="inline-flex items-center rounded-md bg-black px-3 py-0.5 text-xs font-bold font-display uppercase text-white tracking-wider">
-                {client.industry || 'PyME'}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-bold font-display tracking-tight text-slate-900">{client.name}</h1>
+              <span className="inline-flex items-center rounded-lg bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                {client.industry || 'Empresa SAS'}
               </span>
-              <span className="inline-flex items-center rounded-md bg-red-600 px-3 py-0.5 text-xs font-bold font-display uppercase text-white tracking-wider shadow-crimson">
+              <span className="inline-flex items-center rounded-lg bg-rose-50 border border-rose-200 px-2.5 py-0.5 text-xs font-semibold text-[#B91C1C]">
                 {clientStage === 'kickoff_omv' ? '1. Kickoff' : clientStage === 'diagnostic_in_progress' ? '2. Diagnóstico en curso' : clientStage === 'diagnostic_closed' ? '3. Diagnóstico cerrado' : '4. Master Plan activo'}
               </span>
             </div>
 
             {/* Barra y Estadísticas de Avance en el Perfil del Cliente */}
             <div className="mt-2.5 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900">
-                <Compass className="w-3.5 h-3.5 text-red-600" />
-                <span>Avance en el Perfil: <strong className="text-red-600">{answeredQuestionsCount} / {totalQuestionsCatalog}</strong> preguntas ({profileProgressPercent}%)</span>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                <Compass className="w-3.5 h-3.5 text-[#B91C1C]" />
+                <span>Avance de Perfil: <strong className="text-slate-900 font-semibold">{answeredQuestionsCount} / {totalQuestionsCatalog}</strong> ({profileProgressPercent}%)</span>
               </div>
-              <div className="w-36 bg-zinc-200 h-2 rounded-full overflow-hidden">
+              <div className="w-32 bg-slate-100 border border-slate-200 h-2 rounded-full overflow-hidden">
                 <div 
-                  className="bg-red-600 h-full rounded-full transition-all duration-500" 
+                  className="bg-[#B91C1C] h-full rounded-full transition-all duration-500" 
                   style={{ width: `${profileProgressPercent}%` }} 
                 />
               </div>
               <div 
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-950 text-white font-mono text-[11px] border border-zinc-800 shadow-sm"
+                className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-50 text-slate-700 font-mono text-[11px] border border-slate-200 shadow-xs"
                 title="Identificador único del cliente para blindaje de grabaciones y datos"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>id_cliente: <strong className="text-emerald-400 font-mono">{client.id}</strong></span>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>id_cliente: <strong className="text-slate-900 font-mono font-semibold">{client.id}</strong></span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Botón Switch Modo Portal Cliente */}
-        <div className="flex items-center gap-2">
+        {/* Top Gauges: IME 7.8/10 circular meter, Risk Index 22% & Switch Modo Portal Cliente */}
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <CircularImeMeter 
+            score={diagnosticResults.globalIme10 || 7.8} 
+            maxScore={10} 
+          />
+          <RiskIndexMeter 
+            riskPercentage={diagnosticResults.globalIre || 22} 
+          />
           <button
             onClick={() => setViewMode('cliente')}
-            className="px-4 py-2.5 bg-black text-white hover:bg-zinc-800 rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all border border-zinc-800"
+            className="px-3.5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all"
             title="Previsualizar portal como lo ve el cliente"
           >
-            <Eye className="w-4 h-4 text-red-500" />
-            Ver como Cliente (Front)
+            <Eye className="w-4 h-4 text-[#B91C1C]" />
+            Ver Portal
           </button>
         </div>
       </div>
 
       {/* Tabs Principales de la Plataforma */}
-      <div className="border-b-2 border-zinc-200">
-        <nav className="-mb-px flex space-x-3 overflow-x-auto font-display" aria-label="Tabs">
+      <div className="border-b border-slate-200">
+        <nav className="-mb-px flex space-x-2 overflow-x-auto" aria-label="Tabs">
           {[
             { id: 'dashboard', name: 'Dashboard 360', icon: Activity },
             { id: 'omv', name: '1. Kickoff & OMV', icon: Compass },
             { id: 'diagnostic', name: '2. Diagnóstico Dinámico', icon: FileText, badge: `${diagnosticResults.progressPercentage}%` },
             { id: 'matrices', name: '3. Matrices & FODA', icon: Layers },
             { id: 'master_plan', name: '4. Master Plan', icon: Target },
-            { id: 'meetings', name: 'Reuniones', icon: Calendar },
-            { id: 'portal_preview', name: 'Portal Cliente (Preview)', icon: Eye }
+            { id: 'meetings', name: 'Reuniones & Ciclo de Vida', icon: Calendar },
+            { id: 'portal_preview', name: 'Portal Cliente', icon: Eye }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 whitespace-nowrap py-3 px-3.5 border-b-2 font-bold text-xs uppercase tracking-wider transition-all ${
+              className={`flex items-center gap-2 whitespace-nowrap py-2.5 px-3.5 border-b-2 text-xs font-medium transition-all ${
                 activeTab === tab.id
-                  ? 'border-red-600 text-red-600 bg-red-50/40 rounded-t-lg'
-                  : 'border-transparent text-zinc-600 hover:text-zinc-950 hover:border-zinc-300'
+                  ? 'border-[#B91C1C] text-[#B91C1C] font-semibold bg-white rounded-t-xl shadow-xs'
+                  : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
               }`}
             >
-              <tab.icon className={`h-4 w-4 ${activeTab === tab.id ? 'text-red-600' : 'text-zinc-400'}`} />
+              <tab.icon className={`h-4 w-4 ${activeTab === tab.id ? 'text-[#B91C1C]' : 'text-slate-400'}`} />
               {tab.name}
               {tab.badge && (
-                <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-mono font-black ${
-                  activeTab === tab.id ? 'bg-red-600 text-white' : 'bg-zinc-200 text-zinc-700'
+                <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold ${
+                  activeTab === tab.id ? 'bg-[#B91C1C] text-white' : 'bg-slate-100 text-slate-600'
                 }`}>
                   {tab.badge}
                 </span>
@@ -410,70 +483,185 @@ export default function ClientDetail() {
       {/* TAB 1: DASHBOARD 360 */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
-          {/* Top KPI Cards en Tiempo Real */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm">
-              <span className="font-display text-xs font-bold text-zinc-500 uppercase tracking-widest block">Índice Madurez (IME)</span>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="font-display text-4xl font-black text-zinc-950">{diagnosticResults.globalIme}%</span>
-                <span className="font-display text-sm font-bold text-red-600">({diagnosticResults.globalIme10} / 10)</span>
+          {/* Center View: Meeting Lifecycle Cards */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 font-display">Ciclo de Vida de Reuniones Estratégicas</h2>
+                <p className="text-xs text-slate-500">Planifique y ejecute las sesiones con captura de audio en vivo Whisper y trazabilidad</p>
               </div>
-              <p className="text-xs text-zinc-400 mt-1 font-medium">Escala 1–10 • Meta trienal: 8.0</p>
+              <span className="text-xs font-medium text-slate-500 bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-xs">
+                3 Etapas Metodológicas
+              </span>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm">
-              <span className="font-display text-xs font-bold text-red-600 uppercase tracking-widest block">Índice Riesgo (IRE)</span>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="font-display text-4xl font-black text-red-600">{diagnosticResults.globalIre}%</span>
-                <span className="font-display text-xs font-bold text-zinc-400 uppercase">Inverso</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Card 1: 1. Kick off (OMV Trienal) */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                      <Target className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                      Paso 1
+                    </span>
+                  </div>
+                  <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-purple-700 transition-colors">
+                    1. Kick off (OMV Trienal)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Definición de visión a 3 años, alineación de socios y emisión de minutas de apertura en PDF.
+                  </p>
+                  <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500" /> Visión cuantitativa y metas
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500" /> Mapeo de dolores inmediatos
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500" /> Auditoría y minuta PDF
+                    </li>
+                  </ul>
+                </div>
+                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-slate-400">Entregable: OMV</span>
+                  <button
+                    onClick={() => {
+                      setMeetingLaunchType('kickoff');
+                      setIsPlanningMeeting(true);
+                      setActiveTab('meetings');
+                    }}
+                    className="px-3.5 py-1.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                  >
+                    Planificar Kick off
+                  </button>
+                </div>
               </div>
-              <p className="text-xs text-zinc-400 mt-1 font-medium">Matriz de Contingencias</p>
-            </div>
 
-            <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm">
-              <span className="font-display text-xs font-bold text-zinc-500 uppercase tracking-widest block">Avance del Diagnóstico</span>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="font-display text-4xl font-black text-zinc-950">{diagnosticResults.progressPercentage}%</span>
-                <span className="text-xs text-zinc-500 font-bold font-mono">({diagnosticResults.totalAnswered} / {diagnosticResults.totalQuestions})</span>
+              {/* Card 2: 2. Diagnóstico 360° */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 text-[#B91C1C] flex items-center justify-center font-bold">
+                      <Mic className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-semibold text-[#B91C1C] bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                      Paso 2
+                    </span>
+                  </div>
+                  <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-[#B91C1C] transition-colors">
+                    2. Diagnóstico 360°
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Entrevistas guiadas por áreas temáticas con transcripción Whisper y avance automático del perfil.
+                  </p>
+                  <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" /> Selección de temas y preguntas
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" /> Grabación con audio chunking
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" /> Check out con aprobación del cliente
+                    </li>
+                  </ul>
+                </div>
+                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-slate-400">Avance: {profileProgressPercent}%</span>
+                  <button
+                    onClick={() => {
+                      setMeetingLaunchType('diagnostico');
+                      setIsPlanningMeeting(true);
+                      setActiveTab('meetings');
+                    }}
+                    className="px-3.5 py-1.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                  >
+                    Planificar Diagnóstico
+                  </button>
+                </div>
               </div>
-              <p className="text-xs text-zinc-400 mt-1 font-medium">Preguntas cerradas respondidas</p>
-            </div>
 
-            <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm">
-              <span className="font-display text-xs font-bold text-zinc-500 uppercase tracking-widest block">Sesiones & Minutas</span>
-              <div className="mt-2 flex items-baseline gap-2">
-                <span className="font-display text-4xl font-black text-zinc-950">{meetings.length}</span>
-                <span className="font-display text-xs text-emerald-600 font-bold uppercase">Grabadas</span>
+              {/* Card 3: 3. Revisión Trimestral (90 Días) */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-bold">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                      Paso 3 · Cada 90 Días
+                    </span>
+                  </div>
+                  <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-slate-950 transition-colors">
+                    3. Revisión Trimestral (90 Días)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Auditoría de tareas del Master Plan y recalibración de los 5 vértices del Pentágono.
+                  </p>
+                  <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600" /> Auditoría de iniciativas
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600" /> Recalibración del Pentágono
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600" /> Compromisos del ciclo Q+1
+                    </li>
+                  </ul>
+                </div>
+                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-slate-400">Ciclo: Q+1</span>
+                  <button
+                    onClick={() => {
+                      setMeetingLaunchType('seguimiento_trimestral');
+                      setIsPlanningMeeting(true);
+                      setActiveTab('meetings');
+                    }}
+                    className="px-3.5 py-1.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                  >
+                    Planificar Trimestral
+                  </button>
+                </div>
               </div>
-              <p className="text-xs text-zinc-400 mt-1 font-medium">Alimentan el diagnóstico dinámico</p>
             </div>
           </div>
 
-          {/* Radar Chart & Top Risks */}
+          {/* Polished Pentagon Radar Chart & Recent Recordings Stream */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
+            {/* Pentagon Radar Chart (2 cols) */}
+            <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
-                  <h2 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
-                    Pentágono del Orden (Madurez en 5 Ejes)
+                  <h2 className="font-display text-base font-bold text-slate-900">
+                    Pentágono de Madurez (5 Ejes Estratégicos)
                   </h2>
-                  <p className="text-xs text-zinc-500 font-medium">Comparativa: {currentPeriod.label} vs. Actual en Vivo vs. Meta (8.2)</p>
+                  <p className="text-xs text-slate-500">Comparativa histórica: {currentPeriod.label} vs. Actual en Vivo vs. Meta (8.2)</p>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                  <div className="flex items-center gap-3 text-xs font-display uppercase tracking-wider font-bold">
-                    <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-zinc-400" /> {currentPeriod.periodCode} ({currentPeriod.imeActual})</span>
-                    <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-600" /> Actual ({diagnosticResults.globalIme10})</span>
-                    <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-zinc-950" /> Meta ({metaPeriod.imeActual})</span>
+                <div className="flex flex-col sm:items-end gap-2">
+                  <div className="flex items-center gap-3 text-xs font-medium">
+                    <span className="flex items-center gap-1 text-slate-500">
+                      <span className="h-2 w-2 rounded-full bg-slate-400" /> {currentPeriod.periodCode} ({currentPeriod.imeActual})
+                    </span>
+                    <span className="flex items-center gap-1 text-[#B91C1C] font-semibold">
+                      <span className="h-2 w-2 rounded-full bg-[#B91C1C]" /> Actual ({diagnosticResults.globalIme10})
+                    </span>
+                    <span className="flex items-center gap-1 text-slate-900 font-medium">
+                      <span className="h-2 w-2 rounded-full bg-slate-900" /> Meta ({metaPeriod.imeActual})
+                    </span>
                   </div>
                   <div className="flex items-center gap-1 overflow-x-auto max-w-xs sm:max-w-md pb-0.5">
                     {pentagonData.map(p => (
                       <button
                         key={p.periodCode}
                         onClick={() => setSelectedPentagonPeriod(p.periodCode)}
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold font-display uppercase tracking-wider transition-all ${
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all ${
                           selectedPentagonPeriod === p.periodCode
-                            ? 'bg-black text-white shadow-xs'
-                            : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                            ? 'bg-slate-900 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                         title={p.label}
                       >
@@ -486,36 +674,78 @@ export default function ClientDetail() {
               <div className="h-80 w-full min-h-[320px] min-w-[280px]">
                 <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={300}>
                   <RadarChart data={radarChartData}>
-                    <PolarGrid stroke="#e4e4e7" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#09090b', fontSize: 12, fontWeight: 700, fontFamily: 'Oswald' }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 10]} stroke="#71717a" />
+                    <PolarGrid stroke="#e2e8f0" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#334155', fontSize: 11, fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 10]} stroke="#94a3b8" />
                     <Tooltip />
-                    <Radar name="Línea Base" dataKey="Baseline" stroke="#a1a1aa" fill="#a1a1aa" fillOpacity={0.2} />
-                    <Radar name="Actual" dataKey="Actual" stroke="#dc2626" fill="#dc2626" fillOpacity={0.5} strokeWidth={2} />
-                    <Radar name="Meta Trienal" dataKey="Meta" stroke="#09090b" fill="#09090b" fillOpacity={0.1} strokeDasharray="3 3" strokeWidth={2} />
+                    <Radar name="Línea Base" dataKey="Baseline" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.15} />
+                    <Radar name="Actual" dataKey="Actual" stroke="#b91c1c" fill="#b91c1c" fillOpacity={0.35} strokeWidth={2} />
+                    <Radar name="Meta Trienal" dataKey="Meta" stroke="#0f172a" fill="#0f172a" fillOpacity={0.08} strokeDasharray="3 3" strokeWidth={1.5} />
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            {/* Top Critical Risks */}
-            <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm flex flex-col">
-              <h2 className="font-display text-lg font-bold text-zinc-950 mb-3 flex items-center gap-2 uppercase tracking-wide">
-                <ShieldAlert className="h-5 w-5 text-red-600" /> Focos Críticos de Riesgo
-              </h2>
-              <div className="space-y-3 flex-1 overflow-y-auto">
-                {diagnosticResults.risks.slice(0, 3).map(r => (
-                  <div key={r.id} className="p-3.5 bg-red-50/50 border border-red-200 rounded-xl">
-                    <div className="flex items-center justify-between text-xs font-bold font-display uppercase tracking-wide text-red-800">
-                      <span>{r.code} • {r.category}</span>
-                      <span className="bg-red-600 text-white px-2 py-0.5 rounded text-[10px]">{r.severityLevel}</span>
+            {/* Critical Risks Column */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+              <div>
+                <h2 className="font-display text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-[#B91C1C]" /> Focos Críticos de Riesgo
+                </h2>
+                <p className="text-xs text-slate-500 mb-4">Vulnerabilidades de impacto directo en la gobernanza</p>
+
+                <div className="space-y-3 overflow-y-auto max-h-[250px]">
+                  {diagnosticResults.risks.slice(0, 3).map(r => (
+                    <div key={r.id} className="p-3 bg-rose-50/60 border border-rose-100 rounded-xl">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-rose-900">
+                        <span>{r.code} • {r.category}</span>
+                        <span className="bg-[#B91C1C] text-white px-1.5 py-0.2 rounded text-[9px] font-medium">{r.severityLevel}</span>
+                      </div>
+                      <p className="text-xs text-slate-900 font-medium mt-1">{r.description}</p>
+                      <p className="text-[11px] text-slate-500 mt-1 italic">Acción: {r.suggestedAction}</p>
                     </div>
-                    <p className="text-xs text-zinc-900 font-bold mt-1.5">{r.description}</p>
-                    <p className="text-[11px] text-zinc-500 mt-1 italic font-medium">Acción: {r.suggestedAction}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs text-slate-500">Total detectados: {diagnosticResults.risks.length}</span>
+                <button
+                  onClick={() => setActiveTab('matrices')}
+                  className="text-xs font-semibold text-[#B91C1C] hover:underline"
+                >
+                  Ver Matriz de Riesgos →
+                </button>
               </div>
             </div>
+          </div>
+
+          {/* Quick Recordings Preview Strip */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Mic className="w-4 h-4 text-[#B91C1C]" />
+                <h3 className="font-display text-base font-bold text-slate-900">
+                  Grabaciones Recientes de Sesiones ({meetings.length})
+                </h3>
+              </div>
+              <button
+                onClick={() => setActiveTab('meetings')}
+                className="text-xs font-semibold text-[#B91C1C] hover:underline flex items-center gap-1"
+              >
+                Ir a Grabaciones & Minutas →
+              </button>
+            </div>
+            
+            <ClientRecordingsHistory
+              clientId={id as string}
+              clientName={client.name}
+              onNewRecording={(type) => {
+                setMeetingLaunchType(type || 'diagnostico');
+                setIsPlanningMeeting(true);
+                setActiveTab('meetings');
+              }}
+            />
           </div>
         </div>
       )}
@@ -706,20 +936,20 @@ export default function ClientDetail() {
           ) : (
             <div className="space-y-6">
               {/* Header Principal de Reuniones del Cliente */}
-              <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-5">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-ping" />
-                      <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">
-                        Flujo de Reuniones • {client.name}
+                      <span className="h-2 w-2 rounded-full bg-[#B91C1C]" />
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B91C1C]">
+                        Ciclo de Vida de Reuniones • {client.name}
                       </span>
                     </div>
-                    <h2 className="font-display text-2xl font-black text-zinc-950 uppercase tracking-tight">
+                    <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                       Reuniones del Cliente
                     </h2>
-                    <p className="text-xs text-zinc-600 mt-1 max-w-2xl">
-                      Seleccione el tipo de reunión para planificar la agenda, elegir los temas y seleccionar las preguntas a abordar antes de iniciar la sesión en vivo.
+                    <p className="text-xs text-slate-500 mt-1 max-w-2xl">
+                      Seleccione la etapa metodológica para planificar temas y preguntas antes de iniciar la sesión en vivo con captura de audio.
                     </p>
                   </div>
 
@@ -728,7 +958,7 @@ export default function ClientDetail() {
                       setMeetingLaunchType('diagnostico');
                       setIsPlanningMeeting(true);
                     }}
-                    className="px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-display font-black uppercase tracking-wider flex items-center gap-2 shadow-crimson hover:scale-105 transition-all self-start sm:self-center"
+                    className="px-4 py-2.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all self-start sm:self-center"
                   >
                     <Plus className="w-4 h-4" /> Planificar Reunión
                   </button>
@@ -742,23 +972,25 @@ export default function ClientDetail() {
                       setMeetingLaunchType('kickoff');
                       setIsPlanningMeeting(true);
                     }}
-                    className="p-5 rounded-2xl border-2 border-zinc-200 hover:border-purple-600 bg-purple-50/20 hover:bg-purple-50/40 cursor-pointer transition-all space-y-2 group"
+                    className="p-5 rounded-2xl border border-slate-200 hover:border-purple-300 bg-white hover:bg-purple-50/20 shadow-xs hover:shadow-md cursor-pointer transition-all space-y-2.5 group flex flex-col justify-between"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
-                        <Target className="w-4 h-4" />
-                      </span>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-700">
-                        Paso 1
-                      </span>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                          <Target className="w-4 h-4" />
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                          Paso 1
+                        </span>
+                      </div>
+                      <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-purple-700 transition-colors">
+                        1. Kick off (OMV Trienal)
+                      </h3>
+                      <p className="text-xs text-slate-500 leading-relaxed mt-1">
+                        Definición de la <strong>visión trienal (OMV)</strong>, alineación de fundadores y emisión de minutas de auditoría en PDF.
+                      </p>
                     </div>
-                    <h3 className="font-display text-sm font-black uppercase text-zinc-950 group-hover:text-purple-700 transition-colors">
-                      1. Kick off
-                    </h3>
-                    <p className="text-xs text-zinc-600 leading-relaxed">
-                      Definición de la <strong>visión trienal (OMV)</strong>, alineación de fundadores y emisión de Minutas en PDF.
-                    </p>
-                    <div className="pt-2 flex items-center text-xs font-bold text-purple-700 group-hover:translate-x-1 transition-transform">
+                    <div className="pt-3 border-t border-slate-100 flex items-center text-xs font-semibold text-purple-700 group-hover:translate-x-1 transition-transform">
                       <span>Planificar Kick off</span> →
                     </div>
                   </div>
@@ -769,23 +1001,25 @@ export default function ClientDetail() {
                       setMeetingLaunchType('diagnostico');
                       setIsPlanningMeeting(true);
                     }}
-                    className="p-5 rounded-2xl border-2 border-zinc-200 hover:border-red-600 bg-red-50/20 hover:bg-red-50/40 cursor-pointer transition-all space-y-2 group"
+                    className="p-5 rounded-2xl border border-slate-200 hover:border-rose-300 bg-white hover:bg-rose-50/20 shadow-xs hover:shadow-md cursor-pointer transition-all space-y-2.5 group flex flex-col justify-between"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="w-9 h-9 rounded-xl bg-red-100 text-red-700 flex items-center justify-center font-black">
-                        <Mic className="w-4 h-4" />
-                      </span>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-red-100 text-red-700">
-                        Paso 2
-                      </span>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 text-[#B91C1C] flex items-center justify-center font-bold">
+                          <Mic className="w-4 h-4" />
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-50 text-[#B91C1C] border border-rose-200">
+                          Paso 2
+                        </span>
+                      </div>
+                      <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-[#B91C1C] transition-colors">
+                        2. Diagnóstico 360°
+                      </h3>
+                      <p className="text-xs text-slate-500 leading-relaxed mt-1">
+                        Entrevistas por <strong>temas y preguntas</strong> de cada área para registrar el avance dinámico del perfil del cliente.
+                      </p>
                     </div>
-                    <h3 className="font-display text-sm font-black uppercase text-zinc-950 group-hover:text-red-700 transition-colors">
-                      2. Diagnóstico 360°
-                    </h3>
-                    <p className="text-xs text-zinc-600 leading-relaxed">
-                      Elegir <strong>los temas y preguntas</strong> de cada área para registrar el avance del perfil del cliente.
-                    </p>
-                    <div className="pt-2 flex items-center text-xs font-bold text-red-600 group-hover:translate-x-1 transition-transform">
+                    <div className="pt-3 border-t border-slate-100 flex items-center text-xs font-semibold text-[#B91C1C] group-hover:translate-x-1 transition-transform">
                       <span>Planificar Diagnóstico</span> →
                     </div>
                   </div>
@@ -796,23 +1030,25 @@ export default function ClientDetail() {
                       setMeetingLaunchType('seguimiento_trimestral');
                       setIsPlanningMeeting(true);
                     }}
-                    className="p-5 rounded-2xl border-2 border-zinc-200 hover:border-zinc-950 bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-all space-y-2 group"
+                    className="p-5 rounded-2xl border border-slate-200 hover:border-slate-400 bg-white hover:bg-slate-50 shadow-xs hover:shadow-md cursor-pointer transition-all space-y-2.5 group flex flex-col justify-between"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="w-9 h-9 rounded-xl bg-zinc-200 text-zinc-900 flex items-center justify-center font-black">
-                        <Calendar className="w-4 h-4" />
-                      </span>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-zinc-200 text-zinc-800">
-                        Cada 90 Días
-                      </span>
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-bold">
+                          <Calendar className="w-4 h-4" />
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                          Cada 90 Días
+                        </span>
+                      </div>
+                      <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-slate-950 transition-colors">
+                        3. Revisión Trimestral (90 Días)
+                      </h3>
+                      <p className="text-xs text-slate-500 leading-relaxed mt-1">
+                        Auditoría del Master Plan de tareas y <strong>recalibración de los 5 vértices del Pentágono</strong>.
+                      </p>
                     </div>
-                    <h3 className="font-display text-sm font-black uppercase text-zinc-950 group-hover:text-black transition-colors">
-                      3. Revisión Trimestral
-                    </h3>
-                    <p className="text-xs text-zinc-600 leading-relaxed">
-                      Auditoría de tareas del Master Plan y <strong>recalibración de los 5 vértices del Pentágono</strong>.
-                    </p>
-                    <div className="pt-2 flex items-center text-xs font-bold text-zinc-900 group-hover:translate-x-1 transition-transform">
+                    <div className="pt-3 border-t border-slate-100 flex items-center text-xs font-semibold text-slate-800 group-hover:translate-x-1 transition-transform">
                       <span>Planificar Trimestral</span> →
                     </div>
                   </div>
@@ -830,14 +1066,14 @@ export default function ClientDetail() {
               />
 
               {/* Subsección: Minutas Tradicionales de Comités */}
-              <div className="space-y-3 pt-6 border-t-2 border-zinc-200">
+              <div className="space-y-3 pt-6 border-t border-slate-200">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-zinc-600" /> Minutas de Comités y Reuniones Tradicionales ({meetings.length})
+                  <h3 className="font-display text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-slate-500" /> Minutas de Comités y Reuniones Tradicionales ({meetings.length})
                   </h3>
                   <Link
                     to="/meetings"
-                    className="text-xs font-bold font-display uppercase tracking-wider text-zinc-600 hover:text-zinc-950"
+                    className="text-xs font-semibold text-[#B91C1C] hover:text-[#991B1B]"
                   >
                     Ver Todas las Minutas
                   </Link>
@@ -845,25 +1081,25 @@ export default function ClientDetail() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {meetings.length === 0 ? (
-                    <div className="col-span-2 bg-zinc-50 p-6 rounded-2xl border border-zinc-200 text-center text-zinc-400 text-xs">
+                    <div className="col-span-2 bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
                       No hay minutas tradicionales adicionales registradas.
                     </div>
                   ) : (
                     meetings.map(m => (
-                      <div key={m.id} className="bg-white p-5 rounded-2xl border border-zinc-200 hover:border-zinc-900 transition-all space-y-3">
+                      <div key={m.id} className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-slate-300 shadow-xs hover:shadow-md transition-all space-y-3">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h4 className="font-display font-bold text-sm text-zinc-950 uppercase tracking-wide">{m.title}</h4>
-                            <p className="text-xs text-zinc-500 mt-0.5">Fecha: {new Date(m.meeting_date).toLocaleDateString('es-AR')}</p>
+                            <h4 className="font-display font-semibold text-sm text-slate-900">{m.title}</h4>
+                            <p className="text-xs text-slate-500 mt-0.5">Fecha: {new Date(m.meeting_date).toLocaleDateString('es-AR')}</p>
                           </div>
-                          <span className="px-2 py-0.5 bg-zinc-100 text-zinc-700 font-display uppercase font-bold text-[10px] rounded">
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-medium rounded-md border border-slate-200">
                             {m.status || 'Completada'}
                           </span>
                         </div>
-                        <div className="pt-2 border-t border-zinc-100 flex justify-end">
+                        <div className="pt-2 border-t border-slate-100 flex justify-end">
                           <Link
                             to={`/meetings/${m.id}`}
-                            className="text-xs font-bold font-display uppercase tracking-wider text-zinc-700 hover:text-red-600 flex items-center gap-1"
+                            className="text-xs font-semibold text-[#B91C1C] hover:text-[#991B1B] flex items-center gap-1"
                           >
                             Ver Detalle <ChevronRight className="w-3.5 h-3.5" />
                           </Link>

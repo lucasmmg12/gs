@@ -156,20 +156,20 @@ export default function ClientRecordingsHistory({
   return (
     <div className="space-y-6">
       {/* Header with Search & Filter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border-2 border-zinc-900 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Volume2 className="w-4 h-4 text-red-600" />
-            <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">
+            <Volume2 className="w-4 h-4 text-[#B91C1C]" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B91C1C]">
               Repositorio de Audios & Transcripciones
             </span>
           </div>
-          <h2 className="font-display text-xl sm:text-2xl font-black text-zinc-950 uppercase tracking-tight">
+          <h2 className="font-display text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
             Historial de Grabaciones ({filtered.length})
           </h2>
-          <p className="text-xs text-zinc-500 mt-0.5 flex flex-wrap items-center gap-2">
-            <span>Grabaciones seguras, transcripciones de Whisper y validaciones de {clientName}.</span>
-            <span className="font-mono text-[10px] text-zinc-800 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-300 font-bold">
+          <p className="text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-2">
+            <span>Grabaciones seguras, transcripciones de Whisper y minutas de {clientName}.</span>
+            <span className="font-mono text-[10px] text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 font-semibold">
               id_cliente: {clientId}
             </span>
           </p>
@@ -177,20 +177,20 @@ export default function ClientRecordingsHistory({
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar en grabaciones o texto..."
-              className="pl-8 pr-3 py-1.5 text-xs rounded-xl border-2 border-zinc-200 focus:border-red-600 focus:outline-none w-48 sm:w-56"
+              placeholder="Buscar en grabaciones..."
+              className="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:border-[#B91C1C] focus:outline-none w-48 sm:w-56 bg-slate-50/50"
             />
           </div>
 
           <select
             value={filterType}
             onChange={e => setFilterType(e.target.value)}
-            className="px-3 py-1.5 text-xs rounded-xl border-2 border-zinc-200 focus:border-red-600 focus:outline-none font-medium"
+            className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:border-[#B91C1C] focus:outline-none font-medium bg-slate-50/50 text-slate-700"
           >
             <option value="all">Todos los Tipos</option>
             <option value="kickoff">Kick off (OMV)</option>
@@ -200,7 +200,7 @@ export default function ClientRecordingsHistory({
 
           <button
             onClick={fetchRecordings}
-            className="p-2 rounded-xl border-2 border-zinc-900 hover:bg-zinc-100 text-zinc-900 transition-colors"
+            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs transition-colors"
             title="Actualizar listado"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -210,27 +210,27 @@ export default function ClientRecordingsHistory({
 
       {/* Grid or List of Recordings */}
       {loading ? (
-        <div className="bg-white p-12 rounded-2xl border-2 border-zinc-200 text-center space-y-3">
-          <RefreshCw className="w-6 h-6 text-red-600 animate-spin mx-auto" />
-          <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Cargando grabaciones del cliente...</p>
+        <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-3">
+          <RefreshCw className="w-6 h-6 text-[#B91C1C] animate-spin mx-auto" />
+          <p className="text-xs font-semibold text-slate-500">Cargando grabaciones del cliente...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white p-12 rounded-2xl border-2 border-dashed border-zinc-300 text-center space-y-3">
-          <FileText className="w-8 h-8 text-zinc-400 mx-auto" />
-          <p className="text-xs font-bold text-zinc-600 uppercase tracking-wider">
+        <div className="bg-white p-12 rounded-2xl border border-dashed border-slate-200 text-center space-y-3">
+          <FileText className="w-8 h-8 text-slate-400 mx-auto" />
+          <p className="text-xs font-medium text-slate-600">
             No se encontraron grabaciones registradas con los filtros actuales.
           </p>
           {onNewRecording && (
             <button
               onClick={() => onNewRecording('diagnostico')}
-              className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-display font-black uppercase tracking-wider hover:bg-red-700 transition-all"
+              className="px-4 py-2 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-xl text-xs font-semibold shadow-xs transition-all"
             >
               Iniciar Primera Grabación
             </button>
           )}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {filtered.map(rec => {
             const isExpanded = expandedId === rec.id;
             const audioSrc = audioUrlMap[rec.id];
@@ -238,64 +238,64 @@ export default function ClientRecordingsHistory({
             return (
               <div
                 key={rec.id}
-                className="bg-white rounded-2xl border-2 border-zinc-900 shadow-sm hover:border-red-600 transition-all overflow-hidden"
+                className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:border-slate-300 hover:shadow-md transition-all overflow-hidden"
               >
                 {/* Main Card Header */}
-                <div className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="space-y-1.5 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-display font-black uppercase tracking-wider ${
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
                         rec.meeting_type === 'kickoff' 
-                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                          ? 'bg-purple-50 text-purple-700 border border-purple-200'
                           : rec.meeting_type === 'seguimiento_trimestral'
-                          ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                          : 'bg-red-100 text-red-800 border border-red-200'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                          : 'bg-rose-50 text-[#B91C1C] border border-rose-200'
                       }`}>
                         {rec.meeting_type ? rec.meeting_type.toUpperCase() : 'DIAGNÓSTICO'}
                       </span>
 
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium ${
                         rec.validation_status === 'accepted'
-                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          : 'bg-zinc-100 text-zinc-700'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}>
                         {rec.validation_status === 'accepted' ? '✓ Check out Validado' : 'Pendiente Validación'}
                       </span>
 
-                      <span className="text-zinc-400 text-xs font-mono">
+                      <span className="text-slate-400 text-xs font-mono">
                         {new Date(rec.created_at).toLocaleDateString('es-AR')} • {new Date(rec.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
 
-                    <h3 className="font-display text-lg font-black text-zinc-950 uppercase tracking-tight">
+                    <h3 className="font-display text-base font-bold text-slate-900 tracking-tight">
                       {rec.titulo || 'Auditoría General'}
                     </h3>
 
                     {rec.resumen && (
-                      <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
                         {rec.resumen}
                       </p>
                     )}
                   </div>
 
                   {/* Actions & Player */}
-                  <div className="flex flex-wrap items-center gap-3 shrink-0">
-                    <div className="flex items-center gap-1.5 bg-zinc-100 px-3 py-1.5 rounded-xl border border-zinc-200 text-xs font-mono font-bold text-zinc-700">
-                      <Clock className="w-3.5 h-3.5 text-zinc-500" />
+                  <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                    <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-mono font-semibold text-slate-700">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
                       {formatDuration(rec.duracion_segundos)}
                     </div>
 
                     <button
                       onClick={() => handleExportPDF(rec)}
-                      className="px-3 py-1.5 rounded-xl border-2 border-zinc-900 bg-zinc-50 hover:bg-zinc-900 hover:text-white font-display text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+                      className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium text-xs shadow-xs transition-all flex items-center gap-1.5"
                       title="Descargar entregable en PDF"
                     >
-                      <Download className="w-3.5 h-3.5" /> PDF
+                      <Download className="w-3.5 h-3.5 text-slate-500" /> PDF
                     </button>
 
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : rec.id)}
-                      className="p-2 rounded-xl border-2 border-zinc-900 hover:bg-zinc-100 transition-colors"
+                      className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs transition-colors"
                       title={isExpanded ? 'Contraer' : 'Ver detalle'}
                     >
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -305,8 +305,8 @@ export default function ClientRecordingsHistory({
 
                 {/* Audio Player Strip */}
                 {audioSrc && (
-                  <div className="bg-zinc-50 px-5 py-2.5 border-t border-zinc-200 flex items-center gap-3">
-                    <Volume2 className="w-4 h-4 text-red-600 shrink-0" />
+                  <div className="bg-slate-50/70 px-5 py-2.5 border-t border-slate-100 flex items-center gap-3">
+                    <Volume2 className="w-4 h-4 text-[#B91C1C] shrink-0" />
                     <audio 
                       controls 
                       src={audioSrc} 
@@ -320,14 +320,14 @@ export default function ClientRecordingsHistory({
 
                 {/* Expanded Details */}
                 {isExpanded && (
-                  <div className="p-5 border-t-2 border-zinc-900 bg-zinc-50/70 space-y-5 animate-in fade-in duration-200">
+                  <div className="p-5 border-t border-slate-200 bg-slate-50/50 space-y-4 animate-in fade-in duration-200">
                     {/* Resumen */}
                     {rec.resumen && (
                       <div className="space-y-1.5">
-                        <h4 className="font-display text-xs font-black uppercase tracking-wider text-zinc-950 flex items-center gap-1.5">
-                          <FileText className="w-3.5 h-3.5 text-red-600" /> Resumen Ejecutivo
+                        <h4 className="font-display text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-[#B91C1C]" /> Resumen Ejecutivo
                         </h4>
-                        <p className="text-xs text-zinc-700 bg-white p-3.5 rounded-xl border border-zinc-200 leading-relaxed">
+                        <p className="text-xs text-slate-700 bg-white p-3.5 rounded-xl border border-slate-200 leading-relaxed">
                           {rec.resumen}
                         </p>
                       </div>
@@ -335,31 +335,31 @@ export default function ClientRecordingsHistory({
 
                     {/* OMV Deliverable if Kickoff */}
                     {rec.omv_deliverable?.vision_3_years && (
-                      <div className="space-y-1.5 bg-red-50/60 p-4 rounded-xl border border-red-200">
-                        <span className="font-display text-xs font-black uppercase text-red-600 flex items-center gap-1.5">
+                      <div className="space-y-1.5 bg-purple-50/50 p-4 rounded-xl border border-purple-200">
+                        <span className="font-display text-xs font-bold uppercase text-purple-800 flex items-center gap-1.5">
                           <Target className="w-3.5 h-3.5" /> Entregable OMV (Visión a 3 Años)
                         </span>
-                        <p className="text-xs font-semibold text-zinc-900 mt-1">
+                        <p className="text-xs font-medium text-slate-800 mt-1">
                           "{rec.omv_deliverable.vision_3_years}"
                         </p>
                       </div>
                     )}
 
                     {/* Check out Validation details */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3.5 rounded-xl border border-zinc-200 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-white p-3.5 rounded-xl border border-slate-200 text-xs">
                       <div>
-                        <span className="text-[10px] font-bold font-display uppercase tracking-wider text-zinc-500">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                           Validado en Check out por:
                         </span>
-                        <p className="font-bold text-zinc-900 mt-0.5">
+                        <p className="font-semibold text-slate-900 mt-0.5">
                           {rec.validated_by || 'Aprobación del Director General'}
                         </p>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold font-display uppercase tracking-wider text-zinc-500">
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
                           Observaciones / Feedback:
                         </span>
-                        <p className="text-zinc-600 mt-0.5">
+                        <p className="text-slate-600 mt-0.5">
                           {rec.client_feedback || 'Sin observaciones adicionales.'}
                         </p>
                       </div>
@@ -367,11 +367,11 @@ export default function ClientRecordingsHistory({
 
                     {/* Transcripción Whisper Completa */}
                     {rec.transcripcion && (
-                      <details className="border border-zinc-200 rounded-xl bg-white p-3">
-                        <summary className="text-xs font-bold font-display uppercase tracking-wider text-zinc-700 cursor-pointer hover:text-red-600">
-                          Ver Transcripción Completa de Audio
+                      <details className="border border-slate-200 rounded-xl bg-white p-3">
+                        <summary className="text-xs font-semibold text-slate-700 cursor-pointer hover:text-[#B91C1C]">
+                          Ver Transcripción Completa de Whisper
                         </summary>
-                        <div className="mt-3 p-3 bg-zinc-50 rounded-lg text-xs font-mono text-zinc-700 max-h-60 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                        <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-700 max-h-60 overflow-y-auto whitespace-pre-wrap leading-relaxed border border-slate-100">
                           {rec.transcripcion}
                         </div>
                       </details>
@@ -386,3 +386,4 @@ export default function ClientRecordingsHistory({
     </div>
   );
 }
+

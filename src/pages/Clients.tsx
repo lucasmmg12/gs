@@ -106,33 +106,33 @@ export default function Clients() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="h-2 w-2 rounded-full bg-red-600" />
-            <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">Cartera Estratégica</span>
+            <span className="h-2 w-2 rounded-full bg-[#B91C1C]" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B91C1C]">Cartera de Consultoría</span>
           </div>
-          <h1 className="font-display text-3xl font-black uppercase tracking-tight text-zinc-950">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
             Directorio de Clientes
           </h1>
-          <p className="mt-1 text-sm text-zinc-600 font-sans">
-            Gestiona los clientes, su Diagnóstico 360°, Master Plan Estratégico y Pentágono del Orden.
+          <p className="mt-1 text-sm text-slate-500 font-sans">
+            Gestione las organizaciones, diagnósticos dinámicos, ciclo de reuniones y master plans de Consultora GS.
           </p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 font-display text-xs font-black uppercase tracking-wider text-white shadow-crimson hover:bg-red-700 transition-colors"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#B91C1C] px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#991B1B] transition-colors self-start sm:self-center"
         >
-          <Plus className="h-4 w-4 stroke-[3]" />
+          <Plus className="h-4 w-4 stroke-[2.5]" />
           Nuevo Cliente
         </button>
       </div>
 
-      <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border-2 border-zinc-900">
+      <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-xs border border-slate-200">
         <div className="relative flex-1 max-w-md">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search className="h-4 w-4 text-zinc-400" />
+            <Search className="h-4 w-4 text-slate-400" />
           </div>
           <input
             type="text"
-            className="block w-full rounded-lg border border-zinc-300 py-2 pl-9 pr-3 text-sm text-zinc-900 focus:ring-2 focus:ring-red-600 focus:border-red-600 placeholder:text-zinc-400"
+            className="block w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-sm text-slate-900 focus:ring-2 focus:ring-[#B91C1C] focus:border-[#B91C1C] placeholder:text-slate-400 bg-slate-50/50"
             placeholder="Buscar por razón social o industria..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -140,49 +140,49 @@ export default function Clients() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl bg-white shadow-sm border-2 border-zinc-900">
+      <div className="overflow-hidden rounded-2xl bg-white shadow-xs border border-slate-200">
         {loading ? (
-          <div className="p-12 text-center text-zinc-500 font-bold font-display uppercase tracking-wider">
-            Cargando clientes de Consultora GS...
+          <div className="p-12 text-center text-slate-500 font-medium">
+            Cargando organizaciones clientes...
           </div>
         ) : filteredClients.length > 0 ? (
-          <ul role="list" className="divide-y divide-zinc-200">
+          <ul role="list" className="divide-y divide-slate-100">
             {filteredClients.map((client) => (
-              <li key={client.id} className="hover:bg-red-50/40 transition-colors group">
-                <Link to={`/clients/${client.id}`} className="flex items-center justify-between gap-x-6 px-6 py-5">
+              <li key={client.id} className="hover:bg-slate-50/80 transition-colors group">
+                <Link to={`/clients/${client.id}`} className="flex items-center justify-between gap-x-6 px-6 py-4.5">
                   <div className="flex min-w-0 gap-x-4 items-center">
-                    <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-zinc-950 text-red-500 border border-zinc-800 shadow-xs group-hover:bg-red-600 group-hover:text-white transition-colors">
-                      <Building2 className="h-6 w-6" />
+                    <div className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-slate-100 text-slate-700 border border-slate-200 group-hover:bg-[#B91C1C] group-hover:text-white transition-colors">
+                      <Building2 className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-auto">
-                      <p className="font-display text-base font-bold text-zinc-950 group-hover:text-red-600 transition-colors uppercase tracking-wide">
+                      <p className="font-display text-sm font-bold text-slate-900 group-hover:text-[#B91C1C] transition-colors tracking-tight">
                         {client.name}
                       </p>
-                      <div className="mt-1 flex items-center gap-3 text-xs text-zinc-500 font-sans">
+                      <div className="mt-1 flex items-center gap-3 text-xs text-slate-500 font-sans">
                         <span className="font-medium">{client.industry || 'PyME en Desarrollo'}</span>
-                        <span className="h-1 w-1 rounded-full bg-zinc-300" />
-                        <span className="flex items-center gap-1 text-red-600 font-bold font-display uppercase tracking-wider">
-                          <Activity className="h-3 w-3 stroke-[2.5]" /> IME: 5.5
+                        <span className="h-1 w-1 rounded-full bg-slate-300" />
+                        <span className="flex items-center gap-1 text-[#B91C1C] font-semibold text-[11px]">
+                          <Activity className="h-3 w-3 stroke-[2.2]" /> IME: 7.8
                         </span>
-                        <span className="h-1 w-1 rounded-full bg-zinc-300" />
-                        <span className="flex items-center gap-1 text-zinc-900 font-bold font-display uppercase tracking-wider">
+                        <span className="h-1 w-1 rounded-full bg-slate-300" />
+                        <span className="flex items-center gap-1 text-slate-700 font-medium text-[11px]">
                           <Layers className="h-3 w-3" /> Master Plan: 42%
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="inline-flex items-center rounded-full bg-zinc-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-red-400 border border-red-600/40">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 border border-emerald-200">
                       Activo
                     </span>
-                    <ChevronRight className="h-5 w-5 text-zinc-400 group-hover:text-red-600 group-hover:translate-x-0.5 transition-all" />
+                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-[#B91C1C] group-hover:translate-x-0.5 transition-all" />
                   </div>
                 </Link>
               </li>
             ))}
           </ul>
         ) : (
-          <div className="p-12 text-center text-zinc-500 font-medium">
+          <div className="p-12 text-center text-slate-500 font-medium">
             No se encontraron clientes activos.
           </div>
         )}
@@ -190,10 +190,10 @@ export default function Clients() {
 
       {/* Modal Nuevo Cliente */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-obsidian border-2 border-zinc-900">
-            <div className="flex items-center justify-between pb-3 border-b-2 border-red-600">
-              <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 className="font-display text-base font-bold text-slate-900">
                 Registrar Nuevo Cliente
               </h3>
               <button 

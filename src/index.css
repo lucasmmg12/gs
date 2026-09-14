@@ -2,54 +2,63 @@
 
 @layer base {
   :root {
-    --font-display: 'Oswald', 'Bebas Neue', sans-serif;
-    --font-sans: 'Outfit', sans-serif;
+    --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: #FAFAFA;
-    color: #09090B;
+    background-color: #F8FAFC;
+    color: #0F172A;
   }
 
-  h1, h2, h3, .font-display {
+  h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
-    letter-spacing: 0.03em;
+    letter-spacing: -0.02em;
   }
   
   html {
     scroll-behavior: smooth;
   }
 
-  /* Redline Custom Scrollbar */
+  /* Executive Slate Custom Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   
   ::-webkit-scrollbar-track {
-    background: #F4F4F5;
+    background: #F1F5F9;
   }
   
   ::-webkit-scrollbar-thumb {
-    background: #DC2626;
+    background: #94A3B8;
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #991B1B;
+    background: #64748B;
   }
 }
 
-/* Custom Utilities for High Velocity Aesthetic */
-.shadow-crimson {
-  box-shadow: 0 4px 24px -2px rgba(220, 38, 38, 0.25);
+/* Executive Accent Utilities */
+.btn-crimson {
+  background-color: #B91C1C;
+  color: #FFFFFF;
+  transition: all 0.2s ease;
+}
+.btn-crimson:hover {
+  background-color: #991B1B;
 }
 
-.shadow-obsidian {
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.2);
+.shadow-executive {
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
 }
 
-.border-redline {
-  border-color: rgba(220, 38, 38, 0.3);
+.shadow-executive-hover {
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+}
+
+.border-slate-subtle {
+  border: 1px solid #E2E8F0;
 }
