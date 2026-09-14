@@ -15,10 +15,11 @@ export interface LiveTranscriptEvent {
 export type LiveStreamStatus = 'idle' | 'connecting' | 'connected' | 'streaming' | 'fallback' | 'error';
 
 export interface WhisperLiveStreamConfig {
-  wsUrl?: string; // WebSocket endpoint (e.g., wss://api.openai.com/v1/realtime or custom Whisper WS server)
+  wsUrl?: string; // WebSocket endpoint (e.g., Supabase live-transcribe-stream or OpenAI Realtime)
   apiKey?: string;
   language?: string; // default 'es'
   clientId?: string;
+  sessionId?: string;
   onTranscript?: (event: LiveTranscriptEvent) => void;
   onStatusChange?: (status: LiveStreamStatus, message?: string) => void;
   onError?: (error: Error) => void;
@@ -35,6 +36,7 @@ export class WhisperLiveStreamer {
   private status: LiveStreamStatus = 'idle';
   private accumulatedTranscript = '';
   private isRunning = false;
+  private pingTimer: any = null;
 
   constructor(config: WhisperLiveStreamConfig) {
     this.config = {
@@ -66,21 +68,25 @@ export class WhisperLiveStreamer {
     this.isRunning = true;
     this.accumulatedTranscript = '';
 
-    const wsEndpoint = this.config.wsUrl || (import.meta as any).env?.VITE_WHISPER_WS_URL;
+    const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+    const defaultWs = supabaseUrl
+      ? supabaseUrl.replace(/^http/, 'ws') + '/functions/v1/live-transcribe-stream'
+      : undefined;
+
+    const wsEndpoint = this.config.wsUrl || (import.meta as any).env?.VITE_WHISPER_WS_URL || defaultWs;
+
+    // Start local speech recognition for immediate zero-latency display
+    this.startFallbackRecognition();
 
     if (wsEndpoint) {
-      this.setStatus('connecting', 'Conectando con WebSocket Whisper...');
+      this.setStatus('connecting', 'Conectando con WebSocket Supabase Edge...');
       try {
         await this.connectWebSocket(wsEndpoint);
         this.setupAudioStreaming();
-        this.setStatus('streaming', 'Streaming WebSocket activo');
+        this.setStatus('streaming', 'WebSocket Supabase Edge Conectado');
       } catch (err: any) {
-        console.warn('[WhisperLiveStreamer] Falló conexión WebSocket, activando fallback en vivo:', err);
-        this.startFallbackRecognition();
+        console.warn('[WhisperLiveStreamer] Aviso de conexión WebSocket:', err.message);
       }
-    } else {
-      console.log('[WhisperLiveStreamer] No se definió VITE_WHISPER_WS_URL, activando motor en vivo del navegador.');
-      this.startFallbackRecognition();
     }
   }
 
@@ -94,17 +100,28 @@ export class WhisperLiveStreamer {
         this.ws.binaryType = 'arraybuffer';
 
         this.ws.onopen = () => {
-          console.log('[WhisperLiveStreamer] WebSocket conectado exitosamente');
-          // Enviar cabecera de configuración inicial
+          console.log('[WhisperLiveStreamer] WebSocket conectado exitosamente a Supabase Edge');
+          // Enviar cabecera de registro inicial con client_id y session_id
           const initPayload = JSON.stringify({
+            type: 'register',
             event: 'start',
             language: this.config.language || 'es',
             clientId: this.config.clientId,
+            sessionId: this.config.sessionId,
             sampleRate: 16000,
             channels: 1
           });
           this.ws?.send(initPayload);
           this.setStatus('connected');
+
+          // Keepalive ping cada 20 segundos
+          if (this.pingTimer) clearInterval(this.pingTimer);
+          this.pingTimer = setInterval(() => {
+            if (this.ws?.readyState === WebSocket.OPEN) {
+              this.ws.send(JSON.stringify({ type: 'ping' }));
+            }
+          }, 20000);
+
           resolve();
         };
 
@@ -274,6 +291,11 @@ export class WhisperLiveStreamer {
    */
   public stop(): string {
     this.isRunning = false;
+
+    if (this.pingTimer) {
+      clearInterval(this.pingTimer);
+      this.pingTimer = null;
+    }
 
     if (this.ws) {
       try {

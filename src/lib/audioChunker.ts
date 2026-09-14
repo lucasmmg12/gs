@@ -13,6 +13,8 @@ export interface AudioChunkRecord {
   sizeBytes: number;
   uploaded: boolean;
   storagePath?: string;
+  transcribed?: boolean;
+  transcription?: string;
   error?: string;
 }
 
@@ -149,5 +151,89 @@ export async function clearSessionChunks(sessionId: string, clientId?: string): 
   const chunks = await getSessionChunks(sessionId, clientId);
   for (const c of chunks) {
     await del(c.id, audioDbStore);
+  }
+}
+
+/**
+ * Sends an audio chunk to the Supabase Edge Function 'transcribe-chunk' for live Whisper
+ * transcription and real-time database persistence in 'gobernanza_audio_chunks' & 'gobernanza_entrevistas'.
+ */
+export async function sendChunkToEdgeTranscriber(
+  record: AudioChunkRecord,
+  meta?: {
+    questionId?: string;
+    questionTitle?: string;
+    meetingTitle?: string;
+    durationSeconds?: number;
+  }
+): Promise<{
+  success: boolean;
+  transcription?: string;
+  accumulatedTranscript?: string;
+  storagePath?: string;
+  error?: string;
+}> {
+  try {
+    const formData = new FormData();
+    formData.append('file', record.blob, `chunk_${record.chunkIndex}.webm`);
+    formData.append('sessionId', record.sessionId);
+    formData.append('clientId', record.clientId);
+    formData.append('chunkIndex', String(record.chunkIndex));
+    
+    if (record.storagePath) {
+      formData.append('storagePath', record.storagePath);
+    }
+    if (meta?.questionId || record.activeQuestionId) {
+      formData.append('questionId', String(meta?.questionId || record.activeQuestionId));
+    }
+    if (meta?.questionTitle || record.activeQuestionTitle) {
+      formData.append('questionTitle', meta?.questionTitle || record.activeQuestionTitle || '');
+    }
+    if (meta?.meetingTitle) {
+      formData.append('meetingTitle', meta.meetingTitle);
+    }
+    if (meta?.durationSeconds) {
+      formData.append('durationSeconds', String(meta.durationSeconds));
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/transcribe-chunk`, {
+      method: 'POST',
+      headers: {
+        'apikey': anonKey,
+        'Authorization': `Bearer ${anonKey}`
+      },
+      body: formData
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Edge error HTTP ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json();
+    
+    record.transcribed = true;
+    record.transcription = data.transcription || '';
+    if (data.storagePath) {
+      record.storagePath = data.storagePath;
+      record.uploaded = true;
+    }
+    await set(record.id, record, audioDbStore);
+
+    return {
+      success: true,
+      transcription: data.transcription || '',
+      accumulatedTranscript: data.accumulatedTranscript || '',
+      storagePath: data.storagePath
+    };
+  } catch (err: any) {
+    console.warn(`[AudioChunker] sendChunkToEdgeTranscriber failed for chunk ${record.chunkIndex}:`, err.message);
+    return {
+      success: false,
+      error: err.message || 'Error de transcripción en Edge Function'
+    };
   }
 }

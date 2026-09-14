@@ -6,7 +6,8 @@ import { requestScreenWakeLock, releaseScreenWakeLock, subscribeWakeLock } from 
 import { 
   saveLocalChunk, 
   uploadChunkToStorage, 
-  compileSessionAudioBlob 
+  compileSessionAudioBlob,
+  sendChunkToEdgeTranscriber 
 } from '../../lib/audioChunker';
 import { WhisperLiveStreamer } from '../../lib/whisperLiveStream';
 import type { LiveStreamStatus } from '../../lib/whisperLiveStream';
@@ -23,8 +24,9 @@ import {
   Search, 
   Sparkles, 
   Layers,
+  Database,
+  Wifi,
   HardDrive,
-  Radio,
   Target,
   Edit3,
   Calendar,
@@ -80,12 +82,15 @@ export default function ClientMeetingSession({
   const [wakeLockActive, setWakeLockActive] = useState(false);
   const [chunksCount, setChunksCount] = useState(0);
 
-  // Live WebSocket Transcription State
+  // Live WebSocket Transcription & Supabase Realtime State
   const [liveTranscript, setLiveTranscript] = useState('');
   const [interimText, setInterimText] = useState('');
   const [streamStatus, setStreamStatus] = useState<LiveStreamStatus>('idle');
   const [streamMessage, setStreamMessage] = useState<string>('');
+  const [syncedChunks, setSyncedChunks] = useState<number>(0);
+  const [lastSyncedText, setLastSyncedText] = useState<string>('');
   const liveStreamerRef = useRef<WhisperLiveStreamer | null>(null);
+  const realtimeChannelRef = useRef<any>(null);
 
   // Step 3: Analysis & Processing
   const [processingState, setProcessingState] = useState<'compiling' | 'uploading' | 'analyzing' | null>(null);
@@ -296,13 +301,58 @@ export default function ClientMeetingSession({
       analyser.fftSize = 2048;
       analyserRef.current = analyser;
 
+      // 3.5 Initialize interview row in Supabase and subscribe to Realtime DB chunks
+      try {
+        await (supabase.from('gobernanza_entrevistas') as any).upsert({
+          id: sessionId,
+          client_id: client.id,
+          meeting_type: meetingType,
+          titulo: meetingTitle,
+          estado: 'grabando',
+          live_status: 'recording',
+          selected_questions: selectedQuestions,
+          duracion_segundos: 0,
+          transcripcion_raw: ''
+        }, { onConflict: 'id' });
+
+        if (realtimeChannelRef.current) {
+          supabase.removeChannel(realtimeChannelRef.current);
+        }
+        const channel = supabase.channel(`realtime_session_${sessionId}`)
+          .on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'gobernanza_audio_chunks',
+            filter: `session_id=eq.${sessionId}`
+          }, (payload: any) => {
+            const newChunk = payload.new;
+            if (newChunk?.transcription) {
+              setLastSyncedText(newChunk.transcription);
+              setLiveTranscript(prev => {
+                const chunkTrim = newChunk.transcription.trim();
+                if (!chunkTrim || prev.includes(chunkTrim)) return prev;
+                return prev ? `${prev} ${chunkTrim}` : chunkTrim;
+              });
+            }
+          })
+          .subscribe();
+        realtimeChannelRef.current = channel;
+      } catch (dbInitErr) {
+        console.warn('[Session] Notice initializing realtime DB interview:', dbInitErr);
+      }
+
       // 4. Start Whisper Live Streamer (WebSockets + browser fallback)
       const liveStreamer = new WhisperLiveStreamer({
         clientId: client.id,
+        sessionId: sessionId,
         language: 'es',
         onTranscript: (event) => {
           if (event.isFinal) {
-            setLiveTranscript(prev => (prev ? `${prev} ` : '') + event.text);
+            setLiveTranscript(prev => {
+              const text = event.text.trim();
+              if (!text || prev.includes(text)) return prev;
+              return prev ? `${prev} ${text}` : text;
+            });
             setInterimText('');
           } else {
             setInterimText(event.text);
@@ -319,7 +369,7 @@ export default function ClientMeetingSession({
       liveStreamerRef.current = liveStreamer;
       await liveStreamer.start(stream);
 
-      // 5. MediaRecorder with 30-second chunking for persistence
+      // 5. MediaRecorder with 15-second chunking for real-time persistence
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
         ? 'audio/webm;codecs=opus' 
         : 'audio/webm';
@@ -333,7 +383,7 @@ export default function ClientMeetingSession({
           const currentIndex = chunkIndexRef.current++;
           const currentQ = selectedQuestions[activeQuestionIndex];
           
-          // Save chunk in IndexedDB (immune to crash/network drop)
+          // 1. Save chunk in IndexedDB (immune to crash/network drop)
           const record = await saveLocalChunk(
             client.id,
             sessionId,
@@ -344,22 +394,40 @@ export default function ClientMeetingSession({
           );
           setChunksCount(prev => prev + 1);
 
-          // Upload chunk to Supabase Storage tied strictly to client_id
-          uploadChunkToStorage(record).then(res => {
-            if (!res.success) {
-              console.warn('[Session] Chunk upload failed, will sync at stop');
+          // 2. Dispatch to Supabase Edge Function 'transcribe-chunk' for live Whisper & DB persistence
+          sendChunkToEdgeTranscriber(record, {
+            questionId: String(currentQ?.id || ''),
+            questionTitle: currentQ?.title || '',
+            meetingTitle: meetingTitle,
+            durationSeconds: 15
+          }).then(res => {
+            if (res.success) {
+              setSyncedChunks(prev => prev + 1);
+              if (res.transcription) {
+                setLastSyncedText(res.transcription);
+                setLiveTranscript(prev => {
+                  const chunkTrim = res.transcription!.trim();
+                  if (!chunkTrim || prev.includes(chunkTrim)) return prev;
+                  return prev ? `${prev} ${chunkTrim}` : chunkTrim;
+                });
+              }
+            } else {
+              // Fallback upload to storage directly
+              uploadChunkToStorage(record);
             }
           });
         }
       };
 
-      // Emit chunk every 30 seconds
-      recorder.start(30000);
+      // Emit chunk every 15 seconds
+      recorder.start(15000);
 
       setStep('recording');
       setDuration(0);
       setLiveTranscript('');
       setInterimText('');
+      setChunksCount(0);
+      setSyncedChunks(0);
 
       timerRef.current = setInterval(() => {
         setDuration(prev => prev + 1);
@@ -382,6 +450,11 @@ export default function ClientMeetingSession({
     if (liveStreamerRef.current) {
       finalRecordedTranscript = liveStreamerRef.current.stop();
       liveStreamerRef.current = null;
+    }
+
+    if (realtimeChannelRef.current) {
+      supabase.removeChannel(realtimeChannelRef.current);
+      realtimeChannelRef.current = null;
     }
 
     // Stop recorder & stream
@@ -440,7 +513,7 @@ export default function ClientMeetingSession({
 
       const { error: dbErr } = await (supabase
         .from('gobernanza_entrevistas') as any)
-        .insert({
+        .upsert({
           id: sessionId,
           client_id: client.id,
           meeting_type: meetingType,
@@ -452,7 +525,7 @@ export default function ClientMeetingSession({
           validation_status: 'pending',
           omv_deliverable: omvData,
           estado: 'procesando'
-        });
+        }, { onConflict: 'id' });
 
       if (dbErr) console.warn('DB insert notice:', dbErr.message);
 
@@ -1020,29 +1093,35 @@ export default function ClientMeetingSession({
         </div>
 
         {/* Status Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div className="bg-white p-4 rounded-xl border-2 border-zinc-900">
             <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">Tiempo Grabado</span>
-            <p className="font-mono text-2xl font-black text-red-600 mt-1">{formatTime(duration)}</p>
+            <p className="font-mono text-2xl font-black text-[#6B1D2F] mt-1">{formatTime(duration)}</p>
           </div>
           <div className="bg-white p-4 rounded-xl border-2 border-zinc-900">
-            <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">Persistencia Segura</span>
+            <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">IndexedDB Local</span>
             <p className="font-mono text-sm font-bold text-zinc-950 mt-1.5 flex items-center gap-1.5">
-              <HardDrive className="w-4 h-4 text-emerald-600" /> {chunksCount} Chunks (30s)
+              <HardDrive className="w-4 h-4 text-emerald-600" /> {chunksCount} Chunks
             </p>
           </div>
           <div className="bg-white p-4 rounded-xl border-2 border-zinc-900">
+            <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">Supabase DB Live</span>
+            <p className="font-mono text-sm font-bold text-[#6B1D2F] mt-1.5 flex items-center gap-1.5">
+              <Database className="w-4 h-4 text-[#6B1D2F]" /> {syncedChunks} Guardados
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border-2 border-zinc-900">
+            <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">WebSocket Edge</span>
+            <p className="font-mono text-sm font-bold text-zinc-950 mt-1.5 flex items-center gap-1.5">
+              <Wifi className={`w-4 h-4 ${streamStatus === 'streaming' || streamStatus === 'connected' ? 'text-emerald-600' : 'text-amber-500 animate-pulse'}`} />
+              {streamStatus === 'streaming' || streamStatus === 'connected' ? 'Conectado' : streamStatus}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-xl border-2 border-zinc-900 col-span-2 sm:col-span-1">
             <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">Protección Pantalla</span>
             <p className="font-mono text-sm font-bold text-zinc-950 mt-1.5 flex items-center gap-1.5">
               <ShieldCheck className={`w-4 h-4 ${wakeLockActive ? 'text-emerald-600' : 'text-amber-500'}`} />
-              {wakeLockActive ? 'WakeLock Activo' : 'Inactivo'}
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded-xl border-2 border-zinc-900">
-            <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">Whisper Streaming</span>
-            <p className="font-mono text-sm font-bold text-zinc-950 mt-1.5 flex items-center gap-1.5">
-              <Radio className="w-4 h-4 text-red-600 animate-pulse" />
-              {streamStatus === 'streaming' || streamStatus === 'fallback' ? 'En Vivo' : streamStatus}
+              {wakeLockActive ? 'Activo' : 'Inactivo'}
             </p>
           </div>
         </div>
@@ -1051,25 +1130,30 @@ export default function ClientMeetingSession({
         <div className="bg-zinc-950 p-4 rounded-2xl border-2 border-zinc-900 shadow-crimson space-y-2">
           <div className="flex items-center justify-between text-white text-xs font-mono">
             <span className="flex items-center gap-2">
-              <Mic className="w-3.5 h-3.5 text-red-500 animate-pulse" /> Modulación de Audio
+              <Mic className="w-3.5 h-3.5 text-[#8B263E] animate-pulse" /> Modulación de Audio
             </span>
-            <span className="text-zinc-400 text-[10px]">Asociado a cliente: {client.id?.substring(0, 8)}</span>
+            <span className="text-zinc-400 text-[10px]">Cliente ID: {client.id?.substring(0, 8)} | Sesión: {sessionId.substring(0, 8)}</span>
           </div>
           <canvas ref={canvasRef} width={800} height={70} className="w-full h-16 rounded-xl" />
         </div>
 
         {/* TRANSCRIPCIÓN EN TIEMPO REAL VÍA WEBSOCKETS / STREAMING */}
         <div className="bg-white rounded-2xl border-2 border-zinc-900 p-5 space-y-3 shadow-sm">
-          <div className="flex items-center justify-between border-b border-zinc-200 pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 pb-2">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               <h3 className="font-display text-xs font-black uppercase tracking-wider text-zinc-950">
-                Transcripción Inmediata en Vivo (Whisper)
+                Transcripción Inmediata en Vivo (Whisper & Supabase Realtime)
               </h3>
             </div>
-            <span className="text-[10px] font-mono text-zinc-500">
-              {streamMessage || 'Capturando voz en tiempo real'}
-            </span>
+            <div className="flex items-center gap-2 font-mono text-[10px]">
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                <Database className="w-3 h-3 text-emerald-600" /> {syncedChunks} chunks en BD
+              </span>
+              <span className="text-zinc-500">
+                {streamMessage || 'Capturando voz en tiempo real'}
+              </span>
+            </div>
           </div>
 
           <div 
@@ -1079,14 +1163,20 @@ export default function ClientMeetingSession({
             {liveTranscript ? (
               <>
                 <span>{liveTranscript}</span>
-                {interimText && <span className="text-red-600 italic"> {interimText}</span>}
+                {interimText && <span className="text-[#6B1D2F] font-semibold italic"> {interimText}</span>}
               </>
             ) : (
               <span className="text-zinc-400 italic">
-                Habla al micrófono. La transcripción se proyectará aquí en tiempo real palabra por palabra...
+                Habla al micrófono. Cada fragmento de 15 segundos se transmite vía WebSockets y Edge Functions a Supabase en tiempo real...
               </span>
             )}
           </div>
+          {lastSyncedText && (
+            <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-mono">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+              <span className="truncate">Último chunk persistido: <span className="text-zinc-800 italic">"{lastSyncedText}"</span></span>
+            </div>
+          )}
         </div>
 
         {/* Preguntas de la Agenda - Marcador de Pregunta Activa */}
