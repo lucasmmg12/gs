@@ -641,8 +641,8 @@ export default function ClientMeetingSession({
     const margin = 14;
     let yPos = 22;
 
-    // Header Redline
-    doc.setFillColor(220, 38, 38);
+    // Header Redline (Borravino Ejecutivo)
+    doc.setFillColor(107, 29, 47);
     doc.rect(0, 0, 210, 8, 'F');
 
     doc.setFont('helvetica', 'bold');
@@ -766,9 +766,9 @@ export default function ClientMeetingSession({
           <button
             onClick={startRecording}
             disabled={selectedQuestions.length === 0}
-            className={`px-6 py-3 rounded-xl font-display font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-crimson transition-all ${
+            className={`px-6 py-3 rounded-xl font-display font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-xs transition-all ${
               selectedQuestions.length > 0
-                ? 'bg-red-600 hover:bg-red-700 text-white hover:scale-105'
+                ? 'bg-[#6B1D2F] hover:bg-[#541524] text-white hover:scale-105'
                 : 'bg-zinc-300 text-zinc-500 cursor-not-allowed'
             }`}
           >
@@ -792,12 +792,12 @@ export default function ClientMeetingSession({
               onClick={() => setMeetingType('kickoff')}
               className={`p-4 rounded-xl border-2 text-left transition-all flex flex-col justify-between ${
                 meetingType === 'kickoff'
-                  ? 'border-red-600 bg-red-50/70 shadow-sm ring-2 ring-red-500/20'
+                  ? 'border-[#6B1D2F] bg-[#F9EFF2]/70 shadow-sm ring-2 ring-[#6B1D2F]/20'
                   : 'border-zinc-200 hover:border-zinc-900 bg-zinc-50'
               }`}
             >
               <div className="flex items-center gap-2">
-                <Target className="w-4 h-4 text-red-600" />
+                <Target className="w-4 h-4 text-[#6B1D2F]" />
                 <span className="font-display text-xs font-black uppercase text-zinc-950">
                   1. Kick off (OMV)
                 </span>
@@ -811,12 +811,12 @@ export default function ClientMeetingSession({
               onClick={() => setMeetingType('diagnostico')}
               className={`p-4 rounded-xl border-2 text-left transition-all flex flex-col justify-between ${
                 meetingType === 'diagnostico'
-                  ? 'border-red-600 bg-red-50/70 shadow-sm ring-2 ring-red-500/20'
+                  ? 'border-[#6B1D2F] bg-[#F9EFF2]/70 shadow-sm ring-2 ring-[#6B1D2F]/20'
                   : 'border-zinc-200 hover:border-zinc-900 bg-zinc-50'
               }`}
             >
               <div className="flex items-center gap-2">
-                <Compass className="w-4 h-4 text-red-600" />
+                <Compass className="w-4 h-4 text-[#6B1D2F]" />
                 <span className="font-display text-xs font-black uppercase text-zinc-950">
                   2. Diagnóstico 360°
                 </span>
@@ -830,12 +830,12 @@ export default function ClientMeetingSession({
               onClick={() => setMeetingType('seguimiento_trimestral')}
               className={`p-4 rounded-xl border-2 text-left transition-all flex flex-col justify-between ${
                 meetingType === 'seguimiento_trimestral'
-                  ? 'border-red-600 bg-red-50/70 shadow-sm ring-2 ring-red-500/20'
+                  ? 'border-[#6B1D2F] bg-[#F9EFF2]/70 shadow-sm ring-2 ring-[#6B1D2F]/20'
                   : 'border-zinc-200 hover:border-zinc-900 bg-zinc-50'
               }`}
             >
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-red-600" />
+                <Calendar className="w-4 h-4 text-[#6B1D2F]" />
                 <span className="font-display text-xs font-black uppercase text-zinc-950">
                   3. Seguimiento Master Plan
                 </span>
@@ -854,7 +854,7 @@ export default function ClientMeetingSession({
               type="text"
               value={meetingTitle}
               onChange={e => setMeetingTitle(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border-2 border-zinc-300 focus:border-red-600 focus:outline-none font-medium text-sm text-zinc-950"
+              className="w-full px-4 py-2.5 rounded-xl border-2 border-zinc-300 focus:border-[#6B1D2F] focus:outline-none font-medium text-sm text-zinc-950"
             />
           </div>
 

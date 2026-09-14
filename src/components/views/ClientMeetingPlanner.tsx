@@ -259,8 +259,8 @@ export default function ClientMeetingPlanner({
       <div className="bg-zinc-950 text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-zinc-900">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-ping" />
-            <span className="font-display text-xs font-bold uppercase tracking-widest text-red-500">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#6B1D2F] animate-ping" />
+            <span className="font-display text-xs font-bold uppercase tracking-widest text-[#E6C5CD]">
               Planificación de Reunión • {client.name}
             </span>
           </div>
@@ -294,7 +294,7 @@ export default function ClientMeetingPlanner({
         {/* PASO 1: SELECCIÓN DEL TIPO DE REUNIÓN */}
         <div className="space-y-3">
           <label className="block text-xs font-bold font-display uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-[11px] font-black">1</span>
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#6B1D2F] text-white text-[11px] font-black">1</span>
             Seleccione el Tipo de Reunión
           </label>
 
@@ -304,7 +304,7 @@ export default function ClientMeetingPlanner({
               onClick={() => handleTypeChange('kickoff')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all space-y-2 relative ${
                 meetingType === 'kickoff'
-                  ? 'border-red-600 bg-red-50/50 shadow-crimson ring-2 ring-red-600/20'
+                  ? 'border-[#6B1D2F] bg-[#F9EFF2]/60 shadow-sm ring-2 ring-[#6B1D2F]/20'
                   : 'border-zinc-200 hover:border-zinc-900 bg-white'
               }`}
             >
@@ -318,7 +318,7 @@ export default function ClientMeetingPlanner({
                   </h3>
                 </div>
                 {meetingType === 'kickoff' && (
-                  <CheckCircle2 className="w-5 h-5 text-red-600" />
+                  <CheckCircle2 className="w-5 h-5 text-[#6B1D2F]" />
                 )}
               </div>
               <p className="text-xs text-zinc-600 leading-relaxed">
@@ -334,13 +334,13 @@ export default function ClientMeetingPlanner({
               onClick={() => handleTypeChange('diagnostico')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all space-y-2 relative ${
                 meetingType === 'diagnostico'
-                  ? 'border-red-600 bg-red-50/50 shadow-crimson ring-2 ring-red-600/20'
+                  ? 'border-[#6B1D2F] bg-[#F9EFF2]/60 shadow-sm ring-2 ring-[#6B1D2F]/20'
                   : 'border-zinc-200 hover:border-zinc-900 bg-white'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-red-100 text-red-700 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-[#F9EFF2] text-[#6B1D2F] flex items-center justify-center">
                     <Mic className="w-4 h-4" />
                   </div>
                   <h3 className="font-display text-sm font-black uppercase text-zinc-950">
@@ -348,13 +348,13 @@ export default function ClientMeetingPlanner({
                   </h3>
                 </div>
                 {meetingType === 'diagnostico' && (
-                  <CheckCircle2 className="w-5 h-5 text-red-600" />
+                  <CheckCircle2 className="w-5 h-5 text-[#6B1D2F]" />
                 )}
               </div>
               <p className="text-xs text-zinc-600 leading-relaxed">
                 Relevamiento exhaustivo por <strong>temas y preguntas</strong>. Registra el avance en el perfil, cálculo de IME/IRE y Check out.
               </p>
-              <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-red-50 text-red-700 border border-red-200">
+              <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#F9EFF2] text-[#6B1D2F] border border-[#E6C5CD]">
                 78 Preguntas • 10 Áreas
               </span>
             </div>
@@ -364,7 +364,7 @@ export default function ClientMeetingPlanner({
               onClick={() => handleTypeChange('seguimiento_trimestral')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all space-y-2 relative ${
                 meetingType === 'seguimiento_trimestral'
-                  ? 'border-red-600 bg-red-50/50 shadow-crimson ring-2 ring-red-600/20'
+                  ? 'border-[#6B1D2F] bg-[#F9EFF2]/60 shadow-sm ring-2 ring-[#6B1D2F]/20'
                   : 'border-zinc-200 hover:border-zinc-900 bg-white'
               }`}
             >
@@ -378,7 +378,7 @@ export default function ClientMeetingPlanner({
                   </h3>
                 </div>
                 {meetingType === 'seguimiento_trimestral' && (
-                  <CheckCircle2 className="w-5 h-5 text-red-600" />
+                  <CheckCircle2 className="w-5 h-5 text-[#6B1D2F]" />
                 )}
               </div>
               <p className="text-xs text-zinc-600 leading-relaxed">
@@ -754,12 +754,12 @@ export default function ClientMeetingPlanner({
                               }
                             }}
                             className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
-                              isQSelected ? 'border-red-600 bg-red-50/30' : 'border-zinc-200 bg-white'
+                              isQSelected ? 'border-[#6B1D2F] bg-[#F9EFF2]/60' : 'border-zinc-200 bg-white'
                             }`}
                           >
-                            <div className="mt-0.5 text-red-600">
+                            <div className="mt-0.5 text-[#6B1D2F]">
                               {isQSelected ? (
-                                <CheckSquare className="w-4 h-4 fill-red-600 text-white" />
+                                <CheckSquare className="w-4 h-4 fill-[#6B1D2F] text-white" />
                               ) : (
                                 <Square className="w-4 h-4 text-zinc-300" />
                               )}
@@ -806,7 +806,7 @@ export default function ClientMeetingPlanner({
             <button
               type="button"
               onClick={handleStartNow}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-display font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-crimson hover:scale-105 transition-all"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#6B1D2F] hover:bg-[#541524] text-white text-xs font-display font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs hover:scale-105 transition-all"
             >
               <Mic className="w-4 h-4" />
               Iniciar Reunión con Whisper en Vivo

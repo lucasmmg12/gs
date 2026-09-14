@@ -51,7 +51,7 @@ function CircularImeMeter({ score = 7.8, maxScore = 10 }: { score: number; maxSc
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="#B91C1C"
+            stroke="#6B1D2F"
             strokeWidth={strokeWidth}
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
@@ -78,9 +78,9 @@ function CircularImeMeter({ score = 7.8, maxScore = 10 }: { score: number; maxSc
 function RiskIndexMeter({ riskPercentage = 22 }: { riskPercentage: number }) {
   return (
     <div className="flex items-center gap-3 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs">
-      <div className="w-11 h-11 rounded-xl bg-rose-50 border border-rose-200 flex flex-col items-center justify-center shrink-0">
-        <span className="text-xs font-bold font-display text-[#B91C1C] leading-none">{riskPercentage}%</span>
-        <span className="text-[7px] font-bold text-[#B91C1C] uppercase mt-0.5">IRE</span>
+      <div className="w-11 h-11 rounded-xl bg-[#F9EFF2] border border-[#E6C5CD] flex flex-col items-center justify-center shrink-0">
+        <span className="text-xs font-bold font-display text-[#6B1D2F] leading-none">{riskPercentage}%</span>
+        <span className="text-[7px] font-bold text-[#6B1D2F] uppercase mt-0.5">IRE</span>
       </div>
       <div className="flex flex-col">
         <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Índice Riesgo</span>
@@ -421,7 +421,7 @@ export default function ClientDetail() {
               <span className="inline-flex items-center rounded-lg bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-700">
                 {client.industry || 'Empresa SAS'}
               </span>
-              <span className="inline-flex items-center rounded-lg bg-rose-50 border border-rose-200 px-2.5 py-0.5 text-xs font-semibold text-[#B91C1C]">
+              <span className="inline-flex items-center rounded-lg bg-[#F9EFF2] border border-[#E6C5CD] px-2.5 py-0.5 text-xs font-semibold text-[#6B1D2F]">
                 {clientStage === 'kickoff_omv' ? '1. Kickoff' : clientStage === 'diagnostic_in_progress' ? '2. Diagnóstico en curso' : clientStage === 'diagnostic_closed' ? '3. Diagnóstico cerrado' : '4. Master Plan activo'}
               </span>
             </div>
@@ -429,12 +429,12 @@ export default function ClientDetail() {
             {/* Barra y Estadísticas de Avance en el Perfil del Cliente */}
             <div className="mt-2.5 flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                <Compass className="w-3.5 h-3.5 text-[#B91C1C]" />
+                <Compass className="w-3.5 h-3.5 text-[#6B1D2F]" />
                 <span>Avance de Perfil: <strong className="text-slate-900 font-semibold">{answeredQuestionsCount} / {totalQuestionsCatalog}</strong> ({profileProgressPercent}%)</span>
               </div>
               <div className="w-32 bg-slate-100 border border-slate-200 h-2 rounded-full overflow-hidden">
                 <div 
-                  className="bg-[#B91C1C] h-full rounded-full transition-all duration-500" 
+                  className="bg-[#6B1D2F] h-full rounded-full transition-all duration-500" 
                   style={{ width: `${profileProgressPercent}%` }} 
                 />
               </div>
@@ -463,7 +463,7 @@ export default function ClientDetail() {
             className="px-3.5 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all"
             title="Abrir portal oficial del cliente en su propia página"
           >
-            <Eye className="w-4 h-4 text-[#B91C1C]" />
+            <Eye className="w-4 h-4 text-[#6B1D2F]" />
             Ver Portal
           </Link>
         </div>
@@ -486,15 +486,15 @@ export default function ClientDetail() {
               to={tab.path}
               className={`flex items-center gap-2 whitespace-nowrap py-2.5 px-3.5 border-b-2 text-xs font-medium transition-all ${
                 activeTab === tab.id
-                  ? 'border-[#B91C1C] text-[#B91C1C] font-semibold bg-white rounded-t-xl shadow-xs'
+                  ? 'border-[#6B1D2F] text-[#6B1D2F] font-semibold bg-white rounded-t-xl shadow-xs'
                   : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
               }`}
             >
-              <tab.icon className={`h-4 w-4 ${activeTab === tab.id ? 'text-[#B91C1C]' : 'text-slate-400'}`} />
+              <tab.icon className={`h-4 w-4 ${activeTab === tab.id ? 'text-[#6B1D2F]' : 'text-slate-400'}`} />
               {tab.name}
               {tab.badge && (
                 <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold ${
-                  activeTab === tab.id ? 'bg-[#B91C1C] text-white' : 'bg-slate-100 text-slate-600'
+                  activeTab === tab.id ? 'bg-[#6B1D2F] text-white' : 'bg-slate-100 text-slate-600'
                 }`}>
                   {tab.badge}
                 </span>
@@ -553,7 +553,7 @@ export default function ClientDetail() {
                   <span className="text-[11px] font-medium text-slate-400">Entregable: OMV</span>
                   <button
                     onClick={() => navigate(`/clients/${id}/meetings/plan?type=kickoff`)}
-                    className="px-3.5 py-1.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                    className="px-3.5 py-1.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
                   >
                     Planificar Kick off
                   </button>
@@ -564,14 +564,14 @@ export default function ClientDetail() {
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group">
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 text-[#B91C1C] flex items-center justify-center font-bold">
+                    <div className="w-9 h-9 rounded-xl bg-[#F9EFF2] border border-[#E6C5CD] text-[#6B1D2F] flex items-center justify-center font-bold">
                       <Mic className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-semibold text-[#B91C1C] bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                    <span className="text-[10px] font-semibold text-[#6B1D2F] bg-[#F9EFF2] px-2 py-0.5 rounded-md border border-[#E6C5CD]">
                       Paso 2
                     </span>
                   </div>
-                  <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-[#B91C1C] transition-colors">
+                  <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-[#6B1D2F] transition-colors">
                     2. Diagnóstico 360°
                   </h3>
                   <p className="text-xs text-slate-500 mt-1 leading-relaxed">
@@ -579,13 +579,13 @@ export default function ClientDetail() {
                   </p>
                   <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
                     <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" /> Selección de temas y preguntas
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#6B1D2F]" /> Selección de temas y preguntas
                     </li>
                     <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" /> Grabación con audio chunking
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#6B1D2F]" /> Grabación con audio chunking
                     </li>
                     <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#B91C1C]" /> Check out con aprobación del cliente
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#6B1D2F]" /> Check out con aprobación del cliente
                     </li>
                   </ul>
                 </div>
@@ -593,7 +593,7 @@ export default function ClientDetail() {
                   <span className="text-[11px] font-medium text-slate-400">Avance: {profileProgressPercent}%</span>
                   <button
                     onClick={() => navigate(`/clients/${id}/meetings/plan?type=diagnostico`)}
-                    className="px-3.5 py-1.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                    className="px-3.5 py-1.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
                   >
                     Planificar Diagnóstico
                   </button>
@@ -633,7 +633,7 @@ export default function ClientDetail() {
                   <span className="text-[11px] font-medium text-slate-400">Ciclo: Q+1</span>
                   <button
                     onClick={() => navigate(`/clients/${id}/meetings/plan?type=seguimiento_trimestral`)}
-                    className="px-3.5 py-1.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                    className="px-3.5 py-1.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
                   >
                     Planificar Trimestral
                   </button>
@@ -658,8 +658,8 @@ export default function ClientDetail() {
                     <span className="flex items-center gap-1 text-slate-500">
                       <span className="h-2 w-2 rounded-full bg-slate-400" /> {currentPeriod.periodCode} ({currentPeriod.imeActual})
                     </span>
-                    <span className="flex items-center gap-1 text-[#B91C1C] font-semibold">
-                      <span className="h-2 w-2 rounded-full bg-[#B91C1C]" /> Actual ({diagnosticResults.globalIme10})
+                    <span className="flex items-center gap-1 text-[#6B1D2F] font-semibold">
+                      <span className="h-2 w-2 rounded-full bg-[#6B1D2F]" /> Actual ({diagnosticResults.globalIme10})
                     </span>
                     <span className="flex items-center gap-1 text-slate-900 font-medium">
                       <span className="h-2 w-2 rounded-full bg-slate-900" /> Meta ({metaPeriod.imeActual})
@@ -691,7 +691,7 @@ export default function ClientDetail() {
                     <PolarRadiusAxis angle={30} domain={[0, 10]} stroke="#94a3b8" />
                     <Tooltip />
                     <Radar name="Línea Base" dataKey="Baseline" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.15} />
-                    <Radar name="Actual" dataKey="Actual" stroke="#b91c1c" fill="#b91c1c" fillOpacity={0.35} strokeWidth={2} />
+                    <Radar name="Actual" dataKey="Actual" stroke="#6B1D2F" fill="#6B1D2F" fillOpacity={0.32} strokeWidth={2} />
                     <Radar name="Meta Trienal" dataKey="Meta" stroke="#0f172a" fill="#0f172a" fillOpacity={0.08} strokeDasharray="3 3" strokeWidth={1.5} />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -702,16 +702,16 @@ export default function ClientDetail() {
             <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
               <div>
                 <h2 className="font-display text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4 text-[#B91C1C]" /> Focos Críticos de Riesgo
+                  <ShieldAlert className="h-4 w-4 text-[#6B1D2F]" /> Focos Críticos de Riesgo
                 </h2>
                 <p className="text-xs text-slate-500 mb-4">Vulnerabilidades de impacto directo en la gobernanza</p>
 
                 <div className="space-y-3 overflow-y-auto max-h-[250px]">
                   {diagnosticResults.risks.slice(0, 3).map(r => (
-                    <div key={r.id} className="p-3 bg-rose-50/60 border border-rose-100 rounded-xl">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-rose-900">
+                    <div key={r.id} className="p-3 bg-[#F9EFF2]/70 border border-[#E6C5CD] rounded-xl">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-800">
                         <span>{r.code} • {r.category}</span>
-                        <span className="bg-[#B91C1C] text-white px-1.5 py-0.2 rounded text-[9px] font-medium">{r.severityLevel}</span>
+                        <span className="bg-[#6B1D2F] text-white px-1.5 py-0.2 rounded text-[9px] font-medium">{r.severityLevel}</span>
                       </div>
                       <p className="text-xs text-slate-900 font-medium mt-1">{r.description}</p>
                       <p className="text-[11px] text-slate-500 mt-1 italic">Acción: {r.suggestedAction}</p>
@@ -724,7 +724,7 @@ export default function ClientDetail() {
                 <span className="text-xs text-slate-500">Total detectados: {diagnosticResults.risks.length}</span>
                 <button
                   onClick={() => navigate(`/clients/${id}/matrices`)}
-                  className="text-xs font-semibold text-[#B91C1C] hover:underline"
+                  className="text-xs font-semibold text-[#6B1D2F] hover:underline"
                 >
                   Ver Matriz de Riesgos →
                 </button>
@@ -736,14 +736,14 @@ export default function ClientDetail() {
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Mic className="w-4 h-4 text-[#B91C1C]" />
+                <Mic className="w-4 h-4 text-[#6B1D2F]" />
                 <h3 className="font-display text-base font-bold text-slate-900">
                   Grabaciones Recientes de Sesiones ({meetings.length})
                 </h3>
               </div>
               <button
                 onClick={() => navigate(`/clients/${id}/meetings`)}
-                className="text-xs font-semibold text-[#B91C1C] hover:underline flex items-center gap-1"
+                className="text-xs font-semibold text-[#6B1D2F] hover:underline flex items-center gap-1"
               >
                 Ir a Grabaciones & Minutas →
               </button>
@@ -950,8 +950,8 @@ export default function ClientDetail() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="h-2 w-2 rounded-full bg-[#B91C1C]" />
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B91C1C]">
+                      <span className="h-2 w-2 rounded-full bg-[#6B1D2F]" />
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6B1D2F]">
                         Ciclo de Vida de Reuniones • {client.name}
                       </span>
                     </div>
@@ -967,7 +967,7 @@ export default function ClientDetail() {
                     onClick={() => {
                       navigate(`/clients/${id}/meetings/plan?type=diagnostico`);
                     }}
-                    className="px-4 py-2.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all self-start sm:self-center"
+                    className="px-4 py-2.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all self-start sm:self-center"
                   >
                     <Plus className="w-4 h-4" /> Planificar Reunión
                   </button>
@@ -1008,25 +1008,25 @@ export default function ClientDetail() {
                     onClick={() => {
                       navigate(`/clients/${id}/meetings/plan?type=diagnostico`);
                     }}
-                    className="p-5 rounded-2xl border border-slate-200 hover:border-rose-300 bg-white hover:bg-rose-50/20 shadow-xs hover:shadow-md cursor-pointer transition-all space-y-2.5 group flex flex-col justify-between"
+                    className="p-5 rounded-2xl border border-slate-200 hover:border-[#E6C5CD] bg-white hover:bg-[#F9EFF2]/20 shadow-xs hover:shadow-md cursor-pointer transition-all space-y-2.5 group flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 text-[#B91C1C] flex items-center justify-center font-bold">
+                        <span className="w-9 h-9 rounded-xl bg-[#F9EFF2] border border-[#E6C5CD] text-[#6B1D2F] flex items-center justify-center font-bold">
                           <Mic className="w-4 h-4" />
                         </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-rose-50 text-[#B91C1C] border border-rose-200">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#F9EFF2] text-[#6B1D2F] border border-[#E6C5CD]">
                           Paso 2
                         </span>
                       </div>
-                      <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-[#B91C1C] transition-colors">
+                      <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-[#6B1D2F] transition-colors">
                         2. Diagnóstico 360°
                       </h3>
                       <p className="text-xs text-slate-500 leading-relaxed mt-1">
                         Entrevistas por <strong>temas y preguntas</strong> de cada área para registrar el avance dinámico del perfil del cliente.
                       </p>
                     </div>
-                    <div className="pt-3 border-t border-slate-100 flex items-center text-xs font-semibold text-[#B91C1C] group-hover:translate-x-1 transition-transform">
+                    <div className="pt-3 border-t border-slate-100 flex items-center text-xs font-semibold text-[#6B1D2F] group-hover:translate-x-1 transition-transform">
                       <span>Planificar Diagnóstico</span> →
                     </div>
                   </div>

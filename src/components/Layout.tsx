@@ -32,7 +32,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
+    <div className="flex h-screen overflow-hidden bg-[#EEF2F6]">
       {/* Mobile sidebar toggle */}
       <div className="lg:hidden absolute top-4 left-4 z-50">
         <button 
@@ -49,12 +49,12 @@ export default function Layout() {
           {/* Logo area */}
           <div className="flex h-20 shrink-0 items-center px-6 border-b border-slate-200 bg-white">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#B91C1C] text-white shadow-sm">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#6B1D2F] text-white shadow-sm">
                 <Activity className="h-5 w-5 stroke-[2.2]" />
               </div>
               <div className="flex flex-col">
                 <span className="font-display text-lg font-bold text-slate-900 leading-tight">
-                  Consultora <span className="text-[#B91C1C]">GS</span>
+                  Consultora <span className="text-[#6B1D2F]">GS</span>
                 </span>
                 <span className="text-[10px] font-medium tracking-wider text-slate-400 uppercase">
                   Corporate Strategy
@@ -73,14 +73,14 @@ export default function Layout() {
                   to={item.href}
                   className={`group flex items-center rounded-xl px-3.5 py-2.5 text-xs font-medium transition-all ${
                     isActive
-                      ? 'bg-slate-100 text-slate-950 font-semibold border-l-2 border-[#B91C1C] shadow-xs'
+                      ? 'bg-slate-100 text-slate-950 font-semibold border-l-2 border-[#6B1D2F] shadow-xs'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`}
                   onClick={() => setSidebarOpen(false)}
                 >
                   <item.icon
                     className={`mr-3 h-4 w-4 shrink-0 transition-colors ${
-                      isActive ? 'text-[#B91C1C]' : 'text-slate-400 group-hover:text-slate-700'
+                      isActive ? 'text-[#6B1D2F]' : 'text-slate-400 group-hover:text-slate-700'
                     }`}
                   />
                   {item.name}
@@ -93,9 +93,9 @@ export default function Layout() {
           <div className="p-4 border-t border-slate-200 bg-slate-50/50">
             <button
               onClick={handleSignOut}
-              className="group flex w-full items-center rounded-xl px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-rose-50 hover:text-[#B91C1C]"
+              className="group flex w-full items-center rounded-xl px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-[#F9EFF2] hover:text-[#6B1D2F]"
             >
-              <LogOut className="mr-3 h-4 w-4 text-slate-400 group-hover:text-[#B91C1C]" />
+              <LogOut className="mr-3 h-4 w-4 text-slate-400 group-hover:text-[#6B1D2F]" />
               Cerrar Sesión
             </button>
           </div>
@@ -104,7 +104,7 @@ export default function Layout() {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto bg-[#F8FAFC] p-6 lg:p-8 pt-18 lg:pt-8">
+        <main className="flex-1 overflow-y-auto bg-[#EEF2F6] p-6 lg:p-8 pt-18 lg:pt-8">
           <Outlet />
         </main>
       </div>

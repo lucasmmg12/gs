@@ -71,8 +71,8 @@ export default function ClientPortalPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-slate-500">
-        <Activity className="w-8 h-8 text-[#B91C1C] animate-spin mb-3" />
+      <div className="min-h-screen bg-[#EEF2F6] flex flex-col items-center justify-center p-6 text-slate-500">
+        <Activity className="w-8 h-8 text-[#6B1D2F] animate-spin mb-3" />
         <p className="text-sm font-medium">Cargando Portal de Gestión Estratégica...</p>
       </div>
     );
@@ -80,13 +80,13 @@ export default function ClientPortalPage() {
 
   if (!client) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-[#EEF2F6] flex flex-col items-center justify-center p-6 text-center">
         <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm max-w-md w-full space-y-4">
           <h2 className="text-xl font-bold text-slate-900 font-display">Portal no disponible</h2>
           <p className="text-xs text-slate-500">No se encontró la empresa solicitada o el enlace ha caducado.</p>
           <Link
             to="/clients"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#B91C1C] text-white rounded-xl text-xs font-semibold hover:bg-[#991B1B] transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#6B1D2F] text-white rounded-xl text-xs font-semibold hover:bg-[#541524] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" /> Volver al Inicio
           </Link>
@@ -98,10 +98,10 @@ export default function ClientPortalPage() {
   // Si requiere autenticación por código de acceso de la empresa
   if (!isAuthenticated && client.portal_access_code) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-[#EEF2F6] flex flex-col items-center justify-center p-4">
         <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm max-w-md w-full space-y-5">
           <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-            <div className="w-10 h-10 rounded-xl bg-[#B91C1C] text-white flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-[#6B1D2F] text-white flex items-center justify-center font-bold">
               GS
             </div>
             <div>
@@ -112,7 +112,7 @@ export default function ClientPortalPage() {
 
           <div className="space-y-1">
             <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-              <Lock className="w-4 h-4 text-[#B91C1C]" /> Ingrese su Código de Acceso
+              <Lock className="w-4 h-4 text-[#6B1D2F]" /> Ingrese su Código de Acceso
             </h3>
             <p className="text-xs text-slate-500">
               Introduzca la clave confidencial compartida por su consultor GS para ver sus diagnósticos e informes aprobados.
@@ -126,15 +126,15 @@ export default function ClientPortalPage() {
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value)}
                 placeholder="Ej: GS-2026"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#B91C1C] focus:ring-1 focus:ring-[#B91C1C] text-sm uppercase tracking-wider font-mono"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#6B1D2F] focus:ring-1 focus:ring-[#6B1D2F] text-sm uppercase tracking-wider font-mono"
                 required
               />
-              {errorMsg && <p className="text-xs text-[#B91C1C] mt-1.5 font-medium">{errorMsg}</p>}
+              {errorMsg && <p className="text-xs text-[#6B1D2F] mt-1.5 font-medium">{errorMsg}</p>}
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
+              className="w-full py-2.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
             >
               Acceder al Portal
             </button>
@@ -154,7 +154,7 @@ export default function ClientPortalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-16">
+    <div className="min-h-screen bg-[#EEF2F6] pb-16">
       {/* Top Banner */}
       <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-xs">
         <div className="flex items-center gap-3">
@@ -166,7 +166,7 @@ export default function ClientPortalPage() {
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <span className="text-[10px] font-semibold text-[#B91C1C] uppercase tracking-wider block">
+            <span className="text-[10px] font-semibold text-[#6B1D2F] uppercase tracking-wider block">
               Portal Oficial de la Empresa
             </span>
             <h1 className="text-sm font-bold text-slate-900 font-display leading-tight">{client.name}</h1>
