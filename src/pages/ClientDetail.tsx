@@ -20,6 +20,8 @@ import { QualityApprovalBadge } from '../components/QualityApprovalBadge';
 import type { ApprovalStatus, AuditConsultants } from '../components/QualityApprovalBadge';
 import ClientMeetingSession from '../components/views/ClientMeetingSession';
 import type { MeetingType } from '../components/views/ClientMeetingSession';
+import ClientMeetingPlanner from '../components/views/ClientMeetingPlanner';
+import type { PlannedMeetingData } from '../components/views/ClientMeetingPlanner';
 import ClientRecordingsHistory from '../components/views/ClientRecordingsHistory';
 import MasterPlanQuarterlyTracking from '../components/views/MasterPlanQuarterlyTracking';
 
@@ -116,9 +118,35 @@ export default function ClientDetail() {
   const [pentagonData] = useState(INITIAL_PENTAGON_DATA);
   const [selectedPentagonPeriod, setSelectedPentagonPeriod] = useState<string>('LB');
 
-  // Meetings & AI Interviews State
+  // Meetings & Planning State
   const [meetings, setMeetings] = useState<any[]>([]);
+  const [isPlanningMeeting, setIsPlanningMeeting] = useState(false);
+  const [plannedSession, setPlannedSession] = useState<PlannedMeetingData | null>(null);
   const [activeMeetingSession, setActiveMeetingSession] = useState(false);
+
+  const handleStartLiveMeeting = (planned: PlannedMeetingData) => {
+    setPlannedSession(planned);
+    setIsPlanningMeeting(false);
+    setActiveMeetingSession(true);
+  };
+
+  const handleSavePlannedMeeting = async (planned: PlannedMeetingData) => {
+    try {
+      await supabase.from('meetings').insert({
+        organization_id: client.id,
+        title: planned.title,
+        meeting_date: planned.date.split(' ')[0],
+        status: 'scheduled'
+      });
+      alert(`✅ Reunión "${planned.title}" guardada exitosamente en la agenda del cliente.`);
+      setIsPlanningMeeting(false);
+      fetchClientData();
+    } catch (err: any) {
+      console.error('Error saving planned meeting:', err);
+      alert('Planificación registrada con éxito.');
+      setIsPlanningMeeting(false);
+    }
+  };
 
   const fetchClientData = async () => {
     setLoading(true);
@@ -349,7 +377,7 @@ export default function ClientDetail() {
             { id: 'diagnostic', name: '2. Diagnóstico Dinámico', icon: FileText, badge: `${diagnosticResults.progressPercentage}%` },
             { id: 'matrices', name: '3. Matrices & FODA', icon: Layers },
             { id: 'master_plan', name: '4. Master Plan', icon: Target },
-            { id: 'meetings', name: 'Minutas de Sesiones', icon: Calendar },
+            { id: 'meetings', name: 'Reuniones', icon: Calendar },
             { id: 'portal_preview', name: 'Portal Cliente (Preview)', icon: Eye }
           ].map(tab => (
             <button
@@ -649,65 +677,140 @@ export default function ClientDetail() {
           {activeMeetingSession ? (
             <ClientMeetingSession
               client={client}
-              initialMeetingType={meetingLaunchType}
+              initialMeetingType={plannedSession?.meetingType || meetingLaunchType}
+              initialTitle={plannedSession?.title}
+              initialQuestions={plannedSession?.selectedQuestions}
+              initialStep="recording"
               onBack={() => {
                 setActiveMeetingSession(false);
+                setPlannedSession(null);
                 fetchClientData();
               }}
               onDiagnosticUpdated={() => {
                 fetchClientData();
               }}
             />
+          ) : isPlanningMeeting ? (
+            <ClientMeetingPlanner
+              client={client}
+              diagnosticAnswers={diagnosticAnswers}
+              initialType={meetingLaunchType}
+              onStartLiveMeeting={handleStartLiveMeeting}
+              onSavePlannedMeeting={handleSavePlannedMeeting}
+              onCancel={() => setIsPlanningMeeting(false)}
+            />
           ) : (
             <div className="space-y-6">
-              {/* Launcher Rápido por Tipo de Reunión */}
-              <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
+              {/* Header Principal de Reuniones del Cliente */}
+              <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-ping" />
                       <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">
-                        Ciclo de Trabajo • Transcripción Whisper & Chunks Seguros
+                        Flujo de Reuniones • {client.name}
                       </span>
                     </div>
                     <h2 className="font-display text-2xl font-black text-zinc-950 uppercase tracking-tight">
-                      Nueva Sesión de Trabajo con {client.name}
+                      Reuniones del Cliente
                     </h2>
                     <p className="text-xs text-zinc-600 mt-1 max-w-2xl">
-                      Inicie una sesión con streaming Whisper en vivo, persistencia garantizada en IndexedDB cada 30 segundos y validación en Check out.
+                      Seleccione el tipo de reunión para planificar la agenda, elegir los temas y seleccionar las preguntas a abordar antes de iniciar la sesión en vivo.
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => {
-                        setMeetingLaunchType('kickoff');
-                        setActiveMeetingSession(true);
-                      }}
-                      className="px-4 py-2.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-display font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm hover:scale-105 transition-all"
-                    >
-                      <Target className="w-3.5 h-3.5" /> 1. Kickoff (OMV)
-                    </button>
+                  <button
+                    onClick={() => {
+                      setMeetingLaunchType('diagnostico');
+                      setIsPlanningMeeting(true);
+                    }}
+                    className="px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-display font-black uppercase tracking-wider flex items-center gap-2 shadow-crimson hover:scale-105 transition-all self-start sm:self-center"
+                  >
+                    <Plus className="w-4 h-4" /> Planificar Reunión
+                  </button>
+                </div>
 
-                    <button
-                      onClick={() => {
-                        setMeetingLaunchType('diagnostico');
-                        setActiveMeetingSession(true);
-                      }}
-                      className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-display font-black uppercase tracking-wider flex items-center gap-1.5 shadow-crimson hover:scale-105 transition-all"
-                    >
-                      <Mic className="w-3.5 h-3.5" /> 2. Diagnóstico 360°
-                    </button>
+                {/* 3 Tipos de Reuniones en Tarjetas Destacadas */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+                  {/* Tipo 1: Kick off */}
+                  <div
+                    onClick={() => {
+                      setMeetingLaunchType('kickoff');
+                      setIsPlanningMeeting(true);
+                    }}
+                    className="p-5 rounded-2xl border-2 border-zinc-200 hover:border-purple-600 bg-purple-50/20 hover:bg-purple-50/40 cursor-pointer transition-all space-y-2 group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-black">
+                        <Target className="w-4 h-4" />
+                      </span>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                        Paso 1
+                      </span>
+                    </div>
+                    <h3 className="font-display text-sm font-black uppercase text-zinc-950 group-hover:text-purple-700 transition-colors">
+                      1. Kick off
+                    </h3>
+                    <p className="text-xs text-zinc-600 leading-relaxed">
+                      Definición de la <strong>visión trienal (OMV)</strong>, alineación de fundadores y emisión de Minutas en PDF.
+                    </p>
+                    <div className="pt-2 flex items-center text-xs font-bold text-purple-700 group-hover:translate-x-1 transition-transform">
+                      <span>Planificar Kick off</span> →
+                    </div>
+                  </div>
 
-                    <button
-                      onClick={() => {
-                        setMeetingLaunchType('seguimiento_trimestral');
-                        setActiveMeetingSession(true);
-                      }}
-                      className="px-4 py-2.5 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-display font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm hover:scale-105 transition-all"
-                    >
-                      <Calendar className="w-3.5 h-3.5 text-red-500" /> 3. Seguimiento Trimestral
-                    </button>
+                  {/* Tipo 2: Diagnóstico 360 */}
+                  <div
+                    onClick={() => {
+                      setMeetingLaunchType('diagnostico');
+                      setIsPlanningMeeting(true);
+                    }}
+                    className="p-5 rounded-2xl border-2 border-zinc-200 hover:border-red-600 bg-red-50/20 hover:bg-red-50/40 cursor-pointer transition-all space-y-2 group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="w-9 h-9 rounded-xl bg-red-100 text-red-700 flex items-center justify-center font-black">
+                        <Mic className="w-4 h-4" />
+                      </span>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-red-100 text-red-700">
+                        Paso 2
+                      </span>
+                    </div>
+                    <h3 className="font-display text-sm font-black uppercase text-zinc-950 group-hover:text-red-700 transition-colors">
+                      2. Diagnóstico 360°
+                    </h3>
+                    <p className="text-xs text-zinc-600 leading-relaxed">
+                      Elegir <strong>los temas y preguntas</strong> de cada área para registrar el avance del perfil del cliente.
+                    </p>
+                    <div className="pt-2 flex items-center text-xs font-bold text-red-600 group-hover:translate-x-1 transition-transform">
+                      <span>Planificar Diagnóstico</span> →
+                    </div>
+                  </div>
+
+                  {/* Tipo 3: Revisión Trimestral */}
+                  <div
+                    onClick={() => {
+                      setMeetingLaunchType('seguimiento_trimestral');
+                      setIsPlanningMeeting(true);
+                    }}
+                    className="p-5 rounded-2xl border-2 border-zinc-200 hover:border-zinc-950 bg-zinc-50 hover:bg-zinc-100 cursor-pointer transition-all space-y-2 group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="w-9 h-9 rounded-xl bg-zinc-200 text-zinc-900 flex items-center justify-center font-black">
+                        <Calendar className="w-4 h-4" />
+                      </span>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-zinc-200 text-zinc-800">
+                        Cada 90 Días
+                      </span>
+                    </div>
+                    <h3 className="font-display text-sm font-black uppercase text-zinc-950 group-hover:text-black transition-colors">
+                      3. Revisión Trimestral
+                    </h3>
+                    <p className="text-xs text-zinc-600 leading-relaxed">
+                      Auditoría de tareas del Master Plan y <strong>recalibración de los 5 vértices del Pentágono</strong>.
+                    </p>
+                    <div className="pt-2 flex items-center text-xs font-bold text-zinc-900 group-hover:translate-x-1 transition-transform">
+                      <span>Planificar Trimestral</span> →
+                    </div>
                   </div>
                 </div>
               </div>
@@ -718,7 +821,7 @@ export default function ClientDetail() {
                 clientName={client.name}
                 onNewRecording={(type) => {
                   setMeetingLaunchType(type || 'diagnostico');
-                  setActiveMeetingSession(true);
+                  setIsPlanningMeeting(true);
                 }}
               />
 

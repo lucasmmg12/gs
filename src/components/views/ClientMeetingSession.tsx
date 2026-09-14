@@ -41,25 +41,35 @@ interface ClientMeetingSessionProps {
   onBack: () => void;
   onDiagnosticUpdated?: () => void;
   initialMeetingType?: MeetingType;
+  initialQuestions?: DiagnosticQuestion[];
+  initialTitle?: string;
+  initialStep?: 'planning' | 'recording';
 }
 
 export default function ClientMeetingSession({ 
   client, 
   onBack, 
   onDiagnosticUpdated,
-  initialMeetingType = 'diagnostico'
+  initialMeetingType = 'diagnostico',
+  initialQuestions,
+  initialTitle,
+  initialStep = 'planning'
 }: ClientMeetingSessionProps) {
   // Navigation / Phase
-  const [step, setStep] = useState<'planning' | 'recording' | 'processing' | 'checkout' | 'results'>('planning');
+  const [step, setStep] = useState<'planning' | 'recording' | 'processing' | 'checkout' | 'results'>(initialStep);
   const [meetingType, setMeetingType] = useState<MeetingType>(initialMeetingType);
 
   // Step 1: Planning Agenda
   const [meetingTitle, setMeetingTitle] = useState(() => {
+    if (initialTitle) return initialTitle;
     if (initialMeetingType === 'kickoff') return `Reunión de Kickoff & Definición OMV - ${client.name}`;
     if (initialMeetingType === 'seguimiento_trimestral') return `Seguimiento Trimestral Master Plan - ${client.name}`;
     return `Auditoría y Diagnóstico 360° - ${client.name}`;
   });
-  const [selectedQuestions, setSelectedQuestions] = useState<DiagnosticQuestion[]>([]);
+  const [selectedQuestions, setSelectedQuestions] = useState<DiagnosticQuestion[]>(() => {
+    if (initialQuestions && initialQuestions.length > 0) return initialQuestions;
+    return [];
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAreaFilter, setSelectedAreaFilter] = useState<string>('all');
 
@@ -124,6 +134,7 @@ export default function ClientMeetingSession({
 
   // Set default questions when meetingType changes
   useEffect(() => {
+    if (initialQuestions && initialQuestions.length > 0) return;
     if (meetingType === 'kickoff') {
       setMeetingTitle(`Reunión de Kickoff & Definición OMV - ${client.name}`);
       const kickoffQs = DIAGNOSTIC_AREAS.filter(a => a.id === 'area_1_personas' || a.id === 'area_8_legal')
