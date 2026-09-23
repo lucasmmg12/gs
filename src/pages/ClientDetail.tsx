@@ -100,19 +100,21 @@ export default function ClientDetail() {
   const [loading, setLoading] = useState(true);
 
   // Active section derived directly from URL route for native browser back/forward history
-  const activeTab: 'dashboard' | 'omv' | 'diagnostic' | 'matrices' | 'master_plan' | 'portal_preview' | 'meetings' = useMemo(() => {
-    if (!section || section === 'dashboard') return 'dashboard';
-    if (section === 'omv') return 'omv';
-    if (section === 'diagnostic') return 'diagnostic';
-    if (section === 'matrices') return 'matrices';
-    if (section === 'master-plan' || section === 'master_plan') return 'master_plan';
-    if (section === 'meetings') return 'meetings';
-    if (section === 'portal' || section === 'portal_preview') return 'portal_preview';
-    return 'dashboard';
-  }, [section]);
+  const effectiveSection = section || (subAction ? 'meetings' : undefined);
 
-  const isPlanningMeeting = section === 'meetings' && subAction === 'plan';
-  const activeMeetingSession = section === 'meetings' && subAction === 'live';
+  const activeTab: 'dashboard' | 'omv' | 'diagnostic' | 'matrices' | 'master_plan' | 'portal_preview' | 'meetings' = useMemo(() => {
+    if (!effectiveSection || effectiveSection === 'dashboard') return 'dashboard';
+    if (effectiveSection === 'omv') return 'omv';
+    if (effectiveSection === 'diagnostic') return 'diagnostic';
+    if (effectiveSection === 'matrices') return 'matrices';
+    if (effectiveSection === 'master-plan' || effectiveSection === 'master_plan') return 'master_plan';
+    if (effectiveSection === 'meetings') return 'meetings';
+    if (effectiveSection === 'portal' || effectiveSection === 'portal_preview') return 'portal_preview';
+    return 'dashboard';
+  }, [effectiveSection]);
+
+  const isPlanningMeeting = effectiveSection === 'meetings' && subAction === 'plan';
+  const activeMeetingSession = effectiveSection === 'meetings' && subAction === 'live';
 
   // Tipos de reunión y submódulos (lee del query string si existe e.g. ?type=kickoff)
   const meetingLaunchType: MeetingType = (searchParams.get('type') as MeetingType) || 'diagnostico';
@@ -404,14 +406,14 @@ export default function ClientDetail() {
             onClick={() => {
               if (subAction) {
                 navigate(`/clients/${id}/meetings`);
-              } else if (section) {
+              } else if (effectiveSection && effectiveSection !== 'dashboard') {
                 navigate(`/clients/${id}`);
               } else {
                 navigate('/clients');
               }
             }}
             className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors shadow-xs"
-            title={subAction ? "Volver a Reuniones" : section ? "Volver al Dashboard del Cliente" : "Volver al Directorio de Clientes"}
+            title={subAction ? "Volver a Reuniones" : (effectiveSection && effectiveSection !== 'dashboard') ? "Volver al Dashboard del Cliente" : "Volver al Directorio de Clientes"}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>

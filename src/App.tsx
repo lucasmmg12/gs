@@ -58,6 +58,7 @@ function App() {
           {/* Client Dedicated Sub-Pages */}
           <Route path="/clients/:id" element={<ClientDetail />} />
           <Route path="/clients/:id/:section" element={<ClientDetail />} />
+          <Route path="/clients/:id/:section/:subAction" element={<ClientDetail />} />
           <Route path="/clients/:id/meetings/:subAction" element={<ClientDetail />} />
 
           <Route path="/meetings" element={<Meetings />} />
