@@ -38,6 +38,29 @@ import { jsPDF } from 'jspdf';
 
 export type MeetingType = 'kickoff' | 'diagnostico' | 'seguimiento_trimestral' | 'general';
 
+export function getFallbackQuestions(mType: MeetingType): DiagnosticQuestion[] {
+  if (mType === 'kickoff') {
+    return DIAGNOSTIC_AREAS.filter(a => a.id === 'area_1_personas' || a.id === 'area_8_legal')
+      .flatMap(a => a.questions.slice(0, 2));
+  } else if (mType === 'seguimiento_trimestral') {
+    return DIAGNOSTIC_AREAS.filter(a => a.id === 'area_2_planeamiento' || a.id === 'area_4_finanzas')
+      .flatMap(a => a.questions.slice(0, 3));
+  } else {
+    const defaultQs: DiagnosticQuestion[] = [];
+    const orgArea = DIAGNOSTIC_AREAS.find(a => a.id === 'area_1_personas');
+    if (orgArea && orgArea.questions.length > 0) {
+      defaultQs.push(orgArea.questions[0]);
+      if (orgArea.questions[1]) defaultQs.push(orgArea.questions[1]);
+    }
+    const procArea = DIAGNOSTIC_AREAS.find(a => a.id === 'area_3_operaciones');
+    if (procArea && procArea.questions.length > 0) {
+      defaultQs.push(procArea.questions[0]);
+      if (procArea.questions[1]) defaultQs.push(procArea.questions[1]);
+    }
+    return defaultQs;
+  }
+}
+
 interface ClientMeetingSessionProps {
   client: any;
   onBack: () => void;
@@ -81,6 +104,10 @@ export default function ClientMeetingSession({
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0);
   const [wakeLockActive, setWakeLockActive] = useState(false);
   const [chunksCount, setChunksCount] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isStartingMic, setIsStartingMic] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  const hasAutoStartedRef = useRef(false);
 
   // Live WebSocket Transcription & Supabase Realtime State
   const [liveTranscript, setLiveTranscript] = useState('');
@@ -272,12 +299,26 @@ export default function ClientMeetingSession({
     }
   };
 
-  // START RECORDING with Whisper WebSockets & 30s Chunks
+  // START RECORDING with Whisper WebSockets & 15s Chunks
   const startRecording = async () => {
-    if (selectedQuestions.length === 0) {
-      alert('Por favor selecciona al menos una pregunta para la agenda de la reunión.');
+    let questionsToUse = selectedQuestions;
+    if (!questionsToUse || questionsToUse.length === 0) {
+      if (initialQuestions && initialQuestions.length > 0) {
+        questionsToUse = initialQuestions;
+      } else {
+        questionsToUse = getFallbackQuestions(meetingType);
+      }
+      setSelectedQuestions(questionsToUse);
+    }
+
+    if (questionsToUse.length === 0) {
+      setMicError('Por favor selecciona al menos una pregunta para la agenda de la reunión.');
       return;
     }
+
+    if (isStartingMic) return;
+    setIsStartingMic(true);
+    setMicError(null);
 
     try {
       // 1. Wake Lock
@@ -294,7 +335,15 @@ export default function ClientMeetingSession({
       streamRef.current = stream;
 
       // 3. Audio Analyser
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') {
+        try {
+          await audioCtx.resume();
+        } catch (e) {
+          console.warn('AudioContext resume notice:', e);
+        }
+      }
       const analyser = audioCtx.createAnalyser();
       const source = audioCtx.createMediaStreamSource(stream);
       source.connect(analyser);
@@ -310,7 +359,7 @@ export default function ClientMeetingSession({
           titulo: meetingTitle,
           estado: 'grabando',
           live_status: 'recording',
-          selected_questions: selectedQuestions,
+          selected_questions: questionsToUse,
           duracion_segundos: 0,
           transcripcion_raw: ''
         }, { onConflict: 'id' });
@@ -342,32 +391,36 @@ export default function ClientMeetingSession({
       }
 
       // 4. Start Whisper Live Streamer (WebSockets + browser fallback)
-      const liveStreamer = new WhisperLiveStreamer({
-        clientId: client.id,
-        sessionId: sessionId,
-        language: 'es',
-        onTranscript: (event) => {
-          if (event.isFinal) {
-            setLiveTranscript(prev => {
-              const text = event.text.trim();
-              if (!text || prev.includes(text)) return prev;
-              return prev ? `${prev} ${text}` : text;
-            });
-            setInterimText('');
-          } else {
-            setInterimText(event.text);
+      try {
+        const liveStreamer = new WhisperLiveStreamer({
+          clientId: client.id,
+          sessionId: sessionId,
+          language: 'es',
+          onTranscript: (event) => {
+            if (event.isFinal) {
+              setLiveTranscript(prev => {
+                const text = event.text.trim();
+                if (!text || prev.includes(text)) return prev;
+                return prev ? `${prev} ${text}` : text;
+              });
+              setInterimText('');
+            } else {
+              setInterimText(event.text);
+            }
+          },
+          onStatusChange: (status, msg) => {
+            setStreamStatus(status);
+            setStreamMessage(msg || '');
+          },
+          onError: (err) => {
+            console.warn('[Session] Whisper Live error:', err.message);
           }
-        },
-        onStatusChange: (status, msg) => {
-          setStreamStatus(status);
-          setStreamMessage(msg || '');
-        },
-        onError: (err) => {
-          console.warn('[Session] Whisper Live error:', err.message);
-        }
-      });
-      liveStreamerRef.current = liveStreamer;
-      await liveStreamer.start(stream);
+        });
+        liveStreamerRef.current = liveStreamer;
+        await liveStreamer.start(stream);
+      } catch (streamerErr) {
+        console.warn('[Session] Whisper live streamer warning:', streamerErr);
+      }
 
       // 5. MediaRecorder with 15-second chunking for real-time persistence
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
@@ -381,7 +434,7 @@ export default function ClientMeetingSession({
       recorder.ondataavailable = async (e) => {
         if (e.data && e.data.size > 0) {
           const currentIndex = chunkIndexRef.current++;
-          const currentQ = selectedQuestions[activeQuestionIndex];
+          const currentQ = questionsToUse[activeQuestionIndex];
           
           // 1. Save chunk in IndexedDB (immune to crash/network drop)
           const record = await saveLocalChunk(
@@ -423,12 +476,16 @@ export default function ClientMeetingSession({
       recorder.start(15000);
 
       setStep('recording');
+      setIsRecording(true);
+      setIsStartingMic(false);
+      setMicError(null);
       setDuration(0);
       setLiveTranscript('');
       setInterimText('');
       setChunksCount(0);
       setSyncedChunks(0);
 
+      if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = setInterval(() => {
         setDuration(prev => prev + 1);
       }, 1000);
@@ -437,13 +494,49 @@ export default function ClientMeetingSession({
 
     } catch (err: any) {
       console.error('Mic or WakeLock Error:', err);
-      alert('Error al iniciar grabación: ' + (err.message || 'Verifique permisos de micrófono.'));
+      setIsStartingMic(false);
+      setIsRecording(false);
+      setMicError(err.message || 'Permiso de micrófono no concedido. Por favor active los permisos de micrófono para grabar.');
     }
   };
 
+  // Auto-start recording when landing on step === 'recording'
+  useEffect(() => {
+    if (step === 'recording' && !isRecording && !hasAutoStartedRef.current && !isStartingMic) {
+      hasAutoStartedRef.current = true;
+      startRecording();
+    }
+  }, [step]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+      }
+      if (liveStreamerRef.current) {
+        liveStreamerRef.current.stop();
+      }
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current);
+      }
+      releaseScreenWakeLock();
+    };
+  }, []);
+
   // STOP RECORDING and transition to processing
   const stopRecordingAndAnalyze = async () => {
-    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+      if (!isRecording && duration === 0) {
+        alert('No hay una grabación activa para finalizar.');
+        return;
+      }
+    }
+
+    setIsRecording(false);
+    setIsStartingMic(false);
 
     // Stop live Whisper streamer
     let finalRecordedTranscript = '';
@@ -458,11 +551,13 @@ export default function ClientMeetingSession({
     }
 
     // Stop recorder & stream
-    mediaRecorderRef.current.stop();
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
     }
-    clearInterval(timerRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
     releaseScreenWakeLock();
 
@@ -1073,9 +1168,9 @@ export default function ClientMeetingSession({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-zinc-200 pb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="h-3 w-3 rounded-full bg-red-600 animate-ping" />
-              <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">
-                Grabando • {meetingType.toUpperCase()}
+              <span className={`h-3 w-3 rounded-full ${isRecording ? 'bg-red-600 animate-ping' : isStartingMic ? 'bg-amber-500 animate-pulse' : 'bg-zinc-400'}`} />
+              <span className={`font-display text-xs font-bold uppercase tracking-widest ${isRecording ? 'text-red-600' : isStartingMic ? 'text-amber-600' : 'text-zinc-600'}`}>
+                {isRecording ? `Grabando • ${meetingType.toUpperCase()}` : isStartingMic ? `Iniciando Micrófono...` : `Listo para Grabar • ${meetingType.toUpperCase()}`}
               </span>
             </div>
             <h1 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-zinc-950">
@@ -1083,14 +1178,74 @@ export default function ClientMeetingSession({
             </h1>
           </div>
 
-          <button
-            onClick={stopRecordingAndAnalyze}
-            className="px-6 py-3.5 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-zinc-950 hover:bg-zinc-800 text-white flex items-center gap-2 shadow-lg hover:scale-105 transition-all"
-          >
-            <Square className="w-4 h-4 fill-red-600 text-red-600" />
-            Finalizar Sesión & Analizar
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => {
+                if (isRecording) {
+                  if (window.confirm('¿Desea salir de la sesión? Se detendrá la grabación actual.')) {
+                    onBack();
+                  }
+                } else {
+                  onBack();
+                }
+              }}
+              className="px-4 py-2.5 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-100 text-zinc-700 font-display text-xs font-bold uppercase tracking-wider transition-colors shadow-xs"
+            >
+              Volver
+            </button>
+
+            {!isRecording && (
+              <button
+                onClick={startRecording}
+                disabled={isStartingMic}
+                className="px-5 py-3 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 shadow-lg hover:scale-105 transition-all"
+              >
+                {isStartingMic ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+                {isStartingMic ? 'Iniciando Micrófono...' : 'Activar Micrófono y Grabar'}
+              </button>
+            )}
+
+            <button
+              onClick={stopRecordingAndAnalyze}
+              disabled={!isRecording && duration === 0}
+              className={`px-5 py-3 rounded-xl font-display font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all ${
+                isRecording || duration > 0
+                  ? 'bg-zinc-950 hover:bg-zinc-800 text-white hover:scale-105 cursor-pointer'
+                  : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
+              }`}
+            >
+              <Square className="w-4 h-4 fill-red-600 text-red-600" />
+              Finalizar Sesión & Analizar
+            </button>
+          </div>
         </div>
+
+        {/* Banner de Estado de Micrófono si no está grabando */}
+        {!isRecording && (
+          <div className="bg-amber-50 border-2 border-amber-300 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+                <Mic className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="font-display text-xs font-black uppercase tracking-wider text-amber-950">
+                  {isStartingMic ? 'Conectando dispositivo de audio...' : micError ? 'Atención al micrófono' : 'Sesión en Vivo Lista'}
+                </h4>
+                <p className="text-xs text-amber-800 mt-0.5">
+                  {micError || (isStartingMic ? 'Solicitando permisos en el navegador...' : 'Haga clic en el botón para activar el micrófono y comenzar a grabar con transcripción Whisper en tiempo real.')}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={startRecording}
+              disabled={isStartingMic}
+              className="px-4 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 shadow transition-all shrink-0"
+            >
+              {isStartingMic ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+              {isStartingMic ? 'Conectando...' : 'Comenzar a Grabar'}
+            </button>
+          </div>
+        )}
 
         {/* Status Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -1113,8 +1268,8 @@ export default function ClientMeetingSession({
           <div className="bg-white p-4 rounded-xl border-2 border-zinc-900">
             <span className="text-[10px] font-display font-bold uppercase tracking-wider text-zinc-500">WebSocket Edge</span>
             <p className="font-mono text-sm font-bold text-zinc-950 mt-1.5 flex items-center gap-1.5">
-              <Wifi className={`w-4 h-4 ${streamStatus === 'streaming' || streamStatus === 'connected' ? 'text-emerald-600' : 'text-amber-500 animate-pulse'}`} />
-              {streamStatus === 'streaming' || streamStatus === 'connected' ? 'Conectado' : streamStatus}
+              <Wifi className={`w-4 h-4 ${streamStatus === 'streaming' || streamStatus === 'connected' ? 'text-emerald-600' : streamStatus === 'fallback' ? 'text-blue-600' : 'text-amber-500 animate-pulse'}`} />
+              {streamStatus === 'streaming' || streamStatus === 'connected' ? 'Conectado' : streamStatus === 'fallback' ? 'Voz Local' : streamStatus}
             </p>
           </div>
           <div className="bg-white p-4 rounded-xl border-2 border-zinc-900 col-span-2 sm:col-span-1">
