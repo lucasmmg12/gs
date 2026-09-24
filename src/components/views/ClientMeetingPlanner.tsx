@@ -481,11 +481,11 @@ export default function ClientMeetingPlanner({
           {meetingType === 'diagnostico' && (
             <div className="space-y-6">
               {/* Buscador de preguntas rápido */}
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <span className="font-display text-xs font-bold uppercase tracking-wider text-zinc-700">
                   Catálogo de Diagnóstico: 10 Temas Estratégicos
                 </span>
-                <div className="relative w-64">
+                <div className="relative w-full sm:w-64">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
                   <input
                     type="text"

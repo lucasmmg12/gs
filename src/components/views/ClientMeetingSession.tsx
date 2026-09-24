@@ -7,7 +7,8 @@ import {
   saveLocalChunk, 
   uploadChunkToStorage, 
   compileSessionAudioBlob,
-  sendChunkToEdgeTranscriber 
+  sendChunkToEdgeTranscriber,
+  getCompatibleAudioMimeType 
 } from '../../lib/audioChunker';
 import { WhisperLiveStreamer } from '../../lib/whisperLiveStream';
 import type { LiveStreamStatus } from '../../lib/whisperLiveStream';
@@ -252,6 +253,9 @@ export default function ClientMeetingSession({
   const drawWaveform = () => {
     if (!canvasRef.current || !analyserRef.current) return;
     const canvas = canvasRef.current;
+    if (canvas.parentElement) {
+      canvas.width = canvas.parentElement.clientWidth || 360;
+    }
     const canvasCtx = canvas.getContext('2d');
     const analyser = analyserRef.current;
     const bufferLength = analyser.frequencyBinCount;
@@ -369,6 +373,16 @@ export default function ClientMeetingSession({
       analyser.fftSize = 2048;
       analyserRef.current = analyser;
 
+      // 3.4 iOS Safari background / lockscreen keep-alive node
+      try {
+        const keepAliveGain = audioCtx.createGain();
+        keepAliveGain.gain.value = 0.00001; // Inaudible to prevent screen-off throttle on iOS
+        source.connect(keepAliveGain);
+        keepAliveGain.connect(audioCtx.destination);
+      } catch (kaErr) {
+        console.warn('Audio keep-alive notice:', kaErr);
+      }
+
       // 3.5 Initialize interview row in Supabase and subscribe to Realtime DB chunks
       try {
         await (supabase.from('gobernanza_entrevistas') as any).upsert({
@@ -467,12 +481,11 @@ export default function ClientMeetingSession({
         console.warn('[Session] Whisper live streamer warning:', streamerErr);
       }
 
-      // 5. MediaRecorder with 15-second chunking for real-time persistence
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-        ? 'audio/webm;codecs=opus' 
-        : 'audio/webm';
-      
-      const recorder = new MediaRecorder(stream, { mimeType });
+      // 5. MediaRecorder with dynamic MIME detection (iOS Safari audio/mp4 vs Android audio/webm)
+      const { mimeType } = getCompatibleAudioMimeType();
+      const recorder = mimeType 
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       chunkIndexRef.current = 0;
 
@@ -1299,7 +1312,7 @@ export default function ClientMeetingSession({
   // ==========================================
   if (step === 'recording') {
     return (
-      <div className="space-y-6 animate-in fade-in duration-300">
+      <div className="space-y-6 animate-in fade-in duration-300 pb-28 sm:pb-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-zinc-200 pb-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -1534,6 +1547,44 @@ export default function ClientMeetingSession({
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        {/* Sticky Mobile Floating Controller Bar for seamless single-thumb operation on phones */}
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/95 backdrop-blur-md text-white px-4 py-3 border-t border-zinc-800 shadow-2xl flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className={`w-3 h-3 rounded-full shrink-0 ${isRecording ? 'bg-red-600 animate-ping' : isStartingMic ? 'bg-amber-400 animate-pulse' : 'bg-zinc-500'}`} />
+            <div className="min-w-0">
+              <span className="font-mono text-base font-black text-white block leading-tight">
+                {formatTime(duration)}
+              </span>
+              <span className="text-[10px] text-zinc-400 font-mono block truncate">
+                {isRecording ? `P#${activeQuestionIndex + 1}: ${selectedQuestions[activeQuestionIndex]?.code || 'Enfoque'}` : isStartingMic ? 'Conectando...' : 'Pausado'}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {!isRecording ? (
+              <button
+                type="button"
+                onClick={startRecording}
+                disabled={isStartingMic}
+                className="px-4 py-2 rounded-xl bg-red-600 active:scale-95 text-white font-display text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md"
+              >
+                {isStartingMic ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mic className="w-3.5 h-3.5" />}
+                {isStartingMic ? 'Iniciando...' : 'Grabar'}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={stopRecordingAndAnalyze}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-display text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md"
+              >
+                <Square className="w-3.5 h-3.5 fill-white" />
+                Finalizar
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1797,16 +1848,16 @@ export default function ClientMeetingSession({
   // VIEW: STEP 5 - RESULTADOS Y ENTREGABLES FINALES
   // ==========================================
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6 animate-in fade-in duration-300">
-      <div className="flex items-center justify-between">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6 animate-in fade-in duration-300">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <button 
           onClick={onBack} 
-          className="flex items-center text-zinc-500 hover:text-red-600 transition-colors font-bold text-xs uppercase tracking-wider"
+          className="flex items-center text-zinc-500 hover:text-red-600 transition-colors font-bold text-xs uppercase tracking-wider self-start"
         >
           <ChevronLeft className="w-4 h-4 mr-1" /> Volver a Sesiones
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={handleRestartRecording}
@@ -1903,7 +1954,7 @@ export default function ClientMeetingSession({
             </h3>
             {resultData?.mapa_conceptual_mermaid ? (
               <div 
-                className="bg-zinc-50 p-4 rounded-lg border border-zinc-200 overflow-x-auto text-center min-h-[140px] flex items-center justify-center" 
+                className="bg-zinc-50 p-4 rounded-lg border border-zinc-200 overflow-x-auto text-center min-h-[140px] block w-full max-w-full [&>svg]:mx-auto [&>svg]:max-w-none" 
                 ref={mermaidRef}
               >
                 {resultData.mapa_conceptual_mermaid.replace(/```mermaid/g, '').replace(/```/g, '')}

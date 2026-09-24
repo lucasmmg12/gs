@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { getCompatibleAudioMimeType } from '../lib/audioChunker';
 import { Mic, Square, Loader2, Download, FileText, CheckCircle2, ChevronLeft, History } from 'lucide-react';
 import mermaid from 'mermaid';
 import { jsPDF } from 'jspdf';
@@ -27,7 +28,7 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
   
   // Referencias
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<BlobPart[]>([]);
+  const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<any>(null);
   const mermaidRef = useRef<HTMLDivElement>(null);
@@ -127,7 +128,10 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
       setDuration(0);
       audioChunksRef.current = [];
 
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const { mimeType } = getCompatibleAudioMimeType();
+      const recorder = mimeType 
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
@@ -137,7 +141,8 @@ export default function VoiceRecorder({ currentUser, onBack }: { currentUser: an
       };
 
       recorder.onstop = async () => {
-        const finalBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const finalType = audioChunksRef.current[0]?.type || mimeType || 'audio/webm';
+        const finalBlob = new Blob(audioChunksRef.current, { type: finalType });
         await handleAudioUpload(finalBlob);
       };
 

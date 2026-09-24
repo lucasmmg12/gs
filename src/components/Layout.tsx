@@ -104,7 +104,7 @@ export default function Layout() {
 
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto bg-[#EEF2F6] p-6 lg:p-8 pt-18 lg:pt-8">
+        <main className="flex-1 overflow-y-auto bg-[#EEF2F6] p-3.5 sm:p-6 lg:p-8 pt-16 sm:pt-18 lg:pt-8">
           <Outlet />
         </main>
       </div>

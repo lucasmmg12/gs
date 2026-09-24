@@ -22,7 +22,39 @@ export interface AudioChunkRecord {
 const audioDbStore = createStore('gs_recording_db', 'interview_chunks');
 
 /**
- * Persists a 30s chunk to IndexedDB immediately, strictly indexed by clientId.
+ * Detects the optimal supported audio MIME type and file extension for the current browser/OS.
+ * Fully compatible with iOS Safari (which requires audio/mp4 or audio/aac) and Android/Chrome (audio/webm).
+ */
+export function getCompatibleAudioMimeType(): { mimeType: string | undefined; extension: string } {
+  if (typeof window === 'undefined' || typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+    return { mimeType: undefined, extension: 'mp4' };
+  }
+
+  const candidates = [
+    { mime: 'audio/webm;codecs=opus', ext: 'webm' },
+    { mime: 'audio/webm', ext: 'webm' },
+    { mime: 'audio/mp4', ext: 'mp4' },
+    { mime: 'audio/aac', ext: 'aac' },
+    { mime: 'audio/ogg;codecs=opus', ext: 'ogg' },
+    { mime: 'audio/wav', ext: 'wav' }
+  ];
+
+  for (const cand of candidates) {
+    try {
+      if (MediaRecorder.isTypeSupported(cand.mime)) {
+        return { mimeType: cand.mime, extension: cand.ext };
+      }
+    } catch {
+      // Ignore checks if browser errors on specific string
+    }
+  }
+
+  // Fallback: let the browser pick its default without specifying mimeType (essential for iOS Safari)
+  return { mimeType: undefined, extension: 'mp4' };
+}
+
+/**
+ * Persists a 15-30s chunk to IndexedDB immediately, strictly indexed by clientId.
  * Guaranteed against browser crashes or network loss.
  */
 export async function saveLocalChunk(
@@ -52,18 +84,21 @@ export async function saveLocalChunk(
 
 /**
  * Uploads a chunk to Supabase Storage 'gobernanza_audios' under client-isolated directory.
- * Path format: gobernanza_audios/${clientId}/${sessionId}/chunk_XXXX.webm
+ * Path format: gobernanza_audios/${clientId}/${sessionId}/chunk_XXXX.[webm|mp4]
  */
 export async function uploadChunkToStorage(
   record: AudioChunkRecord
 ): Promise<{ success: boolean; storagePath?: string; error?: string }> {
   try {
-    const storagePath = `${record.clientId}/${record.sessionId}/chunk_${String(record.chunkIndex).padStart(4, '0')}.webm`;
+    const isMp4 = record.blob.type.includes('mp4') || record.blob.type.includes('aac');
+    const ext = isMp4 ? 'mp4' : 'webm';
+    const storagePath = `${record.clientId}/${record.sessionId}/chunk_${String(record.chunkIndex).padStart(4, '0')}.${ext}`;
+    const contentType = record.blob.type || (isMp4 ? 'audio/mp4' : 'audio/webm;codecs=opus');
 
     const { error: uploadErr } = await supabase.storage
       .from('gobernanza_audios')
       .upload(storagePath, record.blob, {
-        contentType: 'audio/webm;codecs=opus',
+        contentType,
         upsert: true
       });
 
@@ -141,7 +176,8 @@ export async function compileSessionAudioBlob(sessionId: string, clientId?: stri
     throw new Error('No chunks found for session ' + sessionId);
   }
   const blobParts = chunks.map(c => c.blob);
-  return new Blob(blobParts, { type: 'audio/webm;codecs=opus' });
+  const primaryType = chunks[0]?.blob?.type || 'audio/webm;codecs=opus';
+  return new Blob(blobParts, { type: primaryType });
 }
 
 /**
@@ -174,8 +210,10 @@ export async function sendChunkToEdgeTranscriber(
   error?: string;
 }> {
   try {
+    const isMp4 = record.blob.type.includes('mp4') || record.blob.type.includes('aac');
+    const ext = isMp4 ? 'mp4' : 'webm';
     const formData = new FormData();
-    formData.append('file', record.blob, `chunk_${record.chunkIndex}.webm`);
+    formData.append('file', record.blob, `chunk_${record.chunkIndex}.${ext}`);
     formData.append('sessionId', record.sessionId);
     formData.append('clientId', record.clientId);
     formData.append('chunkIndex', String(record.chunkIndex));
