@@ -248,7 +248,18 @@ export default function ClientDetail() {
       .maybeSingle();
 
     if (diagResp?.answers && Object.keys(diagResp.answers).length > 0) {
-      setDiagnosticAnswers(diagResp.answers as Record<number, ResponseOptionValue>);
+      const normalizedAnswers: Record<number, ResponseOptionValue> = {};
+      Object.entries(diagResp.answers).forEach(([key, val]) => {
+        const qId = Number(key);
+        if (typeof val === 'string') {
+          normalizedAnswers[qId] = val as ResponseOptionValue;
+        } else if (val && typeof val === 'object' && 'value' in (val as any)) {
+          normalizedAnswers[qId] = (val as any).value as ResponseOptionValue;
+        }
+      });
+      if (Object.keys(normalizedAnswers).length > 0) {
+        setDiagnosticAnswers(prev => ({ ...prev, ...normalizedAnswers }));
+      }
     }
 
     const { data: mtgs } = await supabase

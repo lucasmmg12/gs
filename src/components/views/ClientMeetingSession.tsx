@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { DIAGNOSTIC_AREAS } from '../../data/diagnosticQuestions';
-import type { DiagnosticQuestion } from '../../data/diagnosticQuestions';
+import type { DiagnosticQuestion, ResponseOptionValue } from '../../data/diagnosticQuestions';
 import { requestScreenWakeLock, releaseScreenWakeLock, subscribeWakeLock } from '../../lib/wakeLock';
 import { 
   saveLocalChunk, 
@@ -31,7 +31,9 @@ import {
   Edit3,
   Calendar,
   Compass,
-  FileCheck
+  FileCheck,
+  RotateCcw,
+  Copy
 } from 'lucide-react';
 import mermaid from 'mermaid';
 import { jsPDF } from 'jspdf';
@@ -102,12 +104,28 @@ export default function ClientMeetingSession({
   const [sessionId] = useState(() => crypto.randomUUID());
   const [duration, setDuration] = useState(0);
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0);
+  const activeQuestionIndexRef = useRef<number>(0);
+  const [questionTranscripts, setQuestionTranscripts] = useState<Record<number, string>>({});
+  const questionTranscriptsRef = useRef<Record<number, string>>({});
   const [wakeLockActive, setWakeLockActive] = useState(false);
   const [chunksCount, setChunksCount] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [isStartingMic, setIsStartingMic] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const hasAutoStartedRef = useRef(false);
+
+  const handleSelectQuestion = (idx: number) => {
+    setActiveQuestionIndex(idx);
+    activeQuestionIndexRef.current = idx;
+  };
+
+  useEffect(() => {
+    activeQuestionIndexRef.current = activeQuestionIndex;
+  }, [activeQuestionIndex]);
+
+  useEffect(() => {
+    questionTranscriptsRef.current = questionTranscripts;
+  }, [questionTranscripts]);
 
   // Live WebSocket Transcription & Supabase Realtime State
   const [liveTranscript, setLiveTranscript] = useState('');
@@ -136,6 +154,7 @@ export default function ClientMeetingSession({
 
   // Step 4: Check out (Validation before impact)
   const [editableAnswers, setEditableAnswers] = useState<string[]>([]);
+  const [selectedQuestionOptions, setSelectedQuestionOptions] = useState<Record<number, ResponseOptionValue>>({});
   const [validatorName, setValidatorName] = useState(client.client_lead_name || 'Director General');
   const [clientFeedback, setClientFeedback] = useState('');
   const [checkoutApproved, setCheckoutApproved] = useState(false);
@@ -376,12 +395,25 @@ export default function ClientMeetingSession({
           }, (payload: any) => {
             const newChunk = payload.new;
             if (newChunk?.transcription) {
-              setLastSyncedText(newChunk.transcription);
-              setLiveTranscript(prev => {
-                const chunkTrim = newChunk.transcription.trim();
-                if (!chunkTrim || prev.includes(chunkTrim)) return prev;
-                return prev ? `${prev} ${chunkTrim}` : chunkTrim;
-              });
+              const chunkTrim = newChunk.transcription.trim();
+              if (chunkTrim) {
+                setLastSyncedText(chunkTrim);
+                setLiveTranscript(prev => {
+                  if (prev.includes(chunkTrim)) return prev;
+                  return prev ? `${prev} ${chunkTrim}` : chunkTrim;
+                });
+
+                // Impactar en la pregunta que se está enfocando
+                const targetIdx = activeQuestionIndexRef.current;
+                setQuestionTranscripts(prev => {
+                  const existing = prev[targetIdx] || '';
+                  if (existing.includes(chunkTrim)) return prev;
+                  const updated = existing ? `${existing} ${chunkTrim}` : chunkTrim;
+                  const nextMap = { ...prev, [targetIdx]: updated };
+                  questionTranscriptsRef.current = nextMap;
+                  return nextMap;
+                });
+              }
             }
           })
           .subscribe();
@@ -398,11 +430,24 @@ export default function ClientMeetingSession({
           language: 'es',
           onTranscript: (event) => {
             if (event.isFinal) {
-              setLiveTranscript(prev => {
-                const text = event.text.trim();
-                if (!text || prev.includes(text)) return prev;
-                return prev ? `${prev} ${text}` : text;
-              });
+              const text = event.text.trim();
+              if (text) {
+                setLiveTranscript(prev => {
+                  if (prev.includes(text)) return prev;
+                  return prev ? `${prev} ${text}` : text;
+                });
+
+                // Impactar en la respuesta de la pregunta enfocada
+                const targetIdx = activeQuestionIndexRef.current;
+                setQuestionTranscripts(prev => {
+                  const existing = prev[targetIdx] || '';
+                  if (existing.includes(text)) return prev;
+                  const updated = existing ? `${existing} ${text}` : text;
+                  const nextMap = { ...prev, [targetIdx]: updated };
+                  questionTranscriptsRef.current = nextMap;
+                  return nextMap;
+                });
+              }
               setInterimText('');
             } else {
               setInterimText(event.text);
@@ -434,7 +479,8 @@ export default function ClientMeetingSession({
       recorder.ondataavailable = async (e) => {
         if (e.data && e.data.size > 0) {
           const currentIndex = chunkIndexRef.current++;
-          const currentQ = questionsToUse[activeQuestionIndex];
+          const targetIdx = activeQuestionIndexRef.current;
+          const currentQ = questionsToUse[targetIdx] || questionsToUse[0];
           
           // 1. Save chunk in IndexedDB (immune to crash/network drop)
           const record = await saveLocalChunk(
@@ -457,12 +503,23 @@ export default function ClientMeetingSession({
             if (res.success) {
               setSyncedChunks(prev => prev + 1);
               if (res.transcription) {
-                setLastSyncedText(res.transcription);
-                setLiveTranscript(prev => {
-                  const chunkTrim = res.transcription!.trim();
-                  if (!chunkTrim || prev.includes(chunkTrim)) return prev;
-                  return prev ? `${prev} ${chunkTrim}` : chunkTrim;
-                });
+                const chunkTrim = res.transcription.trim();
+                if (chunkTrim) {
+                  setLastSyncedText(chunkTrim);
+                  setLiveTranscript(prev => {
+                    if (prev.includes(chunkTrim)) return prev;
+                    return prev ? `${prev} ${chunkTrim}` : chunkTrim;
+                  });
+
+                  setQuestionTranscripts(prev => {
+                    const existing = prev[targetIdx] || '';
+                    if (existing.includes(chunkTrim)) return prev;
+                    const updated = existing ? `${existing} ${chunkTrim}` : chunkTrim;
+                    const nextMap = { ...prev, [targetIdx]: updated };
+                    questionTranscriptsRef.current = nextMap;
+                    return nextMap;
+                  });
+                }
               }
             } else {
               // Fallback upload to storage directly
@@ -653,9 +710,18 @@ export default function ClientMeetingSession({
             if (ent && ent.estado === 'completado' && ent.resumen) {
               const fullText = ent.transcripcion || liveTranscript || finalRecordedTranscript;
               setTranscriptionText(fullText);
-              const answers = Array.isArray(ent.respuestas_cuestionario) 
+              const rawAiAnswers = Array.isArray(ent.respuestas_cuestionario) 
                 ? (ent.respuestas_cuestionario as any[]).map(r => String(r))
-                : questionsTextList.map(() => 'Información recopilada durante la sesión.');
+                : [];
+
+              const answers = questionsTextList.map((_, idx) => {
+                const aiAns = rawAiAnswers[idx]?.trim() || '';
+                const directCaptured = questionTranscriptsRef.current[idx]?.trim();
+                if (directCaptured && (!aiAns || aiAns.toLowerCase().includes('no se menciona') || aiAns.length < 5)) {
+                  return directCaptured;
+                }
+                return aiAns || directCaptured || 'No se registraron comentarios específicos para esta pregunta.';
+              });
 
               setResultData({
                 resumen: ent.resumen,
@@ -665,6 +731,12 @@ export default function ClientMeetingSession({
                 omv_deliverable: ent.omv_deliverable || omvData
               });
               setEditableAnswers(answers);
+              // Initialize default maturity options based on evidence
+              const initialOpts: Record<number, ResponseOptionValue> = {};
+              selectedQuestions.forEach(q => {
+                initialOpts[q.id] = q.options[0]?.value || 'formal_active';
+              });
+              setSelectedQuestionOptions(initialOpts);
               aiAnalysisSucceeded = true;
               break;
             }
@@ -678,6 +750,10 @@ export default function ClientMeetingSession({
       // Fallback synthesis if Edge Function is offline or pending
       if (!aiAnalysisSucceeded) {
         const generatedAnswers = selectedQuestions.map((q, idx) => {
+          const directCaptured = questionTranscriptsRef.current[idx]?.trim();
+          if (directCaptured) {
+            return directCaptured;
+          }
           if (idx === 0) {
             return `La empresa cuenta con estructura formalizada y roles de liderazgo definidos conforme a la estrategia de ${client.name}.`;
           }
@@ -723,6 +799,11 @@ export default function ClientMeetingSession({
 
         setResultData(fallbackData);
         setEditableAnswers(generatedAnswers);
+        const fallbackOpts: Record<number, ResponseOptionValue> = {};
+        selectedQuestions.forEach(q => {
+          fallbackOpts[q.id] = q.options[0]?.value || 'formal_active';
+        });
+        setSelectedQuestionOptions(fallbackOpts);
         setTranscriptionText(transcriptContent);
       }
 
@@ -758,14 +839,28 @@ export default function ClientMeetingSession({
 
       // 2. Impact closed answers into diagnostic_responses
       const answersMap: Record<string, any> = {};
+      const suggestionsBatch: any[] = [];
+
       selectedQuestions.forEach((q, idx) => {
         const answerText = editableAnswers[idx] || resultData.respuestas[idx] || '';
-        const selectedOption = q.options[0]?.value || 'formal_active';
+        const chosenOption = selectedQuestionOptions[q.id] || q.options[0]?.value || 'formal_active';
         answersMap[q.id] = {
-          value: selectedOption,
+          value: chosenOption,
           notes: `[Validado en Check out - ${meetingTitle}]: ${answerText}`,
           evidence: answerText
         };
+
+        const matchingOptionObj = q.options.find(opt => opt.value === chosenOption);
+        suggestionsBatch.push({
+          question_id: q.id,
+          question_code: q.code,
+          area_id: q.areaId,
+          question_title: q.title,
+          suggested_option: chosenOption,
+          new_assessment: matchingOptionObj?.label || chosenOption,
+          reason: `Evidencia validada en Check out: "${answerText.slice(0, 120)}${answerText.length > 120 ? '...' : ''}"`,
+          confidence: 'alta'
+        });
       });
 
       const { error } = await (supabase
@@ -778,6 +873,20 @@ export default function ClientMeetingSession({
         }, { onConflict: 'organization_id' });
 
       if (error) throw error;
+
+      // 3. Register suggestion log in diagnostic_suggestions for complete audit trail
+      try {
+        await (supabase.from('diagnostic_suggestions') as any).insert({
+          organization_id: client.id,
+          session_id: sessionId,
+          status: 'accepted',
+          suggested_changes: {
+            suggested_changes: suggestionsBatch
+          }
+        });
+      } catch (sugErr) {
+        console.warn('Notice saving diagnostic_suggestions log:', sugErr);
+      }
 
       // If Kickoff, also save OMV module
       if (meetingType === 'kickoff' && resultData.omv_deliverable) {
@@ -799,6 +908,32 @@ export default function ClientMeetingSession({
       alert('Error en validación: ' + (err.message || 'Verifique conexión'));
     } finally {
       setImpactLoading(false);
+    }
+  };
+
+  // Reiniciar y volver a grabar la sesión desde cero
+  const handleRestartRecording = () => {
+    if (window.confirm('¿Desea volver a grabar esta sesión? Se reiniciará la captura de audio para realizar una nueva toma en vivo.')) {
+      setDuration(0);
+      setChunksCount(0);
+      setSyncedChunks(0);
+      setLiveTranscript('');
+      setInterimText('');
+      setTranscriptionText('');
+      setQuestionTranscripts({});
+      questionTranscriptsRef.current = {};
+      setActiveQuestionIndex(0);
+      activeQuestionIndexRef.current = 0;
+      setResultData(null);
+      setEditableAnswers([]);
+      setIsRecording(false);
+      setIsStartingMic(false);
+      setMicError(null);
+      hasAutoStartedRef.current = false;
+      setStep('recording');
+      setTimeout(() => {
+        startRecording();
+      }, 150);
     }
   };
 
@@ -1348,28 +1483,53 @@ export default function ClientMeetingSession({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {selectedQuestions.map((q, idx) => {
               const isActive = idx === activeQuestionIndex;
+              const capturedText = questionTranscripts[idx];
               return (
                 <div
                   key={q.id}
-                  onClick={() => setActiveQuestionIndex(idx)}
+                  onClick={() => handleSelectQuestion(idx)}
                   className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-2.5 ${
                     isActive
-                      ? 'border-red-600 bg-red-50 ring-2 ring-red-500/20'
+                      ? 'border-red-600 bg-red-50 ring-2 ring-red-500/20 shadow-xs'
+                      : capturedText
+                      ? 'border-emerald-300 bg-emerald-50/40 hover:border-emerald-400'
                       : 'border-zinc-200 hover:border-zinc-400 bg-zinc-50'
                   }`}
                 >
                   <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
-                    isActive ? 'bg-red-600 text-white' : 'bg-zinc-200 text-zinc-800'
+                    isActive ? 'bg-red-600 text-white' : capturedText ? 'bg-emerald-600 text-white' : 'bg-zinc-200 text-zinc-800'
                   }`}>
                     #{idx + 1}
                   </span>
-                  <div className="flex-1">
-                    <p className="text-xs font-bold text-zinc-950">{q.title}</p>
-                    {isActive && (
-                      <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider mt-1 block">
-                        ● Grabando enfoque para esta pregunta
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs font-bold text-zinc-950 leading-snug">{q.title}</p>
+                      {capturedText && (
+                        <span className="text-[9px] font-mono text-emerald-700 font-semibold bg-emerald-100 px-1.5 py-0.5 rounded shrink-0 border border-emerald-200">
+                          {capturedText.trim().split(/\s+/).length} palabras
+                        </span>
+                      )}
+                    </div>
+                    {isActive ? (
+                      <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider mt-1 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-red-600 animate-ping inline-block" />
+                        Grabando enfoque para esta pregunta
                       </span>
-                    )}
+                    ) : null}
+
+                    {/* Previsualización en vivo de la respuesta transcrita para esta pregunta */}
+                    {capturedText ? (
+                      <div className="mt-2 p-2 rounded-lg bg-white/95 border border-emerald-200 text-[11px] font-mono text-zinc-800 leading-snug shadow-2xs">
+                        <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider block mb-0.5">
+                          ✓ Respuesta capturada para esta pregunta:
+                        </span>
+                        "{capturedText}"
+                      </div>
+                    ) : isActive && interimText ? (
+                      <div className="mt-1.5 text-[11px] font-mono text-zinc-500 italic truncate">
+                        Escuchando: "{interimText}"...
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -1424,14 +1584,26 @@ export default function ClientMeetingSession({
               </p>
             </div>
 
-            <button
-              onClick={handleConfirmCheckoutAndImpact}
-              disabled={impactLoading}
-              className="px-6 py-3 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-sm transition-all hover:scale-105 shrink-0"
-            >
-              {impactLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-              Aceptar Check out e Impactar
-            </button>
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleRestartRecording}
+                className="px-4 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-wider bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 flex items-center gap-2 shadow-xs transition-all hover:scale-105"
+                title="Descartar esta toma y volver a grabar la reunión"
+              >
+                <RotateCcw className="w-4 h-4 text-rose-600" />
+                Volver a Grabar
+              </button>
+
+              <button
+                onClick={handleConfirmCheckoutAndImpact}
+                disabled={impactLoading}
+                className="px-6 py-2.5 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-sm transition-all hover:scale-105 shrink-0"
+              >
+                {impactLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                Aceptar Check out e Impactar
+              </button>
+            </div>
           </div>
 
           {/* Formulario de Validación */}
@@ -1461,6 +1633,61 @@ export default function ClientMeetingSession({
             </div>
           </div>
 
+          {/* SECCIÓN DE TRANSCRIPCIÓN COMPLETA DE LA REUNIÓN */}
+          <div className="bg-slate-900 text-white p-5 rounded-2xl border-2 border-slate-800 shadow-md space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-400">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-display text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
+                    Transcripción Completa de la Reunión (Whisper)
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Registro textual continuo capturado durante la sesión ({formatTime(duration)}).
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const textToCopy = transcriptionText || liveTranscript || '';
+                    if (!textToCopy) {
+                      alert('No hay texto transcrito para copiar.');
+                      return;
+                    }
+                    navigator.clipboard.writeText(textToCopy);
+                    alert('Transcripción completa copiada al portapapeles.');
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-700"
+                >
+                  <Copy className="w-3.5 h-3.5" /> Copiar Texto
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRestartRecording}
+                  className="px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Reintentar Grabación
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-slate-950 rounded-xl p-4 border border-slate-800/80 max-h-56 overflow-y-auto font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-wrap selection:bg-red-900 selection:text-white">
+              {transcriptionText || liveTranscript ? (
+                transcriptionText || liveTranscript
+              ) : (
+                <span className="text-slate-500 italic">
+                  No se registró texto audible durante la sesión grabada. Si hubo problemas con el micrófono, puede hacer clic en "Reintentar Grabación" para reiniciar la captura en vivo.
+                </span>
+              )}
+            </div>
+          </div>
+
           {/* Lista de Respuestas a Validar */}
           <div className="space-y-4 pt-2">
             <h3 className="font-display text-sm font-black uppercase tracking-wider text-zinc-950 flex items-center gap-2">
@@ -1469,7 +1696,7 @@ export default function ClientMeetingSession({
             </h3>
 
             {selectedQuestions.map((q, idx) => (
-              <div key={q.id} className="p-4 rounded-xl border-2 border-zinc-200 bg-white space-y-2">
+              <div key={q.id} className="p-4 rounded-xl border-2 border-zinc-200 bg-white space-y-3 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-100 text-zinc-800">
                     Pregunta #{idx + 1} • {q.code}
@@ -1479,35 +1706,87 @@ export default function ClientMeetingSession({
                   </span>
                 </div>
                 <p className="text-xs font-bold text-zinc-950">{q.title}</p>
-                <textarea
-                  value={editableAnswers[idx] || ''}
-                  onChange={(e) => {
-                    const next = [...editableAnswers];
-                    next[idx] = e.target.value;
-                    setEditableAnswers(next);
-                  }}
-                  rows={3}
-                  className="w-full p-2.5 rounded-lg border border-zinc-300 text-xs text-zinc-700 focus:border-red-600 focus:outline-none"
-                />
+
+                {/* Evidencia cualitativa */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-zinc-500 mb-1">
+                    Evidencia cualitativa levantada (transcripción / resumen):
+                  </label>
+                  <textarea
+                    value={editableAnswers[idx] || ''}
+                    onChange={(e) => {
+                      const next = [...editableAnswers];
+                      next[idx] = e.target.value;
+                      setEditableAnswers(next);
+                    }}
+                    rows={2}
+                    placeholder="Evidencia o notas de la respuesta..."
+                    className="w-full p-2.5 rounded-lg border border-zinc-300 text-xs text-zinc-700 focus:border-red-600 focus:outline-none"
+                  />
+                </div>
+
+                {/* Nivel de madurez a impactar en Diagnóstico */}
+                <div className="pt-1">
+                  <label className="block text-[11px] font-semibold text-zinc-700 mb-1.5 flex items-center justify-between">
+                    <span>Nivel de Madurez a impactar en Diagnóstico:</span>
+                    <span className="text-[10px] text-zinc-400 font-normal">Haz clic para cambiar el nivel</span>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                    {q.options.map(opt => {
+                      const isSelected = (selectedQuestionOptions[q.id] || q.options[0]?.value) === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setSelectedQuestionOptions(prev => ({ ...prev, [q.id]: opt.value }))}
+                          className={`p-2 rounded-lg text-left text-xs transition-all border ${
+                            isSelected
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                              : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-700 border-zinc-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-[11px]">{opt.shortLabel}</span>
+                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
+                          </div>
+                          <span className={`text-[10px] block mt-0.5 line-clamp-2 ${isSelected ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                            {opt.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
 
-          <div className="pt-4 border-t border-zinc-200 flex justify-end gap-3">
+          <div className="pt-4 border-t border-zinc-200 flex flex-wrap items-center justify-between gap-3">
             <button
-              onClick={() => setStep('results')}
-              className="px-4 py-2 text-xs font-bold text-zinc-600 hover:text-zinc-950 uppercase"
+              type="button"
+              onClick={handleRestartRecording}
+              className="px-4 py-2.5 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-display text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-colors shadow-xs"
             >
-              Saltar Validación
+              <RotateCcw className="w-4 h-4 text-rose-600" />
+              Volver a Grabar / Repetir
             </button>
-            <button
-              onClick={handleConfirmCheckoutAndImpact}
-              disabled={impactLoading}
-              className="px-6 py-3 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-sm transition-all hover:scale-105"
-            >
-              {impactLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-              Confirmar Check out e Impactar en Diagnóstico
-            </button>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setStep('results')}
+                className="px-4 py-2 text-xs font-bold text-zinc-600 hover:text-zinc-950 uppercase"
+              >
+                Saltar Validación
+              </button>
+              <button
+                onClick={handleConfirmCheckoutAndImpact}
+                disabled={impactLoading}
+                className="px-6 py-3 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-sm transition-all hover:scale-105"
+              >
+                {impactLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                Confirmar Check out e Impactar en Diagnóstico
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1528,6 +1807,14 @@ export default function ClientMeetingSession({
         </button>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleRestartRecording}
+            className="flex items-center gap-1.5 bg-rose-50 text-rose-700 border-2 border-rose-300 px-3.5 py-2 rounded-xl hover:bg-rose-100 text-xs font-display font-bold uppercase tracking-wider shadow-xs transition-all"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-rose-600" /> Grabar Otra Sesión
+          </button>
+
           <button
             onClick={handleExportPDF}
             className="flex items-center gap-2 bg-white text-zinc-900 border-2 border-zinc-900 px-4 py-2 rounded-xl hover:bg-zinc-100 text-xs font-display font-bold uppercase tracking-wider shadow-sm transition-all"
