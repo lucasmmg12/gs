@@ -20,29 +20,97 @@ Hablás en español profesional, analítico y cercano (usando voseo argentino cu
 ## TU ROL Y CAPACIDADES:
 1. **Conocimiento Total del Sistema y Metodología GS**:
    - **PR-01: Gestión de Reuniones y Minutas**: Ciclo Recibido → Borrador → Pendiente de revisión → Aprobado → Publicado. Ningún contenido generado por IA se publica al cliente sin aprobación de un consultor humano.
-   - **PR-02: Diagnóstico Integral 360°**: 10 áreas, 78 preguntas clave, OMV (Objetivo de Mediano Plazo a 3 años), cálculo del IME (Índice de Madurez Estratégica 0-100) y del IRE (Índice de Riesgo Empresario 0-100). Actualización incremental basada en evidencias sin sobrescritura ciega.
-   - **PR-03: Master Plan Estratégico (MPE)**: Plan de acción priorizado en 5 Ejes (1. Gobernanza y Conducción, 2. Procesos y Operaciones, 3. Finanzas y Control de Gestión, 4. Talento y Personas, 5. Comercial y Expansión).
-   - **Pentágono del Orden (PENT-PE)**: Medición de 0 a 10 en los 5 ejes, comparando Línea Base, Medición Actual y Meta Trienal.
-   - **Medianera Conceptual**: Primero se mapea la cadena de valor y los procesos bajo ISO 9001, y recién después se diseña el organigrama de puestos para no acomodar la estructura a las personas actuales.
-   - **Matriz de Riesgos (5x5)**: Probabilidad x Impacto, foco en riesgos inherentes críticos y planes de contingencia.
-   - **Seguimiento Trimestral (3 Meses)**: Mediciones formales del Master Plan y remedición del Pentágono cada 90 días.
+   - **PR-02: Diagnóstico Integral 360°**: 10 áreas, 78 preguntas clave. Taxonomía de preguntas: abiertas cualitativas (open_diagnostic), de nivelación estructurada (maturity_level) y con indicadores numéricos (indicator). Actualización incremental basada en evidencias sin sobrescritura ciega.
+   - **PR-03: Objetivo Más Bárbaro (OMB - Visión a 3 años)**: Visión trienal consensuada entre socios. Gestión estricta de versiones (Rev A, Rev B... hasta Rev 0 aprobada definitiva). Consolidación de visiones divergentes de socios y podcasts/audios explicativos por revisión.
+   - **PR-04: Cierre de Sesión y Filtro Humano (Human-in-the-Loop)**: Mitigación del ~15% de margen de error de la IA. Todas las sugerencias detectadas deben incluir cita textual exacta y nivel de confianza. Requieren validación del consultor humano antes de impactar el diagnóstico oficial.
+   - **PR-05: Pentágono del Orden y Evolución Matemática de Madurez**: 5 Ejes (Gobernanza, Procesos, Finanzas, Talento, Comercial) en escala 0 a 10. La evolución no es subjetiva, sino matemática: ΔEje = (10 - Base) × ∑(% Incidencia_i × % Avance_i), con suma de incidencias por eje igual al 100%.
+   - **PR-06: Medianera Conceptual**: Primero se diseñan los procesos de la cadena de valor bajo ISO 9001 (organigrama de puestos), y recién después se analiza a las personas para no sesgar la estructura empresarial.
+   - **PR-07: Gestor Documental y RAG Aislado**: Documentos de auditoría, balances y manuales organizados por alcance (Global, por Área del diagnóstico 1..10, o Pregunta específica) con aislamiento absoluto por client_id.
+   - **PR-08: Personalización de Prompts y Criterios del Consultor**: Adaptación a directivas específicas del equipo consultor (rol, arquetipo de consultoría, adaptaciones sectoriales agro/industria/servicios).
 
 2. **SEGURIDAD Y AISLAMIENTO DE DATOS POR CLIENTE (REGLA INQUEBRANTABLE)**:
-   - Tienes acceso completo a todas las transcripciones, grabaciones, diagnósticos e informes del cliente en consulta para comprender todo su contexto histórico.
-   - **TIENES ESTRICTAMENTE PROHIBIDO MEZCLAR INFORMACIÓN ENTRE DISTINTOS ID_CLIENTE**.
+   - Tienes acceso completo a todas las transcripciones, grabaciones, diagnósticos, OMB, documentos e informes del cliente en consulta.
+   - **TIENES ESTRICTAMENTE PROHIBIDO MEZCLAR O REVELAR INFORMACIÓN ENTRE DISTINTOS ID_CLIENTE**.
    - Bajo ninguna circunstancia cruces, reveles, menciones o compares información, nombres, números o transcripciones pertenecientes a otro cliente. La confidencialidad entre empresas es absoluta y crítica.
 
 3. **Acceso a la Base de Datos**:
    - Antes de responder sobre cualquier cliente, estado de proyecto, reuniones, minutas, diagnóstico o tareas, **CONSULTÁ SIEMPRE LAS TOOLS CORRESPONDIENTES**.
-   - Traé datos reales: nombres exactos, números de IME, fechas de reuniones, responsables y estados.
+   - Traé datos reales: nombres exactos, números de IME, fechas de reuniones, revisiones de OMB, responsables y estados.
 
 4. **Generación de Archivos Excel (.xlsx) e Informes en PDF**:
-   - Si el usuario solicita generar, armar, exportar o descargar un Excel o planilla de cálculo (ej: del Master Plan, de los Riesgos, del Diagnóstico, de las Reuniones), invocá la tool \`generate_excel_report\` con los datos formateados en filas y columnas limpias.
-   - Si el usuario solicita un informe, reporte formal o documento en PDF (ej: resumen ejecutivo del diagnóstico, informe de madurez del pentágono, reporte de auditoría), invocá la tool \`generate_pdf_report\` con título, subtítulo, métricas clave (KPIs), secciones y tablas.
-   - Además de invocar la tool, redactá en tu mensaje un resumen ejecutivo cordial informando que el archivo fue preparado y está disponible para descarga.
+   - Si el usuario solicita generar, armar, exportar o descargar un Excel (ej: del Master Plan ponderado, de los Riesgos, del Diagnóstico, de las Reuniones), invocá la tool \`generate_excel_report\` con los datos formateados en filas y columnas limpias.
+   - Si el usuario solicita un informe formal o documento en PDF (ej: resumen ejecutivo del diagnóstico, informe de madurez del pentágono, reporte de auditoría), invocá la tool \`generate_pdf_report\` con título, subtítulo, métricas clave (KPIs), secciones y tablas.
 `
 
 const tools: any = [
+  {
+    type: 'function',
+    function: {
+      name: 'query_omb_revisions',
+      description: 'Consultar el historial de versiones del OMB (Objetivo Más Bárbaro - Visión a 3 años), visiones de socios, podcast/audio asociado y estado de revisión (Rev A, Rev B, Rev 0).',
+      parameters: {
+        type: 'object',
+        properties: {
+          organization_id: { type: 'string', description: 'UUID de la organización' }
+        }
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'synthesize_omb_visions',
+      description: 'Sintetizar y unificar las declaraciones o visiones estratégicas de múltiples socios en una redacción consolidada de OMB (Objetivo Más Bárbaro).',
+      parameters: {
+        type: 'object',
+        properties: {
+          organization_id: { type: 'string', description: 'UUID de la organización' },
+          partner_visions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                partner_name: { type: 'string' },
+                vision_text: { type: 'string' }
+              },
+              required: ['partner_name', 'vision_text']
+            },
+            description: 'Lista de visiones individuales de cada socio o directivo'
+          }
+        },
+        required: ['partner_visions']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_client_documents',
+      description: 'Consultar el repositorio documental RAG del cliente: manuales de procesos, balances, estatutos, clasificables por ámbito (global, por área 1..10 o por pregunta).',
+      parameters: {
+        type: 'object',
+        properties: {
+          organization_id: { type: 'string', description: 'UUID de la organización' },
+          scope_type: { type: 'string', enum: ['global', 'area', 'question'], description: 'Ámbito del documento' },
+          area_id: { type: 'string', description: 'Identificador del área diagnóstica (ej: area_3_operaciones)' }
+        }
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_weighted_actions_and_pentagon_math',
+      description: 'Consultar las acciones del Master Plan con sus porcentajes de incidencia (% inc) por eje y calcular la evolución matemática exacta del Pentágono según la fórmula GS: ΔEje = (10 - Base) × ∑(% Incidencia_i × % Avance_i).',
+      parameters: {
+        type: 'object',
+        properties: {
+          organization_id: { type: 'string', description: 'UUID de la organización' },
+          axis_id: { type: 'string', description: 'Identificador del eje (gobernanza, procesos, finanzas, talento, comercial)' }
+        }
+      }
+    }
+  },
   {
     type: 'function',
     function: {
@@ -74,7 +142,7 @@ const tools: any = [
     type: 'function',
     function: {
       name: 'query_meetings',
-      description: 'Obtener historial de reuniones y audios. Puedes filtrar por organization_id.',
+      description: 'Obtener historial de reuniones, audios y sesiones de tutoría.',
       parameters: {
         type: 'object',
         properties: {
@@ -88,7 +156,7 @@ const tools: any = [
     type: 'function',
     function: {
       name: 'query_minutes',
-      description: 'Consultar contenido completo de las minutas oficiales y borradores.',
+      description: 'Consultar contenido completo de las minutas oficiales y borradores con su tabla de compromisos.',
       parameters: {
         type: 'object',
         properties: {
@@ -102,7 +170,7 @@ const tools: any = [
     type: 'function',
     function: {
       name: 'query_master_plan',
-      description: 'Consultar tareas, hitos y avance del Master Plan Estratégico (MPE) por cliente o eje.',
+      description: 'Consultar tareas, hitos y avance general del Master Plan Estratégico (MPE).',
       parameters: {
         type: 'object',
         properties: {
@@ -117,7 +185,7 @@ const tools: any = [
     type: 'function',
     function: {
       name: 'query_pentagon_scores',
-      description: 'Consultar el Pentágono del Orden y evolución histórica de madurez estratégica (IME 0-10) en los 5 ejes.',
+      description: 'Consultar el Pentágono del Orden y mediciones de madurez estratégica (IME 0-10) en los 5 ejes.',
       parameters: {
         type: 'object',
         properties: {
@@ -130,7 +198,7 @@ const tools: any = [
     type: 'function',
     function: {
       name: 'query_risk_matrix',
-      description: 'Consultar la Matriz de Riesgos Organizacionales (código, probabilidad, impacto, nivel y estrategias de mitigación).',
+      description: 'Consultar la Matriz de Riesgos Organizacionales (código, probabilidad, impacto, nivel y mitigación).',
       parameters: {
         type: 'object',
         properties: {
@@ -144,7 +212,7 @@ const tools: any = [
     type: 'function',
     function: {
       name: 'query_diagnostic_360',
-      description: 'Consultar el Diagnóstico 360°, OMV a 3 años, respuestas de las 10 áreas y puntajes IME/IRE.',
+      description: 'Consultar el Diagnóstico 360°, OMB, respuestas en las 10 áreas y puntajes IME/IRE.',
       parameters: {
         type: 'object',
         properties: {
@@ -156,8 +224,22 @@ const tools: any = [
   {
     type: 'function',
     function: {
+      name: 'query_system_prompts',
+      description: 'Consultar los prompts, roles y directivas metodológicas personalizadas configuradas para el consultor o cliente.',
+      parameters: {
+        type: 'object',
+        properties: {
+          organization_id: { type: 'string', description: 'UUID de la organización' },
+          role: { type: 'string', description: 'Rol del prompt (ej: consultant_copilot)' }
+        }
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'query_gobernanza',
-      description: 'Consultar sesiones de auditoría grabadas, plantillas y entrevistas con IA.',
+      description: 'Consultar sesiones de auditoría grabadas, plantillas y entrevistas de gobernanza.',
       parameters: {
         type: 'object',
         properties: {
@@ -170,7 +252,7 @@ const tools: any = [
     type: 'function',
     function: {
       name: 'query_manual',
-      description: 'Obtener información del Manual de Procedimientos de GS para responder dudas de metodología (PR-01, PR-02, PR-03, políticas de seguridad).',
+      description: 'Obtener información del Manual Metodológico GS (PR-01 a PR-08: reuniones, OMB, filtro humano, pentágono matemático, RAG).',
       parameters: {
         type: 'object',
         properties: {}
@@ -201,7 +283,7 @@ const tools: any = [
                   }
                 }
               },
-              "required": ["sheetName", "headers", "rows"]
+              required: ["sheetName", "headers", "rows"]
             }
           }
         },
@@ -273,16 +355,36 @@ serve(async (req) => {
     // Contexto de cliente activo y aislamiento multi-tenant
     let clientIsolationPrompt = ''
     let activeClientName = ''
+    let dynamicCustomPrompt = ''
+
     if (organization_id) {
-      const { data: orgData } = await supabase.from('organizations').select('name').eq('id', organization_id).maybeSingle()
+      const { data: orgData } = await supabase.from('organizations').select('name, industry').eq('id', organization_id).maybeSingle()
       activeClientName = orgData?.name || 'Cliente Asignado'
       clientIsolationPrompt = `\n\n[ATENCIÓN - POLÍTICA DE SEGURIDAD Y AISLAMIENTO MULTI-TENANT OBLIGATORIA]:
-Estás operando EXCLUSIVAMENTE para el cliente: "${activeClientName}" (ID: ${organization_id}).
-Tienes acceso a todas sus grabaciones, minutas, OMV, diagnósticos, Master Plan y remediciones trimestrales.
+Estás operando EXCLUSIVAMENTE para el cliente: "${activeClientName}" (ID: ${organization_id}, Industria: ${orgData?.industry || 'General'}).
+Tienes acceso a todas sus grabaciones, minutas, OMB (Objetivo Más Bárbaro), diagnósticos, Master Plan con acciones ponderadas y documentos RAG.
 BAJO NINGUNA CIRCUNSTANCIA debes consultar, mezclar, filtrar ni revelar datos de ninguna otra empresa u organización. Todas las consultas a la base de datos deben quedar restringidas estrictamente a este cliente.`
+
+      // Carga dinámica de prompts del consultor para este cliente o rol global
+      try {
+        const { data: customPrompts } = await supabase
+          .from('system_prompts')
+          .select('*')
+          .or(`organization_id.eq.${organization_id},organization_id.is.null`)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(3)
+
+        if (customPrompts && customPrompts.length > 0) {
+          dynamicCustomPrompt = `\n\n[DIRECTIVAS Y CRITERIOS PERSONALIZADOS DEL EQUIPO CONSULTOR]:\n` + 
+            customPrompts.map((p: any) => `### ${p.title} (${p.role}):\n${p.prompt_text}`).join('\n\n')
+        }
+      } catch (promptErr) {
+        console.warn('Could not load custom system prompts:', promptErr)
+      }
     }
 
-    const sysMsg = { role: 'system', content: BASE_SYSTEM_PROMPT + clientIsolationPrompt }
+    const sysMsg = { role: 'system', content: BASE_SYSTEM_PROMPT + clientIsolationPrompt + dynamicCustomPrompt }
     const conversation = [sysMsg, ...messages]
 
     let generatedAttachment: any = null
@@ -312,7 +414,111 @@ BAJO NINGUNA CIRCUNSTANCIA debes consultar, mezclar, filtrar ni revelar datos de
         const scopedOrgId = organization_id || args.organization_id
 
         try {
-          if (name === 'query_organizations') {
+          if (name === 'query_omb_revisions') {
+            let q = supabase.from('client_omb_revisions').select('*')
+            if (scopedOrgId) q = q.eq('client_id', scopedOrgId)
+            const { data, error } = await q.order('created_at', { ascending: true })
+            toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
+          }
+          else if (name === 'synthesize_omb_visions') {
+            const partnerVisions = args.partner_visions || []
+            const combinedStatements = partnerVisions.map((pv: any) => `• ${pv.partner_name}: "${pv.vision_text}"`).join('\n')
+            
+            const synthesisCompletion = await openai.chat.completions.create({
+              model: 'gpt-4o',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'Sos el facilitador metodológico senior de Consultora GS. Unificá las visiones expresadas por los socios en una propuesta de OMB (Objetivo Más Bárbaro - Visión a 3 años) inspiradora, medible, desafiante y con indicadores cuantitativos claros.'
+                },
+                {
+                  role: 'user',
+                  content: `Perspectivas de los socios para la empresa:\n${combinedStatements}\n\nGenerá la redacción sintética del OMB (3 párrafos estructurados) y 3 KPIs clave trienales.`
+                }
+              ]
+            })
+
+            toolResult = JSON.stringify({
+              synthesis_text: synthesisCompletion.choices[0].message.content,
+              input_partner_count: partnerVisions.length
+            })
+          }
+          else if (name === 'query_client_documents') {
+            let q = supabase.from('client_documents').select('*')
+            if (scopedOrgId) q = q.eq('client_id', scopedOrgId)
+            if (args.scope_type) q = q.eq('scope_type', args.scope_type)
+            if (args.area_id) q = q.eq('area_id', args.area_id)
+            const { data, error } = await q.order('created_at', { ascending: false }).limit(20)
+            toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
+          }
+          else if (name === 'query_weighted_actions_and_pentagon_math') {
+            let q = supabase.from('master_plan_weighted_actions').select('*')
+            if (scopedOrgId) q = q.eq('client_id', scopedOrgId)
+            if (args.axis_id) q = q.eq('axis_id', args.axis_id)
+            const { data: actions, error } = await q.order('axis_id')
+
+            if (error) {
+              toolResult = `Error: ${error.message}`
+            } else {
+              // Fetch baseline pentagon
+              const { data: pentagonData } = await supabase
+                .from('pentagon_scores')
+                .select('*')
+                .eq('organization_id', scopedOrgId)
+                .order('measurement_date', { ascending: true })
+                .limit(1)
+                .maybeSingle()
+
+              const baselineScores = pentagonData?.scores || {
+                gobernanza: 4.2,
+                procesos: 3.5,
+                finanzas: 4.0,
+                talento: 3.8,
+                comercial: 4.5
+              }
+
+              // Group actions by axis
+              const axesSummary: Record<string, any> = {}
+              const axesList = ['gobernanza', 'procesos', 'finanzas', 'talento', 'comercial']
+
+              for (const axis of axesList) {
+                const axisActions = (actions || []).filter((a: any) => a.axis_id === axis)
+                const base = Number(baselineScores[axis] || 4.0)
+                const totalIncidence = axisActions.reduce((sum: number, a: any) => sum + Number(a.weight_percentage || 0), 0)
+                const effectiveProgressContribution = axisActions.reduce((sum: number, a: any) => {
+                  const inc = Number(a.weight_percentage || 0) / 100
+                  const prog = Number(a.progress_percentage || 0) / 100
+                  return sum + (inc * prog)
+                }, 0)
+
+                const delta = (10 - base) * effectiveProgressContribution
+                const calculatedScore = Math.min(10, Number((base + delta).toFixed(2)))
+
+                axesSummary[axis] = {
+                  baseline_score: base,
+                  current_calculated_score: calculatedScore,
+                  delta: Number(delta.toFixed(2)),
+                  total_incidence_percentage: totalIncidence,
+                  is_incidence_balanced_100: Math.abs(totalIncidence - 100) < 0.1,
+                  actions_count: axisActions.length,
+                  actions: axisActions
+                }
+              }
+
+              toolResult = JSON.stringify({
+                methodology: 'Fórmula GS: Delta = (10 - Base) * SUM(Incidencia% * Avance%)',
+                summary: axesSummary
+              })
+            }
+          }
+          else if (name === 'query_system_prompts') {
+            let q = supabase.from('system_prompts').select('*')
+            if (scopedOrgId) q = q.or(`organization_id.eq.${scopedOrgId},organization_id.is.null`)
+            if (args.role) q = q.eq('role', args.role)
+            const { data, error } = await q.order('created_at', { ascending: false })
+            toolResult = error ? `Error: ${error.message}` : JSON.stringify(data)
+          }
+          else if (name === 'query_organizations') {
             let q = supabase.from('organizations').select('*')
             if (scopedOrgId) {
               q = q.eq('id', scopedOrgId)

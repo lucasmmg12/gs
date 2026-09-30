@@ -20,11 +20,13 @@ interface Message {
 }
 
 const QUICK_ACTIONS = [
+  { label: '🎯 OMB (Rev 0)', prompt: 'Mostrame el estado actual del OMB (Objetivo Más Bárbaro - Visión a 3 años), las revisiones históricas (Rev A a Rev 0) y el consenso entre socios.' },
+  { label: '📐 Pentágono Matemático', prompt: 'Calculá la evolución matemática del Pentágono según las acciones ponderadas del Master Plan y su porcentaje de incidencia por eje: ΔEje = (10 - Base) * SUM(Incidencia% * Avance%).' },
+  { label: '📁 Documentos RAG', prompt: 'Consultá el repositorio documental del cliente y listame los archivos indexados por ámbito (Global, por Área del 1 al 10 o Pregunta).' },
+  { label: '⚖️ Cierre y Filtro Humano', prompt: 'Consultá las últimas sugerencias de actualización diagnóstica detectadas en reuniones para validación y aprobación del consultor humano.' },
   { label: '📊 Master Plan en Excel', prompt: 'Generame una planilla Excel (.xlsx) completa con todas las tareas del Master Plan Estratégico de la empresa organizada por ejes.' },
   { label: '📑 Informe Diagnóstico en PDF', prompt: 'Generame un informe ejecutivo en PDF de presentación formal con el Diagnóstico 360°, el estado de madurez IME y el resumen de la empresa.' },
-  { label: '🛡️ Riesgos en Excel', prompt: 'Generame un Excel con la Matriz de Riesgos de la empresa con nivel de riesgo, causas y planes de contingencia.' },
-  { label: '📈 Pentágono en PDF', prompt: 'Generame un informe PDF con la evolución del Pentágono del Orden y las metas trienales de madurez.' },
-  { label: '📋 Acta de Reunión en PDF', prompt: 'Generame un reporte formal en PDF de la última reunión de tutoría estratégica con sus acuerdos y compromisos.' }
+  { label: '🛡️ Matriz de Riesgos en Excel', prompt: 'Generame un Excel con la Matriz de Riesgos de la empresa con nivel de riesgo, causas y planes de contingencia.' }
 ];
 
 interface GrowyChatProps {
@@ -35,10 +37,27 @@ interface GrowyChatProps {
 export default function GrowyChat({ activeClientId, activeClientName }: GrowyChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [resolvedClientName, setResolvedClientName] = useState(activeClientName || '');
+
+  useEffect(() => {
+    if (activeClientId && !activeClientName) {
+      (supabase as any)
+        .from('organizations')
+        .select('name')
+        .eq('id', activeClientId)
+        .maybeSingle()
+        .then(({ data }: any) => {
+          if (data?.name) setResolvedClientName(data.name);
+        });
+    } else if (activeClientName) {
+      setResolvedClientName(activeClientName);
+    }
+  }, [activeClientId, activeClientName]);
+
   const [messages, setMessages] = useState<Message[]>([
     { 
       role: 'assistant', 
-      content: '¡Hola! Soy Growy, tu copiloto de inteligencia estratégica y analítica de Consultora GS.\n\nTengo acceso completo a la base de datos (grabaciones, transcripciones, minutas, diagnósticos 360°, Master Plan, Pentágono y matriz de riesgos). Todas mis consultas operan bajo estricto aislamiento de datos para garantizar confidencialidad absoluta entre clientes.' 
+      content: '¡Hola! Soy Growy, tu copiloto de inteligencia estratégica y analítica de Consultora GS.\n\nEstoy 100% actualizado con la metodología GS:\n• 🎯 **OMB (Objetivo Más Bárbaro)**: Visión trienal, control de revisiones (Rev A → Rev 0), unificación de socios y podcast.\n• ⚖️ **Filtro Humano**: Mitigación del margen de error (~15%) de la IA; sugerencias con citas textuales y validación obligatoria del consultor.\n• 📐 **Pentágono Matemático**: Cálculo determinístico según incidencias ponderadas: ΔEje = (10 - Base) × ∑(% Incidencia × % Avance).\n• 📁 **Gestor Documental & RAG**: Aislamiento estricto por cliente y ámbito (Global / Áreas 1..10).\n• 🎙️ **Comandos de Voz**: Dictame órdenes directamente con el micrófono (Whisper).\n\n¿Qué empresa o módulo querés analizar hoy?' 
     }
   ]);
   const [input, setInput] = useState('');
@@ -243,7 +262,7 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
           <div className="bg-emerald-950 text-emerald-300 px-3 py-1.5 text-[10px] font-mono flex items-center justify-between border-b border-emerald-800 shrink-0">
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Aislamiento Activo: <strong className="text-white">{activeClientName || activeClientId.substring(0, 8)}</strong>
+              Aislamiento Activo: <strong className="text-white">{resolvedClientName || activeClientName || activeClientId.substring(0, 8)}</strong>
             </span>
             <span className="text-[9px] uppercase font-bold text-emerald-400 bg-emerald-900/50 px-1.5 py-0.5 rounded">
               Multi-tenant Seguro
