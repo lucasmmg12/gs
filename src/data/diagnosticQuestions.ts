@@ -30,11 +30,14 @@ export interface CascadeCondition {
   triggerOptionValues: ResponseOptionValue[];
 }
 
+export type DiagnosticQuestionType = 'open_diagnostic' | 'maturity_level' | 'indicator';
+
 export interface DiagnosticQuestion {
   id: number;
   areaId: string;
   code: string;
   title: string;
+  questionType?: DiagnosticQuestionType;
   guide?: string;
   kpi?: string;
   isParent?: boolean;

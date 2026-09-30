@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
   Calendar, 
@@ -46,6 +46,36 @@ interface MasterPlanQuarterlyTrackingProps {
   onReviewsUpdated?: () => void;
 }
 
+export interface AxisWeightedAction {
+  id: string;
+  axis: 'gobernanza' | 'procesos' | 'finanzas' | 'talento' | 'comercial';
+  title: string;
+  weightPct: number;
+  progressPct: number;
+}
+
+const DEFAULT_WEIGHTED_ACTIONS: AxisWeightedAction[] = [
+  // Gobernanza
+  { id: 'wa-1', axis: 'gobernanza', title: 'Formalización de Directorio mensual con actas', weightPct: 50, progressPct: 40 },
+  { id: 'wa-2', axis: 'gobernanza', title: 'Protocolo de socios y ordenamiento de dividendos', weightPct: 50, progressPct: 30 },
+  // Procesos
+  { id: 'wa-3', axis: 'procesos', title: 'Mapeo y manual de procesos estándar (ISO 9001)', weightPct: 40, progressPct: 50 },
+  { id: 'wa-4', axis: 'procesos', title: 'Trazabilidad y control de tiempos de entrega', weightPct: 30, progressPct: 35 },
+  { id: 'wa-5', axis: 'procesos', title: 'Gestión de no conformidades y reclamos', weightPct: 30, progressPct: 20 },
+  // Finanzas
+  { id: 'wa-6', axis: 'finanzas', title: 'Flujo de caja proyectado a 6 meses', weightPct: 40, progressPct: 60 },
+  { id: 'wa-7', axis: 'finanzas', title: 'Punto de equilibrio y rentabilidad por unidad', weightPct: 35, progressPct: 45 },
+  { id: 'wa-8', axis: 'finanzas', title: 'Reserva de liquidez operativa (90 días)', weightPct: 25, progressPct: 30 },
+  // Talento
+  { id: 'wa-9', axis: 'talento', title: 'Organigrama y perfiles de mandos medios', weightPct: 40, progressPct: 45 },
+  { id: 'wa-10', axis: 'talento', title: 'Evaluación de desempeño y metas por área', weightPct: 35, progressPct: 30 },
+  { id: 'wa-11', axis: 'talento', title: 'Plan de capacitación y autonomía operativa', weightPct: 25, progressPct: 25 },
+  // Comercial
+  { id: 'wa-12', axis: 'comercial', title: 'Sistematización comercial (reducción boca a boca)', weightPct: 40, progressPct: 35 },
+  { id: 'wa-13', axis: 'comercial', title: 'Medición de satisfacción NPS y recompra', weightPct: 30, progressPct: 40 },
+  { id: 'wa-14', axis: 'comercial', title: 'Estrategia de pricing y cartera de clientes clave', weightPct: 30, progressPct: 30 },
+];
+
 export default function MasterPlanQuarterlyTracking({
   clientId,
   clientName,
@@ -68,6 +98,36 @@ export default function MasterPlanQuarterlyTracking({
   const [summaryNotes, setSummaryNotes] = useState('');
   const [consultantName, setConsultantName] = useState('Martín Gómez (Consultor Senior)');
   const [saving, setSaving] = useState(false);
+
+  // Ponderación Matemática por Incidencias (Metodología Abel)
+  const [useMathCalc, setUseMathCalc] = useState(true);
+  const [activeAxisTab, setActiveAxisTab] = useState<'gobernanza' | 'procesos' | 'finanzas' | 'talento' | 'comercial'>('gobernanza');
+  const [weightedActions, setWeightedActions] = useState<AxisWeightedAction[]>(DEFAULT_WEIGHTED_ACTIONS);
+
+  const baselineScores = useMemo(() => {
+    const lb = reviews.find(r => r.id.includes('lb') || r.quarter.toLowerCase().includes('base')) || reviews[0];
+    return lb?.pentagon_scores || { gobernanza: 5.2, procesos: 4.5, finanzas: 6.0, talento: 5.0, comercial: 4.8 };
+  }, [reviews]);
+
+  const updateActionProgress = (actionId: string, progress: number) => {
+    const nextActions = weightedActions.map(a => a.id === actionId ? { ...a, progressPct: progress } : a);
+    setWeightedActions(nextActions);
+
+    if (useMathCalc) {
+      const axes: Array<'gobernanza' | 'procesos' | 'finanzas' | 'talento' | 'comercial'> = [
+        'gobernanza', 'procesos', 'finanzas', 'talento', 'comercial'
+      ];
+      const newScores = { ...scores };
+      axes.forEach(ax => {
+        const axActions = nextActions.filter(a => a.axis === ax);
+        const totalContribution = axActions.reduce((sum, a) => sum + (a.weightPct / 100) * (a.progressPct / 100), 0);
+        const base = (baselineScores as any)[ax] || 1.0;
+        const calculated = base + (10 - base) * totalContribution;
+        newScores[ax] = Math.min(10, Math.max(1, parseFloat(calculated.toFixed(1))));
+      });
+      setScores(newScores);
+    }
+  };
 
   const fetchReviews = async () => {
     setLoading(true);
@@ -489,72 +549,138 @@ export default function MasterPlanQuarterlyTracking({
                 </div>
               </div>
 
-              {/* Puntajes de los 5 Ejes */}
-              <div className="space-y-2 bg-zinc-50 p-3.5 rounded-xl border border-zinc-200">
-                <span className="block text-[11px] font-bold font-display uppercase tracking-wider text-zinc-900">
-                  Puntajes del Pentágono (Escala 1 a 10):
-                </span>
-                <div className="grid grid-cols-5 gap-2">
+              {/* Modo de Cálculo: Matemático Ponderado vs Directo */}
+              <div className="space-y-3 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 pb-2.5">
                   <div>
-                    <label className="block text-[10px] text-zinc-500 font-bold mb-0.5">Gobernanza</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="1"
-                      max="10"
-                      value={scores.gobernanza}
-                      onChange={e => setScores({ ...scores, gobernanza: parseFloat(e.target.value) || 0 })}
-                      className="w-full p-1.5 text-center text-xs font-mono font-bold rounded border border-zinc-300"
-                    />
+                    <span className="block text-[11px] font-bold font-display uppercase tracking-wider text-zinc-950">
+                      Metodología del Pentágono Ponderado:
+                    </span>
+                    <span className="text-[10px] text-zinc-500">
+                      El puntaje evoluciona matemáticamente por la incidencia real de cada acción
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-[10px] text-zinc-500 font-bold mb-0.5">Procesos</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="1"
-                      max="10"
-                      value={scores.procesos}
-                      onChange={e => setScores({ ...scores, procesos: parseFloat(e.target.value) || 0 })}
-                      className="w-full p-1.5 text-center text-xs font-mono font-bold rounded border border-zinc-300"
-                    />
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setUseMathCalc(true)}
+                      className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                        useMathCalc
+                          ? 'bg-red-600 text-white shadow-xs'
+                          : 'bg-white text-zinc-600 border border-zinc-300'
+                      }`}
+                    >
+                      ⚡ Por Incidencias (%)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUseMathCalc(false)}
+                      className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                        !useMathCalc
+                          ? 'bg-zinc-900 text-white shadow-xs'
+                          : 'bg-white text-zinc-600 border border-zinc-300'
+                      }`}
+                    >
+                      Ajuste Manual
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-[10px] text-zinc-500 font-bold mb-0.5">Finanzas</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="1"
-                      max="10"
-                      value={scores.finanzas}
-                      onChange={e => setScores({ ...scores, finanzas: parseFloat(e.target.value) || 0 })}
-                      className="w-full p-1.5 text-center text-xs font-mono font-bold rounded border border-zinc-300"
-                    />
+                </div>
+
+                {useMathCalc ? (
+                  <div className="space-y-3 pt-1">
+                    {/* Selector de Eje */}
+                    <div className="flex items-center gap-1 overflow-x-auto pb-1">
+                      {(['gobernanza', 'procesos', 'finanzas', 'talento', 'comercial'] as const).map(ax => (
+                        <button
+                          key={ax}
+                          type="button"
+                          onClick={() => setActiveAxisTab(ax)}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider capitalize whitespace-nowrap transition-colors border ${
+                            activeAxisTab === ax
+                              ? 'bg-zinc-900 text-white border-zinc-900'
+                              : 'bg-white text-zinc-700 border-zinc-200 hover:bg-zinc-100'
+                          }`}
+                        >
+                          {ax} ({scores[ax]})
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Acciones e Incidencias del Eje Activo */}
+                    <div className="bg-white p-3 rounded-xl border border-zinc-200 space-y-2.5">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-zinc-800 border-b border-zinc-100 pb-1.5">
+                        <span className="capitalize">Acciones del Eje: {activeAxisTab}</span>
+                        <span className="text-[10px] text-zinc-500">Incidencia Ponderada</span>
+                      </div>
+
+                      {weightedActions.filter(a => a.axis === activeAxisTab).map(action => (
+                        <div key={action.id} className="space-y-1.5 bg-zinc-50 p-2.5 rounded-lg border border-zinc-100">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-zinc-900 pr-2">{action.title}</span>
+                            <span className="bg-red-50 text-red-700 border border-red-200 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full shrink-0">
+                              {action.weightPct}% Incidencia
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              step="5"
+                              value={action.progressPct}
+                              onChange={e => updateActionProgress(action.id, parseInt(e.target.value) || 0)}
+                              className="w-full accent-red-600 h-1.5 bg-zinc-200 rounded-lg cursor-pointer"
+                            />
+                            <span className="font-mono text-xs font-bold text-zinc-900 w-12 text-right shrink-0">
+                              {action.progressPct}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Caja de Explicación de la Fórmula de Abel */}
+                      <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-lg text-[11px] text-emerald-950 flex items-center justify-between">
+                        <div>
+                          <span className="font-bold block">Fórmula de Madurez Ponderada:</span>
+                          <span className="font-mono text-[10px] text-emerald-800">
+                            Base ({(baselineScores as any)[activeAxisTab] || 1.0}) + (10 - Base) × Σ(%Incidencia × %Avance)
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] uppercase font-bold text-emerald-700 block">Puntaje Calculado</span>
+                          <span className="font-mono text-base font-black text-emerald-900 leading-none">
+                            {scores[activeAxisTab]} / 10
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[10px] text-zinc-500 font-bold mb-0.5">Talento</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="1"
-                      max="10"
-                      value={scores.talento}
-                      onChange={e => setScores({ ...scores, talento: parseFloat(e.target.value) || 0 })}
-                      className="w-full p-1.5 text-center text-xs font-mono font-bold rounded border border-zinc-300"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-zinc-500 font-bold mb-0.5">Comercial</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="1"
-                      max="10"
-                      value={scores.comercial}
-                      onChange={e => setScores({ ...scores, comercial: parseFloat(e.target.value) || 0 })}
-                      className="w-full p-1.5 text-center text-xs font-mono font-bold rounded border border-zinc-300"
-                    />
-                  </div>
+                ) : null}
+
+                {/* Resumen de los 5 Puntajes Resultantes */}
+                <div className="grid grid-cols-5 gap-2 pt-2 border-t border-zinc-200">
+                  {(['gobernanza', 'procesos', 'finanzas', 'talento', 'comercial'] as const).map(ax => (
+                    <div key={ax} className="text-center bg-white p-2 rounded-lg border border-zinc-200">
+                      <span className="block text-[9px] text-zinc-500 font-bold uppercase truncate">{ax}</span>
+                      {useMathCalc ? (
+                        <span className="font-mono font-black text-sm text-zinc-950 block mt-0.5">
+                          {scores[ax]}
+                        </span>
+                      ) : (
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="1"
+                          max="10"
+                          value={scores[ax]}
+                          onChange={e => setScores({ ...scores, [ax]: parseFloat(e.target.value) || 0 })}
+                          className="w-full p-1 text-center text-xs font-mono font-bold rounded border border-zinc-300 mt-0.5"
+                        />
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
 

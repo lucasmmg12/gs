@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { 
   ArrowLeft, Target, FileText, Calendar, 
   Layers, ChevronRight,
-  Activity, Compass, Eye, Mic, ShieldAlert, Plus, ShieldCheck
+  Activity, Compass, Eye, Mic, ShieldAlert, Plus, ShieldCheck, Folder
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import type { ResponseOptionValue } from '../data/diagnosticQuestions';
@@ -13,8 +13,8 @@ import { calculateDiagnosticScores } from '../lib/diagnosticEngine';
 import type { FullDiagnosticResults } from '../lib/diagnosticEngine';
 import { DynamicDiagnosticForm } from '../components/views/DynamicDiagnosticForm';
 import { StrategicMatricesView } from '../components/views/StrategicMatricesView';
-import { OMVModule } from '../components/views/OMVModule';
-import type { ClientStage } from '../components/views/OMVModule';
+import { OMBModule } from '../components/views/OMBModule';
+import type { ClientStage } from '../components/views/OMBModule';
 import { ClientPortalView } from '../components/views/ClientPortalView';
 import { QualityApprovalBadge } from '../components/QualityApprovalBadge';
 import type { ApprovalStatus, AuditConsultants } from '../components/QualityApprovalBadge';
@@ -24,6 +24,7 @@ import ClientMeetingPlanner from '../components/views/ClientMeetingPlanner';
 import type { PlannedMeetingData } from '../components/views/ClientMeetingPlanner';
 import ClientRecordingsHistory from '../components/views/ClientRecordingsHistory';
 import MasterPlanQuarterlyTracking from '../components/views/MasterPlanQuarterlyTracking';
+import { DocumentosCliente } from '../components/views/DocumentosCliente';
 
 // Circular Gauge Meter for IME Score (e.g. 7.8 / 10)
 function CircularImeMeter({ score = 7.8, maxScore = 10 }: { score: number; maxScore?: number }) {
@@ -102,14 +103,15 @@ export default function ClientDetail() {
   // Active section derived directly from URL route for native browser back/forward history
   const effectiveSection = section || (subAction ? 'meetings' : undefined);
 
-  const activeTab: 'dashboard' | 'omv' | 'diagnostic' | 'matrices' | 'master_plan' | 'portal_preview' | 'meetings' = useMemo(() => {
+  const activeTab: 'dashboard' | 'omv' | 'diagnostic' | 'matrices' | 'master_plan' | 'portal_preview' | 'meetings' | 'documents' = useMemo(() => {
     if (!effectiveSection || effectiveSection === 'dashboard') return 'dashboard';
-    if (effectiveSection === 'omv') return 'omv';
+    if (effectiveSection === 'omv' || effectiveSection === 'omb') return 'omv';
     if (effectiveSection === 'diagnostic') return 'diagnostic';
     if (effectiveSection === 'matrices') return 'matrices';
     if (effectiveSection === 'master-plan' || effectiveSection === 'master_plan') return 'master_plan';
     if (effectiveSection === 'meetings') return 'meetings';
     if (effectiveSection === 'portal' || effectiveSection === 'portal_preview') return 'portal_preview';
+    if (effectiveSection === 'documents') return 'documents';
     return 'dashboard';
   }, [effectiveSection]);
 
@@ -487,10 +489,11 @@ export default function ClientDetail() {
         <nav className="-mb-px flex space-x-2 overflow-x-auto" aria-label="Tabs">
           {[
             { id: 'dashboard', path: `/clients/${id}`, name: 'Dashboard 360', icon: Activity },
-            { id: 'omv', path: `/clients/${id}/omv`, name: '1. Kickoff & OMV', icon: Compass },
+            { id: 'omv', path: `/clients/${id}/omb`, name: '1. Kickoff & OMB', icon: Compass },
             { id: 'diagnostic', path: `/clients/${id}/diagnostic`, name: '2. Diagnóstico Dinámico', icon: FileText, badge: `${diagnosticResults.progressPercentage}%` },
             { id: 'matrices', path: `/clients/${id}/matrices`, name: '3. Matrices & FODA', icon: Layers },
             { id: 'master_plan', path: `/clients/${id}/master-plan`, name: '4. Master Plan', icon: Target },
+            { id: 'documents', path: `/clients/${id}/documents`, name: 'Gestor Documental', icon: Folder },
             { id: 'meetings', path: `/clients/${id}/meetings`, name: 'Reuniones & Ciclo de Vida', icon: Calendar },
             { id: 'portal_preview', path: `/clients/${id}/portal`, name: 'Portal Cliente', icon: Eye }
           ].map(tab => (
@@ -773,16 +776,16 @@ export default function ClientDetail() {
         </div>
       )}
 
-      {/* TAB 2: OMV (AUDIO & TEXTO EN PRESENTE) */}
+      {/* TAB 2: OMB (AUDIO & TEXTO EN PRESENTE) */}
       {activeTab === 'omv' && (
-        <OMVModule
+        <OMBModule
           client={client}
           stage={clientStage}
           onStageChange={setClientStage}
           approvalStatus={omvApproval}
           auditConsultants={omvAudit}
           onApprovalChange={(status, audit) => handleQualityApprovalChange('omv', status, audit)}
-          onSendWhatsApp={() => handleSendWhatsAppNotification('OMV Trienal y Minuta de Kickoff')}
+          onSendWhatsApp={() => handleSendWhatsAppNotification('OMB Trienal y Minuta de Kickoff')}
         />
       )}
 
@@ -1130,6 +1133,14 @@ export default function ClientDetail() {
             </div>
           )}
         </div>
+      )}
+
+      {/* TAB: GESTOR DOCUMENTAL (RAG) */}
+      {activeTab === 'documents' && (
+        <DocumentosCliente
+          client={client}
+          isClientPortal={effectiveSection === 'portal'}
+        />
       )}
 
       {/* TAB 7: PORTAL PREVIEW */}

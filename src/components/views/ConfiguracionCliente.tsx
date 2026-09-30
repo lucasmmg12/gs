@@ -168,6 +168,76 @@ export const ConfiguracionCliente: React.FC<ConfiguracionClienteProps> = ({ clie
           </div>
         </div>
 
+        {/* Gestor de Prompts y Criterios del Consultor (Growy IA) */}
+        <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-gray-200/60 p-8 hover:shadow-lg transition-all duration-300 space-y-5">
+          <div className="flex items-center justify-between border-b border-gray-200 pb-3">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-lg bg-red-600/10 text-red-600 flex items-center justify-center font-bold text-xs">
+                  IA
+                </span>
+                Personalización de Prompts y Criterios de Consultoría (Growy)
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Configure el rol, reglas de salida y criterios metodológicos para que Growy replique con exactitud las decisiones del equipo consultor.
+              </p>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-zinc-900 text-white px-2.5 py-1 rounded-full">
+              Flexible por Cliente / Rubro
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Rol Base del Asistente
+              </label>
+              <textarea 
+                rows={3}
+                defaultValue="Sos un implementador experto en la metodología de Consultora GS. Conoces el pentágono del orden, el IME, IRE y el diagnóstico en 10 áreas. Actuás con rigor técnico y síntesis ejecutiva."
+                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-red-500 leading-relaxed"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Reglas de Formato y Salida (Output)
+              </label>
+              <textarea 
+                rows={3}
+                defaultValue="Entregar en celdas de un solo renglón para Excel, ordenado de mayor a menor impacto estratégico. Evitar introducciones innecesarias y presentar siempre datos estructurados."
+                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-red-500 leading-relaxed"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Matiz Sectorial / Rubro Específico
+              </label>
+              <select
+                defaultValue="industrial"
+                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-red-500"
+              >
+                <option value="industrial">Sector Industrial / Metalmecánico (Énfasis en cuellos de botella, scrap y mantenimiento)</option>
+                <option value="servicios">Sector Servicios Profesionales (Énfasis en horas facturables, NPS y talento)</option>
+                <option value="comercial">Sector Comercial / Retail (Énfasis en rotación de inventarios, margen bruto y caja)</option>
+                <option value="general">Pymes Generales / Familiar (Énfasis en protocolo societario y delegación del dueño)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Directivas Particulares para {client.name}
+              </label>
+              <input 
+                type="text"
+                defaultValue="Prestar especial atención a la transición de mandos medios y la delimitación de funciones entre los fundadores."
+                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:border-red-500"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Botonera Guardar */}
         <div className="flex items-center justify-end gap-4 pt-4 relative">
           {showSuccess && (

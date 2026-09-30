@@ -32,12 +32,20 @@ import {
   Edit3,
   Calendar,
   Compass,
-  FileCheck,
   RotateCcw,
-  Copy
+  Copy,
+  Check,
+  X,
+  AlertCircle,
+  CheckCheck
 } from 'lucide-react';
 import mermaid from 'mermaid';
 import { jsPDF } from 'jspdf';
+import { 
+  analyzeMeetingForCheckout, 
+  type DiagnosticCheckoutSuggestion, 
+  type MeetingMinuteDraft 
+} from '../../lib/diagnosticCheckoutEngine';
 
 export type MeetingType = 'kickoff' | 'diagnostico' | 'seguimiento_trimestral' | 'general';
 
@@ -160,6 +168,10 @@ export default function ClientMeetingSession({
   const [clientFeedback, setClientFeedback] = useState('');
   const [checkoutApproved, setCheckoutApproved] = useState(false);
   const [impactLoading, setImpactLoading] = useState(false);
+  const [checkoutSubTab, setCheckoutSubTab] = useState<'suggestions' | 'minute' | 'transcript'>('suggestions');
+  const [checkoutSuggestions, setCheckoutSuggestions] = useState<DiagnosticCheckoutSuggestion[]>([]);
+  const [checkoutMinuteDraft, setCheckoutMinuteDraft] = useState<MeetingMinuteDraft | null>(null);
+  const [editingSuggestionId, setEditingSuggestionId] = useState<string | null>(null);
 
   // References
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -820,6 +832,25 @@ export default function ClientMeetingSession({
         setTranscriptionText(transcriptContent);
       }
 
+      // Generate Executive Minute and Cross-Area Diagnostic Suggestions with Human-in-the-Loop Filter
+      const finalTranscript = liveTranscript || finalRecordedTranscript || transcriptionText || `Sesión de ${meetingTitle}`;
+      try {
+        const checkoutAnalysis = await analyzeMeetingForCheckout({
+          sessionId,
+          clientId: client.id,
+          clientName: client.name,
+          meetingTitle,
+          durationSeconds: duration,
+          transcript: finalTranscript,
+          plannedQuestions: selectedQuestions,
+          validatorName
+        });
+        setCheckoutMinuteDraft(checkoutAnalysis.minute);
+        setCheckoutSuggestions(checkoutAnalysis.suggestions);
+      } catch (analysisErr) {
+        console.warn('Checkout analysis notice:', analysisErr);
+      }
+
       // Transition to Step 4: Check out (Validation by Client/Consultant)
       setStep('checkout');
 
@@ -832,13 +863,38 @@ export default function ClientMeetingSession({
     }
   };
 
+  // Human-in-the-Loop Suggestion Handlers
+  const handleAcceptSuggestion = (id: string) => {
+    setCheckoutSuggestions(prev => prev.map(s => s.id === id ? { ...s, status: 'accepted' } : s));
+  };
+
+  const handleRejectSuggestion = (id: string) => {
+    setCheckoutSuggestions(prev => prev.map(s => s.id === id ? { ...s, status: 'rejected' } : s));
+  };
+
+  const handleSaveEditedSuggestion = (id: string, newAnswer: string, newOption: ResponseOptionValue) => {
+    setCheckoutSuggestions(prev => prev.map(s => s.id === id ? { 
+      ...s, 
+      status: 'modified', 
+      editedAnswer: newAnswer, 
+      editedOption: newOption,
+      suggestedAnswer: newAnswer,
+      suggestedOption: newOption
+    } : s));
+    setEditingSuggestionId(null);
+  };
+
+  const handleAcceptAllPending = () => {
+    setCheckoutSuggestions(prev => prev.map(s => s.status === 'pending' ? { ...s, status: 'accepted' } : s));
+  };
+
   // Step 4: Confirm Check out and impact into Diagnostic 360° database
   const handleConfirmCheckoutAndImpact = async () => {
     if (!resultData) return;
     setImpactLoading(true);
 
     try {
-      // 1. Update interview with checkout validation status
+      // 1. Update interview with checkout validation status and minute
       await (supabase
         .from('gobernanza_entrevistas') as any)
         .update({
@@ -846,14 +902,16 @@ export default function ClientMeetingSession({
           validation_status: 'accepted',
           validated_at: new Date().toISOString(),
           validated_by: validatorName,
-          client_feedback: clientFeedback
+          client_feedback: clientFeedback,
+          minutas: checkoutMinuteDraft || resultData.minutas
         })
         .eq('id', sessionId);
 
-      // 2. Impact closed answers into diagnostic_responses
+      // 2. Impact accepted and modified suggestions into diagnostic_responses
       const answersMap: Record<string, any> = {};
       const suggestionsBatch: any[] = [];
 
+      // A. Planned questions
       selectedQuestions.forEach((q, idx) => {
         const answerText = editableAnswers[idx] || resultData.respuestas[idx] || '';
         const chosenOption = selectedQuestionOptions[q.id] || q.options[0]?.value || 'formal_active';
@@ -873,6 +931,28 @@ export default function ClientMeetingSession({
           new_assessment: matchingOptionObj?.label || chosenOption,
           reason: `Evidencia validada en Check out: "${answerText.slice(0, 120)}${answerText.length > 120 ? '...' : ''}"`,
           confidence: 'alta'
+        });
+      });
+
+      // B. Cross-area suggestions accepted by human consultant
+      const validatedCrossArea = checkoutSuggestions.filter(s => s.isTangential && (s.status === 'accepted' || s.status === 'modified'));
+      validatedCrossArea.forEach(sug => {
+        const finalAns = sug.editedAnswer || sug.suggestedAnswer;
+        const finalOpt = sug.editedOption || sug.suggestedOption;
+        answersMap[sug.questionId] = {
+          value: finalOpt,
+          notes: `[Sugerencia Cruzada Aprobada por Consultor - ${meetingTitle}]: ${finalAns}`,
+          evidence: sug.detectedQuote || finalAns
+        };
+        suggestionsBatch.push({
+          question_id: sug.questionId,
+          question_code: sug.questionCode,
+          area_id: sug.areaId,
+          question_title: sug.questionTitle,
+          suggested_option: finalOpt,
+          new_assessment: finalAns,
+          reason: sug.reason,
+          confidence: sug.confidence
         });
       });
 
@@ -1616,22 +1696,31 @@ export default function ClientMeetingSession({
   }
 
   // ==========================================
-  // VIEW: STEP 4 - CHECK OUT (VALIDACIÓN INTERACTIVA DE RESPUESTAS)
+  // VIEW: STEP 4 - CHECK OUT (VALIDACIÓN INTERACTIVA CON FILTRO HUMANO)
   // ==========================================
   if (step === 'checkout') {
+    const acceptedCount = checkoutSuggestions.filter(s => s.status === 'accepted' || s.status === 'modified').length;
+    const rejectedCount = checkoutSuggestions.filter(s => s.status === 'rejected').length;
+    const pendingCount = checkoutSuggestions.filter(s => s.status === 'pending').length;
+
     return (
-      <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
-        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 pb-4">
+      <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300 pb-12">
+        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-4">
             <div>
-              <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">
-                Paso de Validación: Check out
-              </span>
-              <h1 className="font-display text-2xl font-black uppercase tracking-tight text-zinc-950">
-                Confirmar y Validar Respuestas del Cliente
+              <div className="flex items-center gap-2">
+                <span className="font-display text-[11px] font-bold uppercase tracking-widest text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full">
+                  Cierre de Sesión • Supervisión Obligatoria
+                </span>
+                <span className="text-[11px] font-semibold text-zinc-500">
+                  Margen de Error Mitigado por Filtro Humano
+                </span>
+              </div>
+              <h1 className="font-display text-2xl font-black uppercase tracking-tight text-zinc-950 mt-1">
+                Validar Minuta y Sugerencias de Diagnóstico
               </h1>
               <p className="text-xs text-zinc-600 mt-1">
-                Revise o ajuste las respuestas extraídas por la IA antes de impactar definitivamente el perfil y diagnóstico de {client.name}.
+                Revise las detecciones de Growy. Solo las respuestas aprobadas o editadas por el consultor impactarán en el perfil de {client.name}.
               </p>
             </div>
 
@@ -1639,179 +1728,449 @@ export default function ClientMeetingSession({
               <button
                 type="button"
                 onClick={handleRestartRecording}
-                className="px-4 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-wider bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 flex items-center gap-2 shadow-xs transition-all hover:scale-105"
-                title="Descartar esta toma y volver a grabar la reunión"
+                className="px-3.5 py-2 rounded-xl font-display font-bold text-xs uppercase tracking-wider bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 flex items-center gap-1.5 shadow-xs transition-all hover:scale-105"
+                title="Descartar esta toma y volver a grabar"
               >
-                <RotateCcw className="w-4 h-4 text-rose-600" />
+                <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
                 Volver a Grabar
               </button>
 
               <button
                 onClick={handleConfirmCheckoutAndImpact}
                 disabled={impactLoading}
-                className="px-6 py-2.5 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-sm transition-all hover:scale-105 shrink-0"
+                className="px-5 py-2.5 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-sm transition-all hover:scale-105 shrink-0"
               >
-                {impactLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                Aceptar Check out e Impactar
+                {impactLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCheck className="w-4 h-4" />}
+                Confirmar y Guardar ({acceptedCount} Aprobadas)
               </button>
             </div>
           </div>
 
-          {/* Formulario de Validación */}
+          {/* Formulario de Auditor / Responsable */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
             <div>
               <label className="block text-[11px] font-bold font-display uppercase tracking-wider text-zinc-700 mb-1">
-                Responsable que Valida (Cliente o Consultor Líder)
+                Consultor o Responsable de Validación
               </label>
               <input
                 type="text"
                 value={validatorName}
                 onChange={e => setValidatorName(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border-2 border-zinc-300 focus:border-red-600 text-xs font-medium"
+                className="w-full px-3 py-2 rounded-lg border-2 border-zinc-300 focus:border-red-600 text-xs font-medium bg-white"
               />
             </div>
             <div>
               <label className="block text-[11px] font-bold font-display uppercase tracking-wider text-zinc-700 mb-1">
-                Observaciones / Feedback del Cliente
+                Notas y Acuerdos de Cierre de Sesión
               </label>
               <input
                 type="text"
                 value={clientFeedback}
                 onChange={e => setClientFeedback(e.target.value)}
-                placeholder="Ej. Respuestas confirmadas en conjunto al cierre de la reunión."
-                className="w-full px-3 py-2 rounded-lg border-2 border-zinc-300 focus:border-red-600 text-xs font-medium"
+                placeholder="Ej. Respuestas y acuerdos validados conjuntamente con el Directorio."
+                className="w-full px-3 py-2 rounded-lg border-2 border-zinc-300 focus:border-red-600 text-xs font-medium bg-white"
               />
             </div>
           </div>
 
-          {/* SECCIÓN DE TRANSCRIPCIÓN COMPLETA DE LA REUNIÓN */}
-          <div className="bg-slate-900 text-white p-5 rounded-2xl border-2 border-slate-800 shadow-md space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-400">
-                  <FileText className="w-4 h-4" />
+          {/* Sub-Tabs de Checkout */}
+          <div className="flex border-b border-zinc-200 space-x-1">
+            <button
+              type="button"
+              onClick={() => setCheckoutSubTab('suggestions')}
+              className={`px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wider border-b-2 flex items-center gap-2 transition-colors ${
+                checkoutSubTab === 'suggestions'
+                  ? 'border-red-600 text-red-600'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              Sugerencias de Diagnóstico ({checkoutSuggestions.length})
+              {pendingCount > 0 && (
+                <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {pendingCount} pendientes
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCheckoutSubTab('minute')}
+              className={`px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wider border-b-2 flex items-center gap-2 transition-colors ${
+                checkoutSubTab === 'minute'
+                  ? 'border-red-600 text-red-600'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Borrador de Minuta Ejecutiva
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCheckoutSubTab('transcript')}
+              className={`px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wider border-b-2 flex items-center gap-2 transition-colors ${
+                checkoutSubTab === 'transcript'
+                  ? 'border-red-600 text-red-600'
+                  : 'border-transparent text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              <HardDrive className="w-4 h-4" />
+              Transcripción Whisper ({formatTime(duration)})
+            </button>
+          </div>
+
+          {/* ============================================================ */}
+          {/* SUBTAB 1: SUGERENCIAS CON FILTRO HUMANO (SUPERVISIÓN)        */}
+          {/* ============================================================ */}
+          {checkoutSubTab === 'suggestions' && (
+            <div className="space-y-4 pt-1">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-50 p-3 rounded-xl border border-zinc-200">
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="font-bold text-zinc-700">Estado de Aprobación:</span>
+                  <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold text-[11px]">
+                    {acceptedCount} Aprobadas
+                  </span>
+                  <span className="bg-zinc-200 text-zinc-700 px-2 py-0.5 rounded-full font-bold text-[11px]">
+                    {pendingCount} Pendientes
+                  </span>
+                  <span className="bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full font-bold text-[11px]">
+                    {rejectedCount} Descartadas
+                  </span>
                 </div>
-                <div>
-                  <h3 className="font-display text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
-                    Transcripción Completa de la Reunión (Whisper)
-                  </h3>
-                  <p className="text-[11px] text-slate-400">
-                    Registro textual continuo capturado durante la sesión ({formatTime(duration)}).
-                  </p>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAcceptAllPending}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-display text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-xs"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Aprobar Todas las Pendientes
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              {checkoutSuggestions.length === 0 ? (
+                <div className="text-center py-8 text-zinc-500 text-xs">
+                  No se detectaron sugerencias para este audio. Puedes revisar la minuta o repetir la grabación.
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  {checkoutSuggestions.map((sug) => {
+                    const isEditing = editingSuggestionId === sug.id;
+                    const isAccepted = sug.status === 'accepted' || sug.status === 'modified';
+                    const isRejected = sug.status === 'rejected';
+
+                    return (
+                      <div
+                        key={sug.id}
+                        className={`p-4 rounded-xl border-2 transition-all space-y-3 ${
+                          isAccepted
+                            ? 'bg-emerald-50/50 border-emerald-300'
+                            : isRejected
+                              ? 'bg-zinc-100/70 border-zinc-300 opacity-60'
+                              : 'bg-white border-zinc-200 hover:border-zinc-300'
+                        }`}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white">
+                              {sug.questionCode}
+                            </span>
+                            <span className="text-xs font-bold text-zinc-800">
+                              {sug.areaName}
+                            </span>
+                            {sug.isTangential ? (
+                              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3 text-amber-600" />
+                                Detectado Tangencialmente
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-blue-800 bg-blue-100 border border-blue-300 px-2 py-0.5 rounded-full">
+                                Agenda Planificada
+                              </span>
+                            )}
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              sug.confidence === 'alta'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : sug.confidence === 'media'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-rose-100 text-rose-800'
+                            }`}>
+                              Confianza {sug.confidence}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleAcceptSuggestion(sug.id)}
+                              className={`px-3 py-1 rounded-lg text-xs font-bold uppercase flex items-center gap-1 transition-all ${
+                                isAccepted
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : 'bg-zinc-100 hover:bg-emerald-100 text-emerald-700 border border-zinc-300 hover:border-emerald-400'
+                              }`}
+                              title="Aceptar sugerencia para que impacte en el Diagnóstico"
+                            >
+                              <Check className="w-3.5 h-3.5" /> Aceptar
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRejectSuggestion(sug.id)}
+                              className={`px-3 py-1 rounded-lg text-xs font-bold uppercase flex items-center gap-1 transition-all ${
+                                isRejected
+                                  ? 'bg-rose-600 text-white shadow-xs'
+                                  : 'bg-zinc-100 hover:bg-rose-100 text-rose-700 border border-zinc-300 hover:border-rose-400'
+                              }`}
+                              title="Descartar sugerencia"
+                            >
+                              <X className="w-3.5 h-3.5" /> Rechazar
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setEditingSuggestionId(isEditing ? null : sug.id)}
+                              className="px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border border-zinc-300 text-xs font-bold flex items-center gap-1"
+                              title="Editar texto o nivel de madurez"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-zinc-600" />
+                              {isEditing ? 'Cerrar' : 'Editar'}
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="text-xs font-bold text-zinc-950">
+                          {sug.questionTitle}
+                        </p>
+
+                        {/* Cita Textual de la Transcripción */}
+                        <div className="bg-zinc-50 border-l-4 border-red-500 p-2.5 rounded-r-lg text-xs text-zinc-700 italic">
+                          <span className="font-bold text-zinc-900 not-italic block text-[10px] uppercase tracking-wider mb-0.5">
+                            🎙️ Cita Textual Capturada:
+                          </span>
+                          "{sug.detectedQuote}"
+                        </div>
+
+                        {/* Editor en línea o Texto sugerido */}
+                        {isEditing ? (
+                          <div className="bg-white p-3 rounded-lg border-2 border-red-400 space-y-2">
+                            <label className="block text-[11px] font-bold text-zinc-700">
+                              Respuesta redactada para el Diagnóstico:
+                            </label>
+                            <textarea
+                              defaultValue={sug.editedAnswer || sug.suggestedAnswer}
+                              id={`textarea-${sug.id}`}
+                              rows={3}
+                              className="w-full p-2.5 rounded-lg border border-zinc-300 text-xs text-zinc-800 focus:border-red-600 focus:outline-none"
+                            />
+                            <div className="flex justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const el = document.getElementById(`textarea-${sug.id}`) as HTMLTextAreaElement;
+                                  if (el) {
+                                    handleSaveEditedSuggestion(sug.id, el.value, sug.suggestedOption);
+                                  }
+                                }}
+                                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold uppercase tracking-wider"
+                              >
+                                Guardar y Aprobar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-zinc-800">
+                            <span className="font-semibold text-zinc-500 block text-[11px]">Propuesta de respuesta:</span>
+                            <p className="mt-0.5 leading-relaxed">{sug.editedAnswer || sug.suggestedAnswer}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* SUBTAB 2: BORRADOR DE MINUTA EJECUTIVA                       */}
+          {/* ============================================================ */}
+          {checkoutSubTab === 'minute' && (
+            <div className="space-y-5 pt-1">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-zinc-50 p-4 rounded-xl border border-zinc-200">
+                <div>
+                  <h3 className="font-display text-sm font-black uppercase text-zinc-950">
+                    Minuta Ejecutiva de Seguimiento y Tutoría
+                  </h3>
+                  <p className="text-xs text-zinc-500">
+                    Documento formal generado automáticamente a partir de los acuerdos y compromisos de la reunión.
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => {
-                    const textToCopy = transcriptionText || liveTranscript || '';
-                    if (!textToCopy) {
-                      alert('No hay texto transcrito para copiar.');
-                      return;
-                    }
-                    navigator.clipboard.writeText(textToCopy);
-                    alert('Transcripción completa copiada al portapapeles.');
+                    if (!checkoutMinuteDraft) return;
+                    const doc = new jsPDF();
+                    doc.setFontSize(16);
+                    doc.text(`Minuta de Sesión - ${client.name}`, 14, 20);
+                    doc.setFontSize(10);
+                    doc.text(`Fecha: ${checkoutMinuteDraft.meetingDate}`, 14, 28);
+                    doc.text(`Título: ${checkoutMinuteDraft.meetingTitle}`, 14, 34);
+                    doc.setFontSize(12);
+                    doc.text('Resumen Ejecutivo:', 14, 46);
+                    doc.setFontSize(9);
+                    const splitSummary = doc.splitTextToSize(checkoutMinuteDraft.executiveSummary, 180);
+                    doc.text(splitSummary, 14, 52);
+                    doc.save(`Minuta_${client.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-700"
+                  className="px-4 py-2 rounded-xl bg-black hover:bg-zinc-800 text-white font-display text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm"
                 >
-                  <Copy className="w-3.5 h-3.5" /> Copiar Texto
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleRestartRecording}
-                  className="px-3 py-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/60 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" /> Reintentar Grabación
+                  <Download className="w-3.5 h-3.5 text-red-400" />
+                  Exportar Minuta a PDF
                 </button>
               </div>
-            </div>
 
-            <div className="bg-slate-950 rounded-xl p-4 border border-slate-800/80 max-h-56 overflow-y-auto font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-wrap selection:bg-red-900 selection:text-white">
-              {transcriptionText || liveTranscript ? (
-                transcriptionText || liveTranscript
-              ) : (
-                <span className="text-slate-500 italic">
-                  No se registró texto audible durante la sesión grabada. Si hubo problemas con el micrófono, puede hacer clic en "Reintentar Grabación" para reiniciar la captura en vivo.
-                </span>
-              )}
-            </div>
-          </div>
+              {checkoutMinuteDraft && (
+                <div className="p-6 rounded-2xl bg-white border-2 border-zinc-200 space-y-6 text-xs text-zinc-800">
+                  <div className="border-b border-zinc-200 pb-4">
+                    <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest block mb-1">
+                      Consultora GS • Modelo Metodológico Oficial
+                    </span>
+                    <h2 className="text-xl font-black text-zinc-950 uppercase">
+                      {checkoutMinuteDraft.meetingTitle}
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 text-zinc-600 text-xs">
+                      <div>
+                        <strong>Fecha de la Sesión:</strong> {checkoutMinuteDraft.meetingDate}
+                      </div>
+                      <div>
+                        <strong>Asistentes GS:</strong> {checkoutMinuteDraft.attendeesGS.join(', ')}
+                      </div>
+                      <div className="sm:col-span-2">
+                        <strong>Asistentes Cliente:</strong> {checkoutMinuteDraft.attendeesClient.join(', ')}
+                      </div>
+                    </div>
+                  </div>
 
-          {/* Lista de Respuestas a Validar */}
-          <div className="space-y-4 pt-2">
-            <h3 className="font-display text-sm font-black uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-              <FileCheck className="w-4 h-4 text-red-600" />
-              Respuestas Obtenidas para Validación ({selectedQuestions.length})
-            </h3>
+                  <div>
+                    <h4 className="font-display font-bold text-xs uppercase tracking-wider text-zinc-900 mb-2">
+                      1. Resumen Ejecutivo
+                    </h4>
+                    <p className="bg-zinc-50 p-3.5 rounded-xl border border-zinc-200 text-zinc-700 leading-relaxed">
+                      {checkoutMinuteDraft.executiveSummary}
+                    </p>
+                  </div>
 
-            {selectedQuestions.map((q, idx) => (
-              <div key={q.id} className="p-4 rounded-xl border-2 border-zinc-200 bg-white space-y-3 shadow-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-100 text-zinc-800">
-                    Pregunta #{idx + 1} • {q.code}
-                  </span>
-                  <span className="text-[10px] font-bold uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    Listo para validación
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-zinc-950">{q.title}</p>
+                  <div>
+                    <h4 className="font-display font-bold text-xs uppercase tracking-wider text-zinc-900 mb-2">
+                      2. Acuerdos y Decisiones Estratégicas
+                    </h4>
+                    <ul className="space-y-1.5 list-disc list-inside text-zinc-700">
+                      {checkoutMinuteDraft.agreements.map((agr, idx) => (
+                        <li key={idx} className="leading-relaxed">{agr}</li>
+                      ))}
+                    </ul>
+                  </div>
 
-                {/* Evidencia cualitativa */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-zinc-500 mb-1">
-                    Evidencia cualitativa levantada (transcripción / resumen):
-                  </label>
-                  <textarea
-                    value={editableAnswers[idx] || ''}
-                    onChange={(e) => {
-                      const next = [...editableAnswers];
-                      next[idx] = e.target.value;
-                      setEditableAnswers(next);
-                    }}
-                    rows={2}
-                    placeholder="Evidencia o notas de la respuesta..."
-                    className="w-full p-2.5 rounded-lg border border-zinc-300 text-xs text-zinc-700 focus:border-red-600 focus:outline-none"
-                  />
-                </div>
+                  <div>
+                    <h4 className="font-display font-bold text-xs uppercase tracking-wider text-zinc-900 mb-2">
+                      3. Matriz de Compromisos y Próximos Pasos
+                    </h4>
+                    <div className="overflow-x-auto border border-zinc-200 rounded-xl">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-zinc-100 border-b border-zinc-200 text-zinc-700">
+                          <tr>
+                            <th className="p-2.5 font-bold uppercase text-[10px]">Responsable</th>
+                            <th className="p-2.5 font-bold uppercase text-[10px]">Tarea / Compromiso</th>
+                            <th className="p-2.5 font-bold uppercase text-[10px]">Fecha Límite</th>
+                            <th className="p-2.5 font-bold uppercase text-[10px]">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-200">
+                          {checkoutMinuteDraft.commitments.map((com) => (
+                            <tr key={com.id} className="hover:bg-zinc-50">
+                              <td className="p-2.5 font-bold text-zinc-900">{com.responsible}</td>
+                              <td className="p-2.5 text-zinc-700">{com.task}</td>
+                              <td className="p-2.5 text-zinc-600">{com.deadline}</td>
+                              <td className="p-2.5">
+                                <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                  {com.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
 
-                {/* Nivel de madurez a impactar en Diagnóstico */}
-                <div className="pt-1">
-                  <label className="block text-[11px] font-semibold text-zinc-700 mb-1.5 flex items-center justify-between">
-                    <span>Nivel de Madurez a impactar en Diagnóstico:</span>
-                    <span className="text-[10px] text-zinc-400 font-normal">Haz clic para cambiar el nivel</span>
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                    {q.options.map(opt => {
-                      const isSelected = (selectedQuestionOptions[q.id] || q.options[0]?.value) === opt.value;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setSelectedQuestionOptions(prev => ({ ...prev, [q.id]: opt.value }))}
-                          className={`p-2 rounded-lg text-left text-xs transition-all border ${
-                            isSelected
-                              ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                              : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-700 border-zinc-200'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-[11px]">{opt.shortLabel}</span>
-                            {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
-                          </div>
-                          <span className={`text-[10px] block mt-0.5 line-clamp-2 ${isSelected ? 'text-zinc-300' : 'text-zinc-500'}`}>
-                            {opt.label}
-                          </span>
-                        </button>
-                      );
-                    })}
+                  <div>
+                    <h4 className="font-display font-bold text-xs uppercase tracking-wider text-zinc-900 mb-2">
+                      4. Reflexión Metodológica
+                    </h4>
+                    <p className="bg-red-50/60 border border-red-200 p-3.5 rounded-xl text-red-950 leading-relaxed font-medium">
+                      {checkoutMinuteDraft.methodologicalReflection}
+                    </p>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          )}
 
+          {/* ============================================================ */}
+          {/* SUBTAB 3: TRANSCRIPCIÓN WHISPER COMPLETA                     */}
+          {/* ============================================================ */}
+          {checkoutSubTab === 'transcript' && (
+            <div className="space-y-4 pt-1">
+              <div className="bg-slate-900 text-white p-5 rounded-2xl border-2 border-slate-800 shadow-md space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-400">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-display text-xs font-black uppercase tracking-wider text-white">
+                        Transcripción Whisper Completa ({formatTime(duration)})
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Registro textual íntegro capturado de la sesión.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const textToCopy = transcriptionText || liveTranscript || '';
+                        if (!textToCopy) {
+                          alert('No hay texto transcrito para copiar.');
+                          return;
+                        }
+                        navigator.clipboard.writeText(textToCopy);
+                        alert('Transcripción copiada al portapapeles.');
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-700"
+                    >
+                      <Copy className="w-3.5 h-3.5" /> Copiar Texto
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-slate-950 rounded-xl p-4 border border-slate-800/80 max-h-72 overflow-y-auto font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-wrap selection:bg-red-900 selection:text-white">
+                  {transcriptionText || liveTranscript || (
+                    <span className="text-slate-500 italic">
+                      No se registró texto audible durante la sesión.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Footer del Checkout */}
           <div className="pt-4 border-t border-zinc-200 flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
@@ -1834,7 +2193,7 @@ export default function ClientMeetingSession({
                 disabled={impactLoading}
                 className="px-6 py-3 rounded-xl font-display font-black text-xs uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-sm transition-all hover:scale-105"
               >
-                {impactLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {impactLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCheck className="w-4 h-4" />}
                 Confirmar Check out e Impactar en Diagnóstico
               </button>
             </div>

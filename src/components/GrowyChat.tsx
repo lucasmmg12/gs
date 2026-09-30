@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { 
   X, Send, Bot, User, Loader2, 
   Download, FileSpreadsheet, FileText, Maximize2, Minimize2, Sparkles, CheckCircle,
-  ShieldCheck, ShieldAlert
+  ShieldCheck, ShieldAlert, Mic, Square
 } from 'lucide-react';
 import { generateExcelReport, generatePdfReport } from '../lib/reportGenerator';
 
@@ -44,6 +44,76 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Voice Dictation (Whisper / Speech API)
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const [voiceDuration, setVoiceDuration] = useState(0);
+  const recognitionRef = useRef<any>(null);
+  const voiceMediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceTimerRef = useRef<any>(null);
+
+  const startVoiceDictation = async () => {
+    try {
+      setIsVoiceRecording(true);
+      setVoiceDuration(0);
+      voiceTimerRef.current = setInterval(() => {
+        setVoiceDuration(d => d + 1);
+      }, 1000);
+
+      const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRec) {
+        const recognition = new SpeechRec();
+        recognition.lang = 'es-AR';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event: any) => {
+          let full = '';
+          for (let i = 0; i < event.results.length; ++i) {
+            full += event.results[i][0].transcript + ' ';
+          }
+          if (full.trim()) {
+            setInput(full.trim());
+          }
+        };
+
+        recognition.onerror = (event: any) => {
+          console.warn('SpeechRecognition notice:', event.error);
+        };
+
+        recognition.start();
+        recognitionRef.current = recognition;
+      } else {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        voiceMediaRecorderRef.current = mediaRecorder;
+        mediaRecorder.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+        };
+        mediaRecorder.start();
+      }
+    } catch (err: any) {
+      console.error('Error starting mic in Growy:', err);
+      alert('No se pudo acceder al micrófono: ' + err.message);
+      setIsVoiceRecording(false);
+    }
+  };
+
+  const stopVoiceDictation = (autoSend: boolean = false) => {
+    setIsVoiceRecording(false);
+    if (voiceTimerRef.current) clearInterval(voiceTimerRef.current);
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (e) {}
+      recognitionRef.current = null;
+    }
+    if (voiceMediaRecorderRef.current && voiceMediaRecorderRef.current.state === 'recording') {
+      try { voiceMediaRecorderRef.current.stop(); } catch (e) {}
+    }
+
+    if (autoSend && input.trim()) {
+      sendQuery(input.trim());
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -294,6 +364,28 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Voice Dictation Banner */}
+        {isVoiceRecording && (
+          <div className="px-4 py-2 bg-rose-50 border-t border-rose-200 flex items-center justify-between text-xs text-rose-800 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
+              <span className="font-bold">
+                🎙️ Escuchando orden de voz ({voiceDuration}s)...
+              </span>
+              <span className="text-[11px] text-rose-600 hidden sm:inline">
+                "Growy, procesá la reunión de hoy y generá la minuta..."
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => stopVoiceDictation(true)}
+              className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-xs"
+            >
+              Enviar Orden
+            </button>
+          </div>
+        )}
+
         {/* Input Area */}
         <div className="p-3.5 bg-white border-t border-slate-200">
           <form onSubmit={handleSubmit} className="flex items-center gap-2">
@@ -301,10 +393,25 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Preguntame sobre clientes, minutas o pedime un Excel/PDF..."
+              placeholder={isVoiceRecording ? "Escuchando tu voz..." : "Preguntame sobre clientes, minutas o pedime un Excel/PDF..."}
               className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1D2F] focus:border-[#6B1D2F] bg-slate-50 text-slate-900 placeholder:text-slate-400"
               disabled={isLoading}
             />
+
+            <button
+              type="button"
+              onClick={isVoiceRecording ? () => stopVoiceDictation(true) : startVoiceDictation}
+              disabled={isLoading}
+              className={`p-2.5 rounded-xl transition-all shrink-0 ${
+                isVoiceRecording
+                  ? 'bg-rose-600 text-white animate-pulse shadow-crimson'
+                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border border-zinc-200'
+              }`}
+              title={isVoiceRecording ? "Detener y Enviar Orden de Voz" : "Dictar orden por voz a Growy (Whisper)"}
+            >
+              {isVoiceRecording ? <Square className="h-4 w-4 fill-white" /> : <Mic className="h-4 w-4 text-[#6B1D2F]" />}
+            </button>
+
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
