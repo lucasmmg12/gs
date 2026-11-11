@@ -112,23 +112,32 @@ serve(async (req) => {
         });
     }
 
-    // 2. Transcribe with OpenAI Whisper
+    // 2. Transcribe with OpenAI GPT-4o-Transcribe (fallback to Whisper-1)
     console.log(`[transcribe-chunk] Transcribing chunk ${chunkIndex} (${audioBlob.size} bytes)...`);
     const audioFile = new File([audioBlob], `chunk_${chunkIndex}.webm`, { type: 'audio/webm' });
 
+    const audioModels = [
+      Deno.env.get('OPENAI_AUDIO_MODEL'),
+      'gpt-4o-transcribe',
+      'whisper-1'
+    ].filter(Boolean) as string[];
+
     let transcriptText = '';
-    try {
-      const whisperResponse = await openai.audio.transcriptions.create({
-        file: audioFile,
-        model: 'whisper-1',
-        language: 'es',
-        temperature: 0.2
-      });
-      transcriptText = (whisperResponse.text || '').trim();
-    } catch (whisperErr: any) {
-      console.warn(`[transcribe-chunk] Whisper API warning:`, whisperErr.message);
-      // Graceful degradation: do not break the whole flow if Whisper returns an error for a noisy chunk
-      transcriptText = '';
+    let activeAudioModel = 'gpt-4o-transcribe';
+    for (const modelName of audioModels) {
+      try {
+        const transcriptionResponse = await openai.audio.transcriptions.create({
+          file: audioFile,
+          model: modelName,
+          language: 'es',
+          temperature: 0.1
+        });
+        transcriptText = (transcriptionResponse.text || '').trim();
+        activeAudioModel = modelName;
+        break;
+      } catch (whisperErr: any) {
+        console.warn(`[transcribe-chunk] Audio model ${modelName} warning:`, whisperErr.message);
+      }
     }
 
     // Filter out common Whisper hallucination tokens on background noise
@@ -169,7 +178,7 @@ serve(async (req) => {
         is_final: true,
         metadata: {
           file_size_bytes: audioBlob.size,
-          engine: 'whisper-1',
+          engine: activeAudioModel,
           processed_at: new Date().toISOString()
         }
       }, { onConflict: 'session_id,chunk_index' });

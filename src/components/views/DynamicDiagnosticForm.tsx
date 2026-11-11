@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   CheckCircle2, ArrowRight, Save, 
-  HelpCircle, Sparkles, Check, Download, FileSpreadsheet, Bot, ChevronDown, CheckCheck, X, RefreshCw
+  HelpCircle, Sparkles, Check, Download, FileSpreadsheet, Mic
 } from 'lucide-react';
 import { 
   DIAGNOSTIC_AREAS
@@ -38,35 +38,6 @@ export interface AISuggestionItem {
   status: 'pending' | 'accepted' | 'rejected';
 }
 
-const DEFAULT_AI_SUGGESTIONS: AISuggestionItem[] = [
-  {
-    id: 'sug-101',
-    question_id: 13,
-    question_code: 'Q13',
-    area_id: 'area_2_finanzas',
-    question_title: 'Punto de equilibrio mensual (PE)',
-    suggested_option: 'formal_active',
-    suggested_label: 'Formalizado y en uso activo',
-    reason: 'En la sesión de Finanzas se presentó el cálculo del punto de equilibrio mensual por línea de negocio y se validó en planilla de costos.',
-    confidence: 'alta',
-    source_meeting: 'Minuta Sesión N° 3 - Finanzas y Costos',
-    status: 'pending'
-  },
-  {
-    id: 'sug-102',
-    question_id: 20,
-    question_code: 'Q20',
-    area_id: 'area_3_operaciones',
-    question_title: 'Mapa de procesos principales',
-    suggested_option: 'partial_dev',
-    suggested_label: 'Parcialmente / En desarrollo',
-    reason: 'El cliente mencionó que tienen documentado el flujo de admisión y compras, pero falta el proceso de esterilización y mantenimiento.',
-    confidence: 'alta',
-    source_meeting: 'Minuta Sesión N° 4 - Operaciones',
-    status: 'pending'
-  }
-];
-
 interface DynamicDiagnosticFormProps {
   client: Client;
   answers: Record<number, ResponseOptionValue>;
@@ -77,6 +48,7 @@ interface DynamicDiagnosticFormProps {
   onApprovalChange: (status: ApprovalStatus, audit: AuditConsultants) => void;
   onViewMatrices: () => void;
   onSendWhatsApp?: () => void;
+  onOpenAudioSession?: () => void;
 }
 
 export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
@@ -88,57 +60,54 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
   auditConsultants,
   onApprovalChange,
   onViewMatrices,
-  onSendWhatsApp
+  onSendWhatsApp,
+  onOpenAudioSession
 }) => {
   const [selectedAreaId, setSelectedAreaId] = useState<string>(DIAGNOSTIC_AREAS[0].id);
-  const [suggestions, setSuggestions] = useState<AISuggestionItem[]>(DEFAULT_AI_SUGGESTIONS);
-  const [showAiDrawer, setShowAiDrawer] = useState(true);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [qualitativeMap, setQualitativeMap] = useState<Record<number, { answer: string; quote: string; updatedAt: string }>>({});
 
-  // Cargar sugerencias guardadas en Supabase (PR-02)
+  // Load qualitative answers extracted automatically from audio sessions
   useEffect(() => {
-    async function loadRemoteSuggestions() {
+    if (!client?.id) return;
+    try {
+      const saved = localStorage.getItem(`gs_qualitative_answers_${client.id}`);
+      if (saved) {
+        setQualitativeMap(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.warn('Error loading qualitative answers:', e);
+    }
+
+    async function loadFromDb() {
       try {
         const { data } = await (supabase
-          .from('diagnostic_suggestions') as any)
-          .select('*')
+          .from('diagnostic_responses') as any)
+          .select('answers')
           .eq('organization_id', client.id)
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-        if (data && data.length > 0) {
-          const parsed: AISuggestionItem[] = [];
-          data.forEach((row: any) => {
-            const sc = row.suggested_changes;
-            if (sc?.suggested_changes && Array.isArray(sc.suggested_changes)) {
-              sc.suggested_changes.forEach((item: any, idx: number) => {
-                parsed.push({
-                  id: `${row.id}-${idx}`,
-                  question_id: item.question_id,
-                  question_code: `Q${item.question_id}`,
-                  area_id: item.area_id || 'area_1_direccion',
-                  question_title: item.question_title || `Pregunta ${item.question_id}`,
-                  suggested_option: item.suggested_option || 'formal_active',
-                  suggested_label: item.new_assessment || 'Actualización sugerida',
-                  reason: item.reason || 'Detectado por IA a partir de transcripción/minuta',
-                  confidence: item.confidence || 'alta',
-                  source_meeting: 'Sesión reciente procesada',
-                  status: 'pending'
-                });
-              });
+        if (data?.answers && typeof data.answers === 'object') {
+          const dbQual: Record<number, { answer: string; quote: string; updatedAt: string }> = {};
+          Object.entries(data.answers).forEach(([k, val]: [string, any]) => {
+            if (val && typeof val === 'object' && (val.notes || val.evidence)) {
+              dbQual[Number(k)] = {
+                answer: val.notes || val.evidence,
+                quote: val.evidence || val.notes,
+                updatedAt: val.updatedAt ? new Date(val.updatedAt).toLocaleDateString('es-AR') : 'Reciente'
+              };
             }
           });
-          if (parsed.length > 0) {
-            setSuggestions(parsed);
+          if (Object.keys(dbQual).length > 0) {
+            setQualitativeMap(prev => ({ ...dbQual, ...prev }));
           }
         }
       } catch (err) {
-        console.warn('Could not load remote diagnostic suggestions:', err);
+        console.warn('Notice reading diagnostic_responses notes:', err);
       }
     }
-    if (client?.id) {
-      loadRemoteSuggestions();
-    }
+    loadFromDb();
   }, [client?.id]);
 
   // Recálculo dinámico matemático en tiempo real
@@ -149,52 +118,6 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
   const currentArea = useMemo(() => {
     return DIAGNOSTIC_AREAS.find(a => a.id === selectedAreaId) || DIAGNOSTIC_AREAS[0];
   }, [selectedAreaId]);
-
-  const pendingSuggestions = useMemo(() => {
-    return suggestions.filter(s => s.status === 'pending');
-  }, [suggestions]);
-
-  const handleAcceptSuggestion = (sug: AISuggestionItem) => {
-    onAnswerChange(sug.question_id, sug.suggested_option);
-    setSuggestions(prev => prev.map(s => s.id === sug.id ? { ...s, status: 'accepted' } : s));
-  };
-
-  const handleDiscardSuggestion = (sugId: string) => {
-    setSuggestions(prev => prev.map(s => s.id === sugId ? { ...s, status: 'rejected' } : s));
-  };
-
-  const handleRunAiAnalysis = async () => {
-    setIsAnalyzing(true);
-    try {
-      const { error } = await supabase.functions.invoke('update-diagnostic', {
-        body: { organization_id: client.id }
-      });
-      if (error) throw error;
-      alert('¡Análisis incremental completado por IA! Nuevas sugerencias generadas a partir de la última sesión.');
-    } catch (err: any) {
-      setTimeout(() => {
-        setSuggestions(prev => [
-          ...prev,
-          {
-            id: `sug-${Date.now()}`,
-            question_id: 6,
-            question_code: 'Q6',
-            area_id: 'area_2_finanzas',
-            question_title: 'Plan financiero / Presupuesto anual formal',
-            suggested_option: 'formal_active',
-            suggested_label: 'Formalizado y en uso activo',
-            reason: 'Se detectó mención explícita del presupuesto 2026 aprobado por el directorio en la última grabación.',
-            confidence: 'alta',
-            source_meeting: 'Análisis IA en tiempo real',
-            status: 'pending'
-          }
-        ]);
-        setIsAnalyzing(false);
-      }, 700);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
@@ -208,94 +131,28 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
         onSendWhatsApp={onSendWhatsApp}
       />
 
-      {/* 2. Panel de Sugerencias Incrementales IA (PR-02 Human-In-The-Loop) */}
-      {pendingSuggestions.length > 0 && (
-        <div className="bg-zinc-950 text-white border-2 border-red-600 rounded-2xl p-5 shadow-crimson space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center text-white shadow-sm">
-                <Bot className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-display text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                  Sugerencias de Actualización Incremental por IA (PR-02)
-                  <span className="px-2 py-0.5 bg-red-600 text-[10px] font-mono font-bold rounded-full">
-                    {pendingSuggestions.length} PENDIENTES
-                  </span>
-                </h3>
-                <p className="text-xs text-zinc-400 font-medium">
-                  Control Humano Obligatorio: Ningún cambio se aplica sin la aprobación expresa del consultor líder.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleRunAiAnalysis}
-                disabled={isAnalyzing}
-                className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 rounded-lg text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 border border-zinc-700 transition-colors"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-red-500 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                {isAnalyzing ? 'Analizando...' : 'Re-analizar Sesión'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAiDrawer(!showAiDrawer)}
-                className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1 border border-zinc-700"
-              >
-                {showAiDrawer ? 'Ocultar' : 'Mostrar'}
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAiDrawer ? 'rotate-180' : ''}`} />
-              </button>
-            </div>
+      {/* 2. Acceso Directo: Responder las 100 Preguntas con Audio y Generar Informe + Minutas */}
+      {onOpenAudioSession && (
+        <div className="bg-zinc-950 text-white border-2 border-[#6B1D2F] rounded-2xl p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="font-display text-[10px] font-black uppercase tracking-widest text-red-400">
+              Autocompletado Inteligente por Voz • Catálogo de 100 Preguntas
+            </span>
+            <h3 className="font-display text-base font-black uppercase tracking-wide text-white">
+              ¿Quieres responder el diagnóstico automáticamente desde el audio de la reunión?
+            </h3>
+            <p className="text-xs text-zinc-400">
+              Graba la sesión o sube el audio: el sistema detecta cuáles de las 100 preguntas se responden, las marca aquí automáticamente y genera el Informe con las Minutas.
+            </p>
           </div>
-
-          {showAiDrawer && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-              {pendingSuggestions.map(sug => (
-                <div key={sug.id} className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col justify-between gap-3">
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-black bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded">
-                        {sug.question_code}
-                      </span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                        Confianza: <strong className="text-emerald-400">{sug.confidence}</strong>
-                      </span>
-                    </div>
-                    <h4 className="font-bold text-xs text-white mt-1.5 leading-snug">
-                      {sug.question_title}
-                    </h4>
-                    <p className="text-[11px] text-zinc-300 mt-1 bg-zinc-950 p-2 rounded-lg border border-zinc-800/80 font-medium">
-                      💡 <strong className="text-red-400">Sugerencia IA:</strong> {sug.suggested_label}
-                    </p>
-                    <p className="text-[10px] text-zinc-400 mt-1.5 italic">
-                      Evidencia: {sug.reason}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800">
-                    <button
-                      type="button"
-                      onClick={() => handleDiscardSuggestion(sug.id)}
-                      className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-[11px] font-bold font-display uppercase tracking-wider flex items-center gap-1 transition-colors"
-                    >
-                      <X className="w-3 h-3 text-red-400" />
-                      Descartar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAcceptSuggestion(sug)}
-                      className="px-3.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[11px] font-bold font-display uppercase tracking-wider flex items-center gap-1 shadow-crimson transition-all"
-                    >
-                      <CheckCheck className="w-3 h-3 text-white" />
-                      Aceptar Sugerencia
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={onOpenAudioSession}
+            className="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shrink-0 shadow-lg hover:scale-105 transition-all cursor-pointer"
+          >
+            <Mic className="w-4 h-4" />
+            Grabar / Subir Audio (Auto 100 Preguntas)
+          </button>
         </div>
       )}
 
@@ -561,6 +418,16 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                       );
                     })}
                   </div>
+
+                  {/* Evidencia / Respuesta Cualitativa Extraída Automáticamente del Audio */}
+                  {qualitativeMap[question.id] && (
+                    <div className="mt-3 p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-zinc-800">
+                      <span className="font-display text-[10px] font-black uppercase tracking-wider text-emerald-800 block mb-0.5">
+                        🎙️ Respondida Automáticamente desde el Audio ({qualitativeMap[question.id].updatedAt}):
+                      </span>
+                      <p className="font-medium leading-relaxed">{qualitativeMap[question.id].answer}</p>
+                    </div>
+                  )}
                 </div>
               );
             })}

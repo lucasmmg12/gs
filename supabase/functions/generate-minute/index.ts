@@ -12,6 +12,28 @@ const corsHeaders = {
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY })
 
+const MODEL_CASCADE = [
+  Deno.env.get('OPENAI_MODEL'),
+  'gpt-5.5',
+  'gpt-5.4',
+  'gpt-4.1',
+  'gpt-4o'
+].filter(Boolean) as string[]
+
+async function createCompletionWithCascade(params: any) {
+  let lastError: any = null
+  for (const model of MODEL_CASCADE) {
+    try {
+      const response = await openai.chat.completions.create({ ...params, model })
+      return { response, modelUsed: model }
+    } catch (err: any) {
+      lastError = err
+      console.warn(`[generate-minute] Model ${model} unavailable, trying next:`, err?.message)
+    }
+  }
+  throw lastError || new Error('All AI models in cascade failed')
+}
+
 const MINUTE_SYSTEM_PROMPT = `Sos el redactor experto de Consultora GS especializado en Minutas de Seguimiento y Tutoría Estratégica.
 Tu misión es generar una Minuta de Seguimiento profesional, estructurada y accionable siguiendo rigurosamente la metodología de GS.
 
@@ -96,8 +118,7 @@ Transcripción y notas de la reunión:
 ${typeof rawTranscript === 'string' ? rawTranscript : JSON.stringify(rawTranscript)}
 `
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    const { response, modelUsed } = await createCompletionWithCascade({
       messages: [
         { role: 'system', content: MINUTE_SYSTEM_PROMPT },
         { role: 'user', content: prompt }
@@ -106,6 +127,7 @@ ${typeof rawTranscript === 'string' ? rawTranscript : JSON.stringify(rawTranscri
     })
 
     const minuteContent = JSON.parse(response.choices[0].message.content || '{}')
+    minuteContent._ai_model = modelUsed
 
     // 4. Insert or update minute record
     const { data: savedMinute, error: saveErr } = await supabase

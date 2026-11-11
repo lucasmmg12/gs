@@ -232,6 +232,15 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         guide: "Si la empresa comunica valores como calidad, seguridad o cumplimiento de plazos, ¿son valores declarados y vividos, o solo comerciales?",
         options: STANDARD_CLOSED_OPTIONS
       },
+      {
+        id: 79,
+        areaId: 'area_1_direccion',
+        code: 'Q79',
+        title: "¿Existe un protocolo de socios o acuerdo de directorio formalizado para toma de decisiones, dividendos y sucesión?",
+        guide: "Evalúe si las reglas entre socios están escritas y firmadas o si se manejan de palabra.",
+        kpi: "Protocolo societario formalizado (Sí/No)",
+        options: STANDARD_CLOSED_OPTIONS
+      },
     ]
   },
   {
@@ -360,6 +369,15 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         title: "¿Cómo calificaría la salud financiera actual de la empresa?",
         options: SCALE_1_TO_5_OPTIONS
       },
+      {
+        id: 80,
+        areaId: 'area_2_finanzas',
+        code: 'Q80',
+        title: "¿Cuenta con un presupuesto anual y tablero de control financiero mensual con análisis de desvíos?",
+        guide: "Verifique si comparan lo presupuestado contra lo ejecutado cada mes.",
+        kpi: "% de desvío presupuestario mensual",
+        options: STANDARD_CLOSED_OPTIONS
+      },
     ]
   },
   {
@@ -464,6 +482,23 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         guide: "Evalúe especialmente la dependencia de las personas clave de operaciones y de la propia dirección.",
         options: STANDARD_CLOSED_OPTIONS
       },
+      {
+        id: 81,
+        areaId: 'area_3_operaciones',
+        code: 'Q81',
+        title: "¿Existe un plan de mantenimiento preventivo para equipos, maquinaria, vehículos o infraestructura crítica?",
+        guide: "Determine si el mantenimiento es preventivo y programado o meramente correctivo ante roturas.",
+        kpi: "% cumplimiento plan preventivo",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 82,
+        areaId: 'area_3_operaciones',
+        code: 'Q82',
+        title: "¿Cómo se gestionan la seguridad e higiene operativa, prevención de accidentes y riesgos en planta u obra?",
+        kpi: "Índice de siniestralidad / incidentes",
+        options: STANDARD_CLOSED_OPTIONS
+      },
     ]
   },
   {
@@ -566,6 +601,21 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         areaId: 'area_4_rrhh',
         code: 'Q35',
         title: "¿Qué hace la empresa para retener y motivar al talento clave?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 83,
+        areaId: 'area_4_rrhh',
+        code: 'Q83',
+        title: "¿Realiza evaluaciones de desempeño periódicas con devolución formal y objetivos de mejora para el equipo?",
+        kpi: "% del personal evaluado anualmente",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 84,
+        areaId: 'area_4_rrhh',
+        code: 'Q84',
+        title: "¿Existe una política clara de remuneraciones, escalas salariales e incentivos por cumplimiento de metas?",
         options: STANDARD_CLOSED_OPTIONS
       },
     ]
@@ -674,6 +724,21 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         title: "¿Qué tan activa y estructurada es su estrategia comercial hoy?",
         options: SCALE_1_TO_5_OPTIONS
       },
+      {
+        id: 85,
+        areaId: 'area_5_comercial',
+        code: 'Q85',
+        title: "¿Utiliza un CRM o sistema formal para el seguimiento de prospectos, oportunidades y embudo de ventas?",
+        kpi: "% de oportunidades registradas en CRM",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 86,
+        areaId: 'area_5_comercial',
+        code: 'Q86',
+        title: "¿Cuenta con listas de precios, políticas de descuentos y condiciones comerciales estandarizadas?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
     ]
   },
   {
@@ -756,6 +821,35 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         code: 'Q48',
         title: "¿Qué hace la empresa después de entregar un trabajo para fidelizar al cliente?",
         guide: "Ej.: planes de mantenimiento/servicio, auditorías post-venta, garantías extendidas.",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 87,
+        areaId: 'area_6_clientes',
+        code: 'Q87',
+        title: "¿Tiene segmentada su cartera de clientes (ej. matriz ABC por rentabilidad, volumen y frecuencia)?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 88,
+        areaId: 'area_6_clientes',
+        code: 'Q88',
+        title: "¿Trabaja con contratos formales, órdenes de compra o acuerdos de nivel de servicio (SLA) con sus clientes?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 89,
+        areaId: 'area_6_clientes',
+        code: 'Q89',
+        title: "¿Existe un protocolo de alta y bienvenida (onboarding) para nuevos clientes?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 90,
+        areaId: 'area_6_clientes',
+        code: 'Q90',
+        title: "¿Cómo gestiona la cobranza a clientes, plazos de pago y seguimiento de cuentas por cobrar o mora?",
+        kpi: "Días promedio de cobro (DSO)",
         options: STANDARD_CLOSED_OPTIONS
       },
     ]
@@ -847,6 +941,27 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         title: "¿Con qué frecuencia los proyectos se entregan fuera de plazo o de presupuesto? ¿Cuál es la causa más común?",
         options: STANDARD_CLOSED_OPTIONS
       },
+      {
+        id: 91,
+        areaId: 'area_7_procesos',
+        code: 'Q91',
+        title: "¿Realiza auditorías internas periódicas para verificar que los procesos y procedimientos se cumplan en la práctica?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 92,
+        areaId: 'area_7_procesos',
+        code: 'Q92',
+        title: "¿Registra las no conformidades, desvíos o errores operativos para analizar su causa raíz y evitar que se repitan?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 93,
+        areaId: 'area_7_procesos',
+        code: 'Q93',
+        title: "¿Están diseñados primero los procesos de la cadena de valor independientemente de las personas actuales (Medianera Conceptual)?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
     ]
   },
   {
@@ -917,6 +1032,34 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         areaId: 'area_8_tecnologia',
         code: 'Q60',
         title: "¿Cuáles son los principales dolores tecnológicos que enfrenta hoy?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 94,
+        areaId: 'area_8_tecnologia',
+        code: 'Q94',
+        title: "¿Cuenta con políticas de seguridad informática, copias de respaldo (backups) automáticas y control de accesos?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 95,
+        areaId: 'area_8_tecnologia',
+        code: 'Q95',
+        title: "¿Dispone de tableros de datos o reportes automatizados en tiempo real para la toma de decisiones?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 96,
+        areaId: 'area_8_tecnologia',
+        code: 'Q96',
+        title: "¿La documentación e información crítica de la empresa está centralizada y ordenada en un repositorio en la nube?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 97,
+        areaId: 'area_8_tecnologia',
+        code: 'Q97',
+        title: "¿Existe un presupuesto o plan anual de actualización de hardware, software e infraestructura tecnológica?",
         options: STANDARD_CLOSED_OPTIONS
       },
     ]
@@ -995,6 +1138,27 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         code: 'Q65',
         title: "¿Qué condiciones de pago negocia con proveedores (contado, 30, 60 días)? ¿Calzan con el plazo de cobro de sus clientes?",
         kpi: "DPO (días de pago) vs. plazo de cobro",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 98,
+        areaId: 'area_9_proveedores',
+        code: 'Q98',
+        title: "¿Evalúa y califica periódicamente el desempeño de sus proveedores (cumplimiento de plazos, calidad y precio)?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 99,
+        areaId: 'area_9_proveedores',
+        code: 'Q99',
+        title: "¿Realiza controles de calidad y recepción formal de insumos, materiales o servicios subcontratados?",
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 100,
+        areaId: 'area_9_proveedores',
+        code: 'Q100',
+        title: "¿Desarrolla alianzas estratégicas o acuerdos de abastecimiento anual con sus proveedores clave?",
         options: STANDARD_CLOSED_OPTIONS
       },
     ]

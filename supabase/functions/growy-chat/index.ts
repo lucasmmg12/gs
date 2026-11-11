@@ -14,13 +14,35 @@ const corsHeaders = {
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY })
 
-const BASE_SYSTEM_PROMPT = `Sos "Growy", el asistente de IA experto, copiloto metodológico y analista de datos de Consultora GS (Grow Labs · Sanatorio Argentino).
+const MODEL_CASCADE = [
+  Deno.env.get('OPENAI_MODEL'),
+  'gpt-5.5',
+  'gpt-5.4',
+  'gpt-4.1',
+  'gpt-4o'
+].filter(Boolean) as string[]
+
+async function createCompletionWithCascade(params: any) {
+  let lastError: any = null
+  for (const model of MODEL_CASCADE) {
+    try {
+      const response = await openai.chat.completions.create({ ...params, model })
+      return { response, modelUsed: model }
+    } catch (err: any) {
+      lastError = err
+      console.warn(`[growy-chat] Model ${model} unavailable, trying next:`, err?.message)
+    }
+  }
+  throw lastError || new Error('All AI models in cascade failed')
+}
+
+const BASE_SYSTEM_PROMPT = `Sos "Growy", el asistente de IA experto (Familia GPT-5.5+), copiloto metodológico y analista de datos de Consultora GS (Grow Labs · Sanatorio Argentino).
 Hablás en español profesional, analítico y cercano (usando voseo argentino cuando sea natural).
 
 ## TU ROL Y CAPACIDADES:
 1. **Conocimiento Total del Sistema y Metodología GS**:
    - **PR-01: Gestión de Reuniones y Minutas**: Ciclo Recibido → Borrador → Pendiente de revisión → Aprobado → Publicado. Ningún contenido generado por IA se publica al cliente sin aprobación de un consultor humano.
-   - **PR-02: Diagnóstico Integral 360°**: 10 áreas, 78 preguntas clave. Taxonomía de preguntas: abiertas cualitativas (open_diagnostic), de nivelación estructurada (maturity_level) y con indicadores numéricos (indicator). Actualización incremental basada en evidencias sin sobrescritura ciega.
+   - **PR-02: Diagnóstico Integral 360°**: 10 áreas, 100 preguntas clave (Q1 a Q100). Taxonomía de preguntas: abiertas cualitativas (open_diagnostic), de nivelación estructurada (maturity_level) y con indicadores numéricos (indicator). Actualización incremental automática basada en evidencias del audio sin sobrescritura ciega.
    - **PR-03: Objetivo Más Bárbaro (OMB - Visión a 3 años)**: Visión trienal consensuada entre socios. Gestión estricta de versiones (Rev A, Rev B... hasta Rev 0 aprobada definitiva). Consolidación de visiones divergentes de socios y podcasts/audios explicativos por revisión.
    - **PR-04: Cierre de Sesión y Filtro Humano (Human-in-the-Loop)**: Mitigación del ~15% de margen de error de la IA. Todas las sugerencias detectadas deben incluir cita textual exacta y nivel de confianza. Requieren validación del consultor humano antes de impactar el diagnóstico oficial.
    - **PR-05: Pentágono del Orden y Evolución Matemática de Madurez**: 5 Ejes (Gobernanza, Procesos, Finanzas, Talento, Comercial) en escala 0 a 10. La evolución no es subjetiva, sino matemática: ΔEje = (10 - Base) × ∑(% Incidencia_i × % Avance_i), con suma de incidencias por eje igual al 100%.
@@ -389,9 +411,8 @@ BAJO NINGUNA CIRCUNSTANCIA debes consultar, mezclar, filtrar ni revelar datos de
 
     let generatedAttachment: any = null
 
-    // Step 1: Call OpenAI
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    // Step 1: Call OpenAI (GPT-5.5+ Cascade)
+    const { response } = await createCompletionWithCascade({
       messages: conversation,
       tools: tools,
       tool_choice: 'auto'
@@ -424,8 +445,7 @@ BAJO NINGUNA CIRCUNSTANCIA debes consultar, mezclar, filtrar ni revelar datos de
             const partnerVisions = args.partner_visions || []
             const combinedStatements = partnerVisions.map((pv: any) => `• ${pv.partner_name}: "${pv.vision_text}"`).join('\n')
             
-            const synthesisCompletion = await openai.chat.completions.create({
-              model: 'gpt-4o',
+            const { response: synthesisCompletion } = await createCompletionWithCascade({
               messages: [
                 {
                   role: 'system',
@@ -616,8 +636,7 @@ BAJO NINGUNA CIRCUNSTANCIA debes consultar, mezclar, filtrar ni revelar datos de
       }
 
       // Next step
-      const nextResponse = await openai.chat.completions.create({
-        model: 'gpt-4o',
+      const { response: nextResponse } = await createCompletionWithCascade({
         messages: conversation,
         tools: tools,
         tool_choice: 'auto'

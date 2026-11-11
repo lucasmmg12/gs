@@ -20,7 +20,6 @@ import { QualityApprovalBadge } from '../components/QualityApprovalBadge';
 import type { ApprovalStatus, AuditConsultants } from '../components/QualityApprovalBadge';
 import ClientMeetingSession from '../components/views/ClientMeetingSession';
 import type { MeetingType } from '../components/views/ClientMeetingSession';
-import ClientMeetingPlanner from '../components/views/ClientMeetingPlanner';
 import type { PlannedMeetingData } from '../components/views/ClientMeetingPlanner';
 import ClientRecordingsHistory from '../components/views/ClientRecordingsHistory';
 import MasterPlanQuarterlyTracking from '../components/views/MasterPlanQuarterlyTracking';
@@ -207,29 +206,6 @@ export default function ClientDetail() {
   const [meetings, setMeetings] = useState<any[]>([]);
   const [plannedSession, setPlannedSession] = useState<PlannedMeetingData | null>(null);
 
-  const handleStartLiveMeeting = (planned: PlannedMeetingData) => {
-    setPlannedSession(planned);
-    navigate(`/clients/${id}/meetings/live`);
-  };
-
-  const handleSavePlannedMeeting = async (planned: PlannedMeetingData) => {
-    try {
-      await supabase.from('meetings').insert({
-        organization_id: client.id,
-        title: planned.title,
-        meeting_date: planned.date.split(' ')[0],
-        status: 'scheduled'
-      });
-      alert(`✅ Reunión "${planned.title}" guardada exitosamente en la agenda del cliente.`);
-      navigate(`/clients/${id}/meetings`);
-      fetchClientData();
-    } catch (err: any) {
-      console.error('Error saving planned meeting:', err);
-      alert('Planificación registrada con éxito.');
-      navigate(`/clients/${id}/meetings`);
-    }
-  };
-
   const fetchClientData = async () => {
     setLoading(true);
     const { data: org } = await supabase
@@ -262,6 +238,17 @@ export default function ClientDetail() {
       if (Object.keys(normalizedAnswers).length > 0) {
         setDiagnosticAnswers(prev => ({ ...prev, ...normalizedAnswers }));
       }
+    }
+
+    // Merge any locally persisted auto-answers from audio sessions
+    try {
+      const localSaved = localStorage.getItem(`gs_diag_answers_${id}`);
+      if (localSaved) {
+        const parsedLocal = JSON.parse(localSaved);
+        setDiagnosticAnswers(prev => ({ ...prev, ...parsedLocal }));
+      }
+    } catch (e) {
+      console.warn('Error reading local diag answers:', e);
     }
 
     const { data: mtgs } = await supabase
@@ -378,7 +365,7 @@ export default function ClientDetail() {
   ];
 
   const answeredQuestionsCount = Object.keys(diagnosticAnswers).length;
-  const totalQuestionsCatalog = 78;
+  const totalQuestionsCatalog = 100;
   const profileProgressPercent = Math.min(100, Math.round((answeredQuestionsCount / totalQuestionsCatalog) * 100));
 
   if (loading) return <div className="p-8 text-center text-zinc-500 font-bold font-display uppercase tracking-wider">Cargando información del cliente...</div>;
@@ -523,138 +510,30 @@ export default function ClientDetail() {
       {/* TAB 1: DASHBOARD 360 */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
-          {/* Center View: Meeting Lifecycle Cards */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 font-display">Ciclo de Vida de Reuniones Estratégicas</h2>
-                <p className="text-xs text-slate-500">Planifique y ejecute las sesiones con captura de audio en vivo Whisper y trazabilidad</p>
+          {/* Direct Audio & Transcription Automatic Card */}
+          <div className="bg-zinc-950 text-white p-6 rounded-2xl border-2 border-zinc-900 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="space-y-1.5 max-w-2xl">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-red-500 animate-ping" />
+                <span className="font-display text-[11px] font-bold uppercase tracking-widest text-red-400">
+                  Flujo Automático de Relevamiento
+                </span>
               </div>
-              <span className="text-xs font-medium text-slate-500 bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-xs">
-                3 Etapas Metodológicas
-              </span>
+              <h2 className="text-lg sm:text-xl font-black text-white font-display uppercase tracking-tight">
+                Grabar o Subir Audio → Responder las 100 Preguntas + Generar Informe y Minuta
+              </h2>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Toma el audio de la sesión (grabándolo en vivo o subiendo el archivo). El sistema identifica automáticamente cuáles de las <strong>100 preguntas</strong> se pueden responder, las contesta en el perfil ({answeredQuestionsCount}/100 respondidas) y genera el Informe con las Minutas.
+              </p>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Card 1: 1. Kick off (OMV Trienal) */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 text-purple-700 flex items-center justify-center font-bold">
-                      <Target className="w-4 h-4" />
-                    </div>
-                    <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
-                      Paso 1
-                    </span>
-                  </div>
-                  <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-purple-700 transition-colors">
-                    1. Kick off (OMV Trienal)
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    Definición de visión a 3 años, alineación de socios y emisión de minutas de apertura en PDF.
-                  </p>
-                  <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
-                    <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500" /> Visión cuantitativa y metas
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500" /> Mapeo de dolores inmediatos
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500" /> Auditoría y minuta PDF
-                    </li>
-                  </ul>
-                </div>
-                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-slate-400">Entregable: OMV</span>
-                  <button
-                    onClick={() => navigate(`/clients/${id}/meetings/plan?type=kickoff`)}
-                    className="px-3.5 py-1.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-                  >
-                    Planificar Kick off
-                  </button>
-                </div>
-              </div>
-
-              {/* Card 2: 2. Diagnóstico 360° */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-9 h-9 rounded-xl bg-[#F9EFF2] border border-[#E6C5CD] text-[#6B1D2F] flex items-center justify-center font-bold">
-                      <Mic className="w-4 h-4" />
-                    </div>
-                    <span className="text-[10px] font-semibold text-[#6B1D2F] bg-[#F9EFF2] px-2 py-0.5 rounded-md border border-[#E6C5CD]">
-                      Paso 2
-                    </span>
-                  </div>
-                  <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-[#6B1D2F] transition-colors">
-                    2. Diagnóstico 360°
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    Entrevistas guiadas por áreas temáticas con transcripción Whisper y avance automático del perfil.
-                  </p>
-                  <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
-                    <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#6B1D2F]" /> Selección de temas y preguntas
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#6B1D2F]" /> Grabación con audio chunking
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#6B1D2F]" /> Check out con aprobación del cliente
-                    </li>
-                  </ul>
-                </div>
-                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-slate-400">Avance: {profileProgressPercent}%</span>
-                  <button
-                    onClick={() => navigate(`/clients/${id}/meetings/plan?type=diagnostico`)}
-                    className="px-3.5 py-1.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-                  >
-                    Planificar Diagnóstico
-                  </button>
-                </div>
-              </div>
-
-              {/* Card 3: 3. Revisión Trimestral (90 Días) */}
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-bold">
-                      <Calendar className="w-4 h-4" />
-                    </div>
-                    <span className="text-[10px] font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                      Paso 3 · Cada 90 Días
-                    </span>
-                  </div>
-                  <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-slate-950 transition-colors">
-                    3. Revisión Trimestral (90 Días)
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    Auditoría de tareas del Master Plan y recalibración de los 5 vértices del Pentágono.
-                  </p>
-                  <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
-                    <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600" /> Auditoría de iniciativas
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600" /> Recalibración del Pentágono
-                    </li>
-                    <li className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-600" /> Compromisos del ciclo Q+1
-                    </li>
-                  </ul>
-                </div>
-                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-slate-400">Ciclo: Q+1</span>
-                  <button
-                    onClick={() => navigate(`/clients/${id}/meetings/plan?type=seguimiento_trimestral`)}
-                    className="px-3.5 py-1.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
-                  >
-                    Planificar Trimestral
-                  </button>
-                </div>
-              </div>
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <button
+                onClick={() => navigate(`/clients/${id}/meetings/live`)}
+                className="px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg hover:scale-105 transition-all cursor-pointer"
+              >
+                <Mic className="w-4 h-4" />
+                Grabar / Subir Audio Ahora
+              </button>
             </div>
           </div>
 
@@ -769,7 +648,7 @@ export default function ClientDetail() {
               clientId={id as string}
               clientName={client.name}
               onNewRecording={(type) => {
-                navigate(`/clients/${id}/meetings/plan?type=${type || 'diagnostico'}`);
+                navigate(`/clients/${id}/meetings/live?type=${type || 'diagnostico'}`);
               }}
             />
           </div>
@@ -801,6 +680,7 @@ export default function ClientDetail() {
           onApprovalChange={(status, audit) => handleQualityApprovalChange('diagnostic_360', status, audit)}
           onViewMatrices={() => navigate(`/clients/${id}/matrices`)}
           onSendWhatsApp={() => handleSendWhatsAppNotification('Formulario de Diagnóstico Integral 360°')}
+          onOpenAudioSession={() => navigate(`/clients/${id}/meetings/live`)}
         />
       )}
 
@@ -934,7 +814,7 @@ export default function ClientDetail() {
       {/* TAB 6: REUNIONES, GRABACIONES CONTINUAS E HISTORIAL IA */}
       {activeTab === 'meetings' && (
         <div className="space-y-6">
-          {activeMeetingSession ? (
+          {(activeMeetingSession || isPlanningMeeting) ? (
             <ClientMeetingSession
               client={client}
               initialMeetingType={plannedSession?.meetingType || meetingLaunchType}
@@ -950,130 +830,34 @@ export default function ClientDetail() {
                 fetchClientData();
               }}
             />
-          ) : isPlanningMeeting ? (
-            <ClientMeetingPlanner
-              client={client}
-              diagnosticAnswers={diagnosticAnswers}
-              initialType={meetingLaunchType}
-              onStartLiveMeeting={handleStartLiveMeeting}
-              onSavePlannedMeeting={handleSavePlannedMeeting}
-              onCancel={() => navigate(`/clients/${id}/meetings`)}
-            />
           ) : (
             <div className="space-y-6">
-              {/* Header Principal de Reuniones del Cliente */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+              {/* Header Principal Simplificado: Audio -> 100 Preguntas -> Informe y Minuta */}
+              <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-xs space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="h-2 w-2 rounded-full bg-[#6B1D2F]" />
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6B1D2F]">
-                        Ciclo de Vida de Reuniones • {client.name}
+                      <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-ping" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B1D2F]">
+                        Flujo Simplificado Automático • {client.name}
                       </span>
                     </div>
-                    <h2 className="font-display text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                      Reuniones del Cliente
+                    <h2 className="font-display text-xl sm:text-2xl font-black uppercase text-slate-950 tracking-tight">
+                      Audio y Transcripción → 100 Preguntas + Informe y Minutas
                     </h2>
-                    <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-                      Seleccione la etapa metodológica para planificar temas y preguntas antes de iniciar la sesión en vivo con captura de audio.
+                    <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
+                      Graba la reunión en vivo o sube un audio. El sistema analiza automáticamente cuáles de las <strong>100 preguntas</strong> se responden en la charla, las contesta en el diagnóstico y genera el <strong>Informe con la Minuta Ejecutiva</strong> en un solo paso.
                     </p>
                   </div>
 
                   <button
                     onClick={() => {
-                      navigate(`/clients/${id}/meetings/plan?type=diagnostico`);
+                      navigate(`/clients/${id}/meetings/live?type=diagnostico`);
                     }}
-                    className="px-4 py-2.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all self-start sm:self-center"
+                    className="px-6 py-3.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-md hover:scale-105 transition-all self-start sm:self-center shrink-0 cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" /> Planificar Reunión
+                    <Mic className="w-4 h-4" /> Grabar / Subir Audio Ahora
                   </button>
-                </div>
-
-                {/* 3 Tipos de Reuniones en Tarjetas Destacadas */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-                  {/* Tipo 1: Kick off */}
-                  <div
-                    onClick={() => {
-                      navigate(`/clients/${id}/meetings/plan?type=kickoff`);
-                    }}
-                    className="p-5 rounded-2xl border border-slate-200 hover:border-purple-300 bg-white hover:bg-purple-50/20 shadow-xs hover:shadow-md cursor-pointer transition-all space-y-2.5 group flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="w-9 h-9 rounded-xl bg-purple-50 border border-purple-100 text-purple-700 flex items-center justify-center font-bold">
-                          <Target className="w-4 h-4" />
-                        </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                          Paso 1
-                        </span>
-                      </div>
-                      <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-purple-700 transition-colors">
-                        1. Kick off (OMV Trienal)
-                      </h3>
-                      <p className="text-xs text-slate-500 leading-relaxed mt-1">
-                        Definición de la <strong>visión trienal (OMV)</strong>, alineación de fundadores y emisión de minutas de auditoría en PDF.
-                      </p>
-                    </div>
-                    <div className="pt-3 border-t border-slate-100 flex items-center text-xs font-semibold text-purple-700 group-hover:translate-x-1 transition-transform">
-                      <span>Planificar Kick off</span> →
-                    </div>
-                  </div>
-
-                  {/* Tipo 2: Diagnóstico 360 */}
-                  <div
-                    onClick={() => {
-                      navigate(`/clients/${id}/meetings/plan?type=diagnostico`);
-                    }}
-                    className="p-5 rounded-2xl border border-slate-200 hover:border-[#E6C5CD] bg-white hover:bg-[#F9EFF2]/20 shadow-xs hover:shadow-md cursor-pointer transition-all space-y-2.5 group flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="w-9 h-9 rounded-xl bg-[#F9EFF2] border border-[#E6C5CD] text-[#6B1D2F] flex items-center justify-center font-bold">
-                          <Mic className="w-4 h-4" />
-                        </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#F9EFF2] text-[#6B1D2F] border border-[#E6C5CD]">
-                          Paso 2
-                        </span>
-                      </div>
-                      <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-[#6B1D2F] transition-colors">
-                        2. Diagnóstico 360°
-                      </h3>
-                      <p className="text-xs text-slate-500 leading-relaxed mt-1">
-                        Entrevistas por <strong>temas y preguntas</strong> de cada área para registrar el avance dinámico del perfil del cliente.
-                      </p>
-                    </div>
-                    <div className="pt-3 border-t border-slate-100 flex items-center text-xs font-semibold text-[#6B1D2F] group-hover:translate-x-1 transition-transform">
-                      <span>Planificar Diagnóstico</span> →
-                    </div>
-                  </div>
-
-                  {/* Tipo 3: Revisión Trimestral */}
-                  <div
-                    onClick={() => {
-                      navigate(`/clients/${id}/meetings/plan?type=seguimiento_trimestral`);
-                    }}
-                    className="p-5 rounded-2xl border border-slate-200 hover:border-slate-400 bg-white hover:bg-slate-50 shadow-xs hover:shadow-md cursor-pointer transition-all space-y-2.5 group flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-bold">
-                          <Calendar className="w-4 h-4" />
-                        </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                          Cada 90 Días
-                        </span>
-                      </div>
-                      <h3 className="font-display text-sm font-bold text-slate-900 group-hover:text-slate-950 transition-colors">
-                        3. Revisión Trimestral (90 Días)
-                      </h3>
-                      <p className="text-xs text-slate-500 leading-relaxed mt-1">
-                        Auditoría del Master Plan de tareas y <strong>recalibración de los 5 vértices del Pentágono</strong>.
-                      </p>
-                    </div>
-                    <div className="pt-3 border-t border-slate-100 flex items-center text-xs font-semibold text-slate-800 group-hover:translate-x-1 transition-transform">
-                      <span>Planificar Trimestral</span> →
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -1082,7 +866,7 @@ export default function ClientDetail() {
                 clientId={id as string}
                 clientName={client.name}
                 onNewRecording={(type) => {
-                  navigate(`/clients/${id}/meetings/plan?type=${type || 'diagnostico'}`);
+                  navigate(`/clients/${id}/meetings/live?type=${type || 'diagnostico'}`);
                 }}
               />
 

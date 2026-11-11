@@ -12,16 +12,38 @@ const corsHeaders = {
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY })
 
-const DIAGNOSTIC_UPDATE_PROMPT = `Sos el Consultor Senior de Diagnóstico 360° en Consultora GS.
-Tu tarea es analizar la Minuta o Transcripción de una reunión reciente y actualizar el Formulario de Diagnóstico Integral 360° de la empresa cliente (10 áreas, 78 preguntas).
+const MODEL_CASCADE = [
+  Deno.env.get('OPENAI_MODEL'),
+  'gpt-5.5',
+  'gpt-5.4',
+  'gpt-4.1',
+  'gpt-4o'
+].filter(Boolean) as string[]
 
-## REGLA CRÍTICA DE ACTUALIZACIÓN INCREMENTAL (CERO SOBRESCRITURA CIEGA):
+async function createCompletionWithCascade(params: any) {
+  let lastError: any = null
+  for (const model of MODEL_CASCADE) {
+    try {
+      const response = await openai.chat.completions.create({ ...params, model })
+      return { response, modelUsed: model }
+    } catch (err: any) {
+      lastError = err
+      console.warn(`[update-diagnostic] Model ${model} unavailable, trying next:`, err?.message)
+    }
+  }
+  throw lastError || new Error('All AI models in cascade failed')
+}
+
+const DIAGNOSTIC_UPDATE_PROMPT = `Sos el Consultor Senior de Diagnóstico 360° en Consultora GS operando sobre el motor GPT-5.5+.
+Tu tarea es analizar la Minuta o Transcripción de una reunión reciente y actualizar automáticamente el Formulario de Diagnóstico Integral 360° de la empresa cliente (10 áreas, 100 preguntas).
+
+## REGLA CRÍTICA DE ACTUALIZACIÓN INCREMENTAL:
 1. **NO modifiques las respuestas de las preguntas que no fueron tratadas en esta reunión.**
-2. Identifica con precisión qué preguntas (por número del 1 al 78) se abordaron en la sesión (por ejemplo: preguntas 13 a 20 sobre costos fijos, punto de equilibrio y mapa de procesos).
+2. Identifica con precisión qué preguntas (por número del 1 al 100) se abordaron en la sesión.
 3. Para cada pregunta tratada:
    - Redacta la evaluación actualizada incorporando los nuevos hechos, acuerdos y decisiones.
    - Si corresponde, actualiza o sugiere nuevos valores para los KPIs asociados.
-4. Genera una lista de sugerencias estructuradas en formato JSON para que el consultor humano las revise y apruebe una por una.
+4. Genera la lista estructurada en formato JSON.
 
 ## FORMATO DE RESPUESTA JSON REQUERIDO:
 {
@@ -92,8 +114,7 @@ ESTADO ACTUAL DEL DIAGNÓSTICO:
 ${JSON.stringify(currentDiag?.areas_data || {})}
 `
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    const { response, modelUsed } = await createCompletionWithCascade({
       messages: [
         { role: 'system', content: DIAGNOSTIC_UPDATE_PROMPT },
         { role: 'user', content: prompt }
@@ -102,6 +123,7 @@ ${JSON.stringify(currentDiag?.areas_data || {})}
     })
 
     const suggestions = JSON.parse(response.choices[0].message.content || '{}')
+    suggestions._ai_model = modelUsed
 
     // 4. Save into diagnostic_suggestions table
     const { data: savedSuggestion, error: sugErr } = await supabase
