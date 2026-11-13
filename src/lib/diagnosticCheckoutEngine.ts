@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getPromptTextSync, getStoredAISettings } from './gsPromptStore';
 import {
   DIAGNOSTIC_AREAS,
   getAllDiagnosticQuestions,
@@ -281,6 +282,11 @@ export async function analyzeMeetingForCheckout(params: {
           meeting_title: meetingTitle,
           duration_seconds: durationSeconds,
           transcript,
+          custom_prompts: {
+            diagnostic_checkout: getPromptTextSync('diagnostic_checkout'),
+            minute_generator: getPromptTextSync('minute_generator'),
+          },
+          preferred_ai: getStoredAISettings(),
           catalog: all100Questions.map(q => ({
             id: q.id,
             code: q.code,

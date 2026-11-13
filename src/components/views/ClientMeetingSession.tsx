@@ -43,8 +43,9 @@ import {
   type MeetingMinuteDraft,
   type CheckoutAnalysisResult
 } from '../../lib/diagnosticCheckoutEngine';
+import { exportOfficialMinuteDocx } from '../../lib/gsOfficialExporter';
 
-export type MeetingType = 'kickoff' | 'diagnostico' | 'seguimiento_trimestral' | 'general';
+export type MeetingType = 'relevamiento' | 'kickoff' | 'diagnostico' | 'seguimiento_trimestral' | 'general';
 
 export function getFallbackQuestions(_mType?: MeetingType): DiagnosticQuestion[] {
   return getAllDiagnosticQuestions();
@@ -721,6 +722,17 @@ export default function ClientMeetingSession({
 
         {/* Main Audio Capture Card */}
         <div className="bg-white rounded-2xl border-2 border-zinc-900 p-6 sm:p-8 shadow-sm space-y-6">
+          {/* Disclaimer técnico obligatorio sobre captura en texto plano sin diarización */}
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex items-start gap-3 text-left">
+            <Volume2 className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-950 leading-relaxed">
+              <strong className="font-display uppercase tracking-wide text-amber-900">
+                Nota Operativa de Grabación (Texto Plano Continuo sin Diarización):
+              </strong>{' '}
+              La captura de voz transcribe el audio de forma continua en texto plano sin separar timbres individuales de hablantes. Para máxima precisión en las 100 preguntas y minutas oficiales, eviten superponer voces al hablar y mencionen nombres propios al asignar compromisos.
+            </div>
+          </div>
+
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <h2 className="font-display text-lg sm:text-xl font-black uppercase text-zinc-950">
               1. Graba la sesión o sube el audio de la reunión
@@ -955,11 +967,45 @@ export default function ClientMeetingSession({
 
             <button
               type="button"
+              onClick={async () => {
+                if (!minuteDraft) return;
+                const projectCode = localStorage.getItem(`gs_project_code_${client.id}`) || '00-000';
+                await exportOfficialMinuteDocx({
+                  projectCode,
+                  clientName: client.name,
+                  revision: 'Rev0',
+                  meetingTitle: minuteDraft.meetingTitle || meetingTitle,
+                  meetingDate: minuteDraft.meetingDate,
+                  motivo: minuteDraft.executiveSummary?.slice(0, 140) || 'Sesión de consultoría y seguimiento estratégico GS',
+                  attendeesGS: minuteDraft.attendeesGS || ['Consultor Senior GS'],
+                  attendeesClient: minuteDraft.attendeesClient || [client.name],
+                  topicsDiscussed: (minuteDraft.topicsDiscussed || []).map((t) => ({
+                    title: t.title,
+                    points: t.points || [],
+                  })),
+                  commitments: (minuteDraft.commitments || []).map((c) => ({
+                    responsible: c.responsible,
+                    task: c.task,
+                    deadline: c.deadline,
+                  })),
+                  reflection:
+                    minuteDraft.agreements?.join(' ') ||
+                    'La disciplina en el cumplimiento de los compromisos quincenales garantiza que la estrategia se transforme en resultados concretos.',
+                });
+              }}
+              className="px-4 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-950 text-white font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+            >
+              <FileText className="w-4 h-4 text-blue-200" />
+              Minuta Word Oficial (.DOCX)
+            </button>
+
+            <button
+              type="button"
               onClick={handleExportCompletePDF}
               className="px-5 py-2.5 rounded-xl bg-[#6B1D2F] hover:bg-[#541524] text-white font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all hover:scale-105 cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              Descargar Informe + Minuta (PDF)
+              Informe + Minuta (PDF)
             </button>
 
             <button

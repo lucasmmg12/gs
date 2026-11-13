@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   File, FileText, Image as ImageIcon, Download, UploadCloud, 
   Folder, Search, Filter, Sparkles, 
-  Trash2, X, Brain, Lock
+  Trash2, X, Brain, Lock, Eye, EyeOff
 } from 'lucide-react';
 import type { Client } from '../../data/mockData';
 import { DIAGNOSTIC_AREAS } from '../../data/diagnosticQuestions';
@@ -23,6 +23,7 @@ export interface ClientDocumentItem {
   questionId?: number;
   embeddingStatus: 'indexed' | 'pending' | 'failed';
   description?: string;
+  visibleToClient?: boolean;
 }
 
 interface DocumentosClienteProps {
@@ -92,15 +93,78 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
     }
   ];
 
-  const [documents, setDocuments] = useState<ClientDocumentItem[]>(() => {
+  const [documents, setDocuments] = useState<ClientDocumentItem[]>([]);
+
+  useEffect(() => {
+    const loadDocs = async () => {
+      const visRaw = localStorage.getItem(`gs_doc_visibility_${client.id}`);
+      const visMap: Record<string, boolean> = visRaw ? JSON.parse(visRaw) : {};
+
+      const { data: dbDocs } = await ((supabase as any).from('client_documents'))
+        .select('*')
+        .eq('organization_id', client.id)
+        .order('created_at', { ascending: false });
+
+      if (dbDocs && dbDocs.length > 0) {
+        const mapped: ClientDocumentItem[] = dbDocs.map((d: any) => ({
+          id: d.id,
+          name: d.file_name,
+          path: d.file_path || '#',
+          type: detectFileType(d.file_name),
+          size: d.file_size || '35 KB',
+          date: new Date(d.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' }),
+          uploader: d.uploader_name || 'Consultor GS',
+          uploaderRole: d.uploaded_by_role || 'consultor',
+          scopeLevel: d.scope_level || 'global',
+          areaId: d.area_id || undefined,
+          embeddingStatus: d.embedding_status || 'indexed',
+          description: d.description || '',
+          visibleToClient: visMap[d.id] !== undefined ? visMap[d.id] : d.visible_to_client !== false,
+        }));
+        setDocuments(mapped);
+        return;
+      }
+
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          setDocuments(JSON.parse(saved));
+          return;
+        }
+      } catch (e) {
+        console.warn('Error reading stored documents:', e);
+      }
+
+      if (client.id === '532a0405-02c2-4e45-8f77-c24bf13ea9de') {
+        setDocuments(initialDocs.map((d) => ({ ...d, visibleToClient: true })));
+      } else {
+        setDocuments([]);
+      }
+    };
+    loadDocs();
+  }, [client.id, storageKey]);
+
+  const handleToggleVisibility = async (docId: string) => {
+    if (isClientPortal) return;
+    const target = documents.find((d) => d.id === docId);
+    if (!target) return;
+    const nextVis = !(target.visibleToClient !== false);
+    const updated = documents.map((d) => (d.id === docId ? { ...d, visibleToClient: nextVis } : d));
+    persistDocuments(updated);
+
+    const visRaw = localStorage.getItem(`gs_doc_visibility_${client.id}`);
+    const visMap: Record<string, boolean> = visRaw ? JSON.parse(visRaw) : {};
+    visMap[docId] = nextVis;
+    localStorage.setItem(`gs_doc_visibility_${client.id}`, JSON.stringify(visMap));
+
     try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn('Error reading stored documents:', e);
+      await ((supabase as any).from('client_documents'))
+        .update({ visible_to_client: nextVis })
+        .eq('id', docId);
+    } catch {
+      // ignore
     }
-    return initialDocs;
-  });
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedScopeFilter, setSelectedScopeFilter] = useState<string>('all');
@@ -229,8 +293,9 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
     }
   };
 
-  // Filtered list
+  // Filtered list (strictly hides internal-only docs if isClientPortal is true)
   const filteredDocs = documents.filter(doc => {
+    if (isClientPortal && doc.visibleToClient === false) return false;
     const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
       (doc.description && doc.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
@@ -339,6 +404,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                 <th className="py-3 px-4 font-bold uppercase tracking-wider text-[10px]">Ámbito / Área</th>
                 <th className="py-3 px-4 font-bold uppercase tracking-wider text-[10px]">Subido Por</th>
                 <th className="py-3 px-4 font-bold uppercase tracking-wider text-[10px]">Cerebro RAG</th>
+                <th className="py-3 px-4 font-bold uppercase tracking-wider text-[10px]">Visibilidad Portal Cliente</th>
                 <th className="py-3 px-4 font-bold uppercase tracking-wider text-[10px]">Tamaño</th>
                 <th className="py-3 px-4 font-bold uppercase tracking-wider text-[10px] text-right">Acciones</th>
               </tr>
@@ -346,8 +412,8 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
             <tbody className="divide-y divide-zinc-100">
               {filteredDocs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-zinc-400 text-xs">
-                    No se encontraron documentos para los filtros seleccionados.
+                  <td colSpan={7} className="py-8 text-center text-zinc-400 text-xs">
+                    No se encontraron documentos para {client.name} con los filtros seleccionados.
                   </td>
                 </tr>
               ) : (
@@ -393,6 +459,37 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                         <Sparkles className="w-3 h-3 text-emerald-600" />
                         Indexado RAG
                       </span>
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      {isClientPortal ? (
+                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                          Aprobado por GS
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleVisibility(doc.id)}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-colors ${
+                            doc.visibleToClient !== false
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                              : 'bg-red-50 text-red-800 border-red-300 hover:bg-red-100'
+                          }`}
+                          title="Clic para permitir u ocultar este documento en el Portal del Cliente"
+                        >
+                          {doc.visibleToClient !== false ? (
+                            <>
+                              <Eye className="w-3 h-3 text-emerald-600" />
+                              Visible al Cliente (Verde)
+                            </>
+                          ) : (
+                            <>
+                              <EyeOff className="w-3 h-3 text-red-600" />
+                              Uso Interno GS (Oculto)
+                            </>
+                          )}
+                        </button>
+                      )}
                     </td>
 
                     <td className="py-3.5 px-4 font-mono text-[11px] text-zinc-500">

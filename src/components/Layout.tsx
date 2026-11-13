@@ -16,7 +16,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Clientes', href: '/clients', icon: Users },
   { name: 'Manuales y Guías', href: '/knowledge', icon: BookOpen },
-  { name: 'Configuración', href: '/settings', icon: Settings },
+  { name: 'Prompts IA & Config. GS', href: '/settings', icon: Settings },
 ];
 
 export default function Layout() {

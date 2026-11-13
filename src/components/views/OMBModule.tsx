@@ -2,14 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, Pause, Download, Volume2, FileText, 
   CheckCircle2, Sparkles, Edit3, Save, Plus, 
-  Users, History, Trash2, Upload
+  Users, History, Trash2, Upload, Target
 } from 'lucide-react';
 import { QualityApprovalBadge } from '../QualityApprovalBadge';
 import type { ApprovalStatus, AuditConsultants } from '../QualityApprovalBadge';
 import type { Client } from '../../data/mockData';
 import { supabase } from '../../lib/supabase';
+import { DEFAULT_OMV_TARGETS, type OMVTargetRow } from '../../data/gsAxisMetadata';
 
-export type ClientStage = 'kickoff_omv' | 'diagnostic_in_progress' | 'diagnostic_closed' | 'master_plan_active';
+export type ClientStage = 'relevamiento' | 'kickoff_omv' | 'diagnostic_in_progress' | 'diagnostic_closed' | 'master_plan_active';
 
 export interface PartnerVisionInput {
   id: string;
@@ -109,7 +110,24 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
   const [isPlaying, setIsPlaying] = useState(false);
   const [isEditingText, setIsEditingText] = useState(false);
   const [currentText, setCurrentText] = useState(activeRev.declarationText);
-  const [activeSubTab, setActiveSubTab] = useState<'declaration' | 'partners' | 'audio'>('declaration');
+  const [activeSubTab, setActiveSubTab] = useState<'declaration' | 'targets' | 'partners' | 'audio'>('declaration');
+
+  const targetsKey = `gs_omv_targets_${client.id}`;
+  const [omvTargets, setOmvTargets] = useState<OMVTargetRow[]>(() => {
+    try {
+      const saved = localStorage.getItem(targetsKey);
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return DEFAULT_OMV_TARGETS;
+  });
+
+  const handleTargetUpdate = (id: string, field: 'currentValue' | 'target3Years', val: string) => {
+    const next = omvTargets.map((row) => (row.id === id ? { ...row, [field]: val } : row));
+    setOmvTargets(next);
+    try {
+      localStorage.setItem(targetsKey, JSON.stringify(next));
+    } catch { /* ignore */ }
+  };
 
   // Multi-partner new input form
   const [newPartnerName, setNewPartnerName] = useState('');
@@ -274,10 +292,11 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
   };
 
   const STAGES: { id: ClientStage; label: string; step: number; desc: string }[] = [
-    { id: 'kickoff_omv', label: '1. Kickoff y OMB', step: 1, desc: 'Definición de OMB a 3 años y entrega de Podcast + Minuta escrita' },
-    { id: 'diagnostic_in_progress', label: '2. Diagnóstico en Curso', step: 2, desc: '8 a 10 sesiones de relevamiento con ~100 preguntas y filtro humano' },
-    { id: 'diagnostic_closed', label: '3. Diagnóstico Cerrado', step: 3, desc: 'Generación del Informe de Diagnóstico Oficial e indicadores' },
-    { id: 'master_plan_active', label: '4. Master Plan Activo', step: 4, desc: 'Pentágono del Orden en 5 ejes con ponderación matemática trimestral' }
+    { id: 'relevamiento', label: '0. Relevamiento & Propuesta', step: 0, desc: 'Entrevista comercial inicial, diagnóstico preliminar y presupuesto' },
+    { id: 'kickoff_omv', label: '1. Kickoff (Patada Inicial)', step: 1, desc: 'Lanzamiento formal, visión inicial OMV y entrega de Podcast + Minuta' },
+    { id: 'diagnostic_in_progress', label: '2. Diagnóstico 360° en Curso', step: 2, desc: '8 a 10 sesiones de relevamiento (~100 preguntas), OMV Rev A/B y filtro humano' },
+    { id: 'diagnostic_closed', label: '3. Diagnóstico Cerrado', step: 3, desc: 'Informe Oficial Word (.DOCX), IRE (12 dim.) e IME (9 áreas) + OMV Rev 0' },
+    { id: 'master_plan_active', label: '4. Master Plan Activo', step: 4, desc: 'Workbook 6 hojas (.XLSX): MPE, AVANCE-EJES, PENT-PE y Matriz de Riesgos' }
   ];
 
   return (
@@ -295,9 +314,9 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
       {/* 1. Hoja de Ruta del Cliente */}
       <div className="bg-white border-2 border-zinc-900 rounded-2xl p-6 shadow-sm">
         <span className="font-display text-xs font-bold text-zinc-900 uppercase tracking-widest block mb-3">
-          Hoja de Ruta del Ciclo de Tutoría
+          Hoja de Ruta del Ciclo de Consultoría GS (Etapas 0 a 4)
         </span>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {STAGES.map((s, idx) => {
             const isCurrent = stage === s.id;
             const isPassed = STAGES.findIndex(x => x.id === stage) > idx;
@@ -341,10 +360,10 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
           <div>
             <div className="flex items-center gap-2">
               <span className="font-display text-[10px] font-black uppercase tracking-widest text-white bg-red-600 px-2.5 py-0.5 rounded-full">
-                Módulo OMB • Metodología GS
+                Marco CVA • OMV Oficial GS
               </span>
               <span className="text-xs font-bold text-zinc-500">
-                Objetivo Más Bárbaro (Visión Trienal a 3 Años)
+                Objetivo Material Visualizado — Construir desde el Valor Aspirado (3 Años)
               </span>
             </div>
             <h2 className="font-display text-2xl font-black uppercase text-zinc-950 mt-1">
@@ -403,8 +422,8 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
         </div>
       </div>
 
-      {/* 3. Sub-Navegación: Declaración Escrita vs. Visiones de Socios vs. Audio/Podcast */}
-      <div className="flex border-b border-zinc-200 space-x-2">
+      {/* 3. Sub-Navegación: Declaración Escrita vs. 8 Targets CVA vs. Visiones de Socios vs. Audio/Podcast */}
+      <div className="flex flex-wrap border-b border-zinc-200 gap-2">
         <button
           type="button"
           onClick={() => setActiveSubTab('declaration')}
@@ -415,7 +434,20 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
           }`}
         >
           <FileText className="w-4 h-4" />
-          Declaración Escrita (Tiempo Presente)
+          Declaración OMV (Tiempo Presente)
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('targets')}
+          className={`px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wider border-b-2 flex items-center gap-2 transition-colors ${
+            activeSubTab === 'targets'
+              ? 'border-red-600 text-red-600'
+              : 'border-transparent text-zinc-500 hover:text-zinc-800'
+          }`}
+        >
+          <Target className="w-4 h-4" />
+          Valores TARGET a 3 Años (8 KPIs CVA)
         </button>
 
         <button
@@ -444,6 +476,65 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
           Audio / Podcast de la Revisión
         </button>
       </div>
+
+      {/* SUBTAB TARGETS: TABLA DE 8 VALORES TARGET A 3 AÑOS (MARCO CVA) */}
+      {activeSubTab === 'targets' && (
+        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 pb-3">
+            <div>
+              <h3 className="font-display text-lg font-black uppercase text-zinc-950">
+                Valores TARGET a 3 Años — Marco CVA (Construir desde el Valor Aspirado)
+              </h3>
+              <p className="text-xs text-zinc-500">
+                Estos 8 indicadores alimentan directamente la Pregunta Central CVA del Informe Word Diagnóstico 360° (.DOCX) y el Portal Cliente.
+              </p>
+            </div>
+            <span className="text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded-full self-start">
+              Sincronizado con Exportador Word 360°
+            </span>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-zinc-200">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="bg-zinc-950 text-white uppercase font-display text-[11px] tracking-wider">
+                  <th className="p-3 w-[42%]">Dimensión / Indicador CVA</th>
+                  <th className="p-3 w-[29%]">Situación Actual (Línea Base)</th>
+                  <th className="p-3 w-[29%]">Valor TARGET a 3 Años</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-200">
+                {omvTargets.map((row) => (
+                  <tr key={row.id} className="hover:bg-zinc-50">
+                    <td className="p-3 font-bold text-zinc-900">
+                      {row.indicator}
+                      <span className="block text-[10px] font-normal text-zinc-400">{row.unit}</span>
+                    </td>
+                    <td className="p-2.5">
+                      <input
+                        type="text"
+                        value={row.currentValue}
+                        onChange={(e) => handleTargetUpdate(row.id, 'currentValue', e.target.value)}
+                        placeholder="Ej: USD 1.2M / año..."
+                        className="w-full px-3 py-1.5 rounded-lg border border-zinc-300 bg-white text-xs text-zinc-800 focus:border-red-600 focus:outline-none"
+                      />
+                    </td>
+                    <td className="p-2.5">
+                      <input
+                        type="text"
+                        value={row.target3Years}
+                        onChange={(e) => handleTargetUpdate(row.id, 'target3Years', e.target.value)}
+                        placeholder="Ej: USD 2.5M / año..."
+                        className="w-full px-3 py-1.5 rounded-lg border border-red-200 bg-red-50/40 font-semibold text-xs text-zinc-900 focus:border-red-600 focus:outline-none"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* SUBTAB A: DECLARACIÓN ESCRITA FORMAL */}
       {activeSubTab === 'declaration' && (

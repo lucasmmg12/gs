@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
-import { Building2, Search, Plus, ChevronRight, Activity, Layers, X, Loader2 } from 'lucide-react';
+import { Building2, Search, Plus, ChevronRight, Activity, Layers, X, Loader2, KeyRound, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 type Organization = Database['public']['Tables']['organizations']['Row'];
@@ -47,28 +47,44 @@ export default function Clients() {
     setModalError(null);
 
     try {
-      // 1. Insert organization
+      const codePrefix = newClientName
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 6) || 'CLIENT';
+      const uniqueAccessCode = `GS-${codePrefix}-2026`;
+
+      // 1. Insert organization with unique portal_access_code
       const { data: newOrg, error: orgError } = await supabase
         .from('organizations')
         .insert([{
           name: newClientName.trim(),
           industry: newClientIndustry.trim(),
-          status: 'active'
+          status: 'active',
+          portal_access_code: uniqueAccessCode,
+          portal_active: true
         }])
         .select()
         .single();
 
       if (orgError) throw orgError;
 
-      // 2. Initialize diagnostic_360 row
+      // 2. Initialize diagnostic_360 row & quality_approvals (in_review = Red by default so unapproved drafts are hidden from Client)
       if (newOrg) {
         await supabase.from('diagnostic_360').insert([{
           organization_id: newOrg.id,
           version: 1,
           status: 'draft',
-          ime_score: 5.0,
-          ire_score: 3.5
+          ime_score: 0.0,
+          ire_score: 0.0,
+          quality_status: 'in_review'
         }]);
+
+        await supabase.from('quality_approvals').insert([
+          { organization_id: newOrg.id, entity_type: 'omv', entity_id: newOrg.id, version: 1, approval_status: 'in_review', consultant_name: 'Consultor Senior GS', quality_score: 0, comments: 'Borrador inicial en revisión interna.' },
+          { organization_id: newOrg.id, entity_type: 'diagnostic_360', entity_id: newOrg.id, version: 1, approval_status: 'in_review', consultant_name: 'Consultor Senior GS', quality_score: 0, comments: 'Diagnóstico en relevamiento inicial.' },
+          { organization_id: newOrg.id, entity_type: 'master_plan', entity_id: newOrg.id, version: 1, approval_status: 'in_review', consultant_name: 'Consultor Senior GS', quality_score: 0, comments: 'Master Plan en diseño interno.' }
+        ]);
 
         // 3. Initialize pentagon baseline
         await supabase.from('pentagon_scores').insert([{
@@ -172,6 +188,19 @@ export default function Clients() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
+                    <span className="hidden sm:inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-mono font-bold text-slate-700 border border-slate-200" title="Código Privado de Portal para este Cliente">
+                      <KeyRound className="h-3 w-3 text-[#6B1D2F]" />
+                      {(client as unknown as { portal_access_code?: string }).portal_access_code || 'GS-DEMO-2026'}
+                    </span>
+                    <Link
+                      to={`/portal/${client.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="hidden md:inline-flex items-center gap-1 rounded-lg bg-red-50 hover:bg-red-100 px-2.5 py-1 text-[11px] font-bold text-[#6B1D2F] border border-red-200 transition-colors"
+                      title="Previsualizar lo que ve este Cliente en su Portal"
+                    >
+                      <Eye className="h-3 w-3" />
+                      Portal Cliente
+                    </Link>
                     <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 border border-emerald-200">
                       Activo
                     </span>

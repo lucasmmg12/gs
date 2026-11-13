@@ -7,7 +7,7 @@ import { QualityApprovalBadge } from '../QualityApprovalBadge';
 import type { ApprovalStatus, AuditConsultants } from '../QualityApprovalBadge';
 import type { Client } from '../../data/mockData';
 
-export type ClientStage = 'kickoff_omv' | 'diagnostic_in_progress' | 'diagnostic_closed' | 'master_plan_active';
+export type ClientStage = 'relevamiento' | 'kickoff_omv' | 'diagnostic_in_progress' | 'diagnostic_closed' | 'master_plan_active';
 
 interface OMVModuleProps {
   client: Client;
