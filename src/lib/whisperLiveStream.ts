@@ -37,6 +37,8 @@ export class WhisperLiveStreamer {
   private accumulatedTranscript = '';
   private isRunning = false;
   private pingTimer: any = null;
+  private restartTimer: any = null;
+  private visibilityHandler: (() => void) | null = null;
 
   constructor(config: WhisperLiveStreamConfig) {
     this.config = {
@@ -77,6 +79,31 @@ export class WhisperLiveStreamer {
 
     // Start local speech recognition for immediate zero-latency display
     this.startFallbackRecognition();
+
+    // Auto-recover WebSpeech & AudioContext when returning from another browser tab
+    if (typeof document !== 'undefined') {
+      if (this.visibilityHandler) {
+        document.removeEventListener('visibilitychange', this.visibilityHandler);
+      }
+      this.visibilityHandler = () => {
+        if (!this.isRunning) return;
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+          this.audioContext.resume().catch(() => {});
+        }
+        if (document.visibilityState === 'visible') {
+          try {
+            if (this.speechRecognizer) {
+              this.speechRecognizer.start();
+            } else {
+              this.startFallbackRecognition();
+            }
+          } catch {
+            // Already active
+          }
+        }
+      };
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
 
     if (wsEndpoint) {
       this.setStatus('connecting', 'Conectando con WebSocket Supabase Edge...');
@@ -269,7 +296,16 @@ export class WhisperLiveStreamer {
           try {
             this.speechRecognizer.start();
           } catch {
-            // Ya iniciado
+            if (this.restartTimer) clearTimeout(this.restartTimer);
+            this.restartTimer = setTimeout(() => {
+              if (this.isRunning && this.speechRecognizer) {
+                try {
+                  this.speechRecognizer.start();
+                } catch {
+                  // Will retry on visibilitychange or next cycle
+                }
+              }
+            }, 500);
           }
         }
       };
@@ -291,6 +327,16 @@ export class WhisperLiveStreamer {
    */
   public stop(): string {
     this.isRunning = false;
+
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+    }
+
+    if (this.visibilityHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
+    }
 
     if (this.pingTimer) {
       clearInterval(this.pingTimer);

@@ -14,6 +14,9 @@ dist-ssr
 .env
 *.docx
 *.xlsx
+!public/templates/
+!public/templates/*.docx
+!public/templates/*.xlsx
 extracted.txt
 
 # Editor directories and files

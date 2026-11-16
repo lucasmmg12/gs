@@ -27,6 +27,13 @@ import {
   type GSAxisStrategicMeta,
   type OMVTargetRow,
 } from '../data/gsAxisMetadata';
+import {
+  exportRevdModelExactMasterPlanWorkbook,
+} from './gsTemplateMapper';
+import {
+  exportTemplateExactMinuteDocx,
+  exportTemplateExactDiagnostic360Docx,
+} from './gsDocxTemplateMapper';
 
 function triggerBlobDownload(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
@@ -116,6 +123,25 @@ export interface OfficialMasterPlanExportOptions {
  * 6. DATOS_PENT (Espejo de fórmulas para gráficos Radar)
  */
 export function exportOfficialMasterPlanWorkbook(opts: OfficialMasterPlanExportOptions): void {
+  void exportRevdModelExactMasterPlanWorkbook({
+    clientName: opts.clientName,
+    projectCode: opts.projectCode,
+    revision: opts.revision,
+    periodLabel: opts.periodLabel,
+    consultantNames: opts.consultantNames,
+    sector: opts.sector,
+    employeesLabel: opts.employeesLabel,
+    omvText: opts.omvText,
+    globalIme: opts.globalIme,
+    globalIre: opts.globalIre,
+    axesMeta: opts.axesMeta,
+    tasks: opts.tasks,
+    pentagonPeriods: opts.pentagonPeriods,
+    risks: opts.risks,
+  });
+}
+
+export function exportLegacySheetJsMasterPlanWorkbook(opts: OfficialMasterPlanExportOptions): void {
   const wb = XLSX.utils.book_new();
   const projectCode = (opts.projectCode || '00-000').trim();
   const revCode = (opts.revision || '0').replace(/^Rev/i, '').trim() || '0';
@@ -1015,6 +1041,12 @@ export interface OfficialMinuteDocxOptions {
  * `00-000-EJEMPLO_SAS-Minuta_de_Seguimiento_Rev0.docx`.
  */
 export async function exportOfficialMinuteDocx(opts: OfficialMinuteDocxOptions): Promise<void> {
+  try {
+    await exportTemplateExactMinuteDocx(opts);
+    return;
+  } catch (err) {
+    console.warn('[gsOfficialExporter] Fallback to programmatic Minute DOCX:', err);
+  }
   const projectCode = (opts.projectCode || '00-000').trim();
   const rev = (opts.revision || '0').replace(/^Rev/i, '').trim() || '0';
   const safeClient = sanitizeFileSlug(opts.clientName);
@@ -1388,6 +1420,12 @@ function optionToLikert1to5(questionId: number, opt?: ResponseOptionValue, overr
  * - Matriz IRE (12 dimensiones ponderadas = 100%) + Tabla IME por Área (9 áreas = 100%) + Lectura IME × IRE
  */
 export async function exportOfficialDiagnostic360Docx(opts: OfficialDiagnostic360DocxOptions): Promise<void> {
+  try {
+    await exportTemplateExactDiagnostic360Docx(opts);
+    return;
+  } catch (err) {
+    console.warn('[gsOfficialExporter] Fallback to programmatic Diagnostic 360 DOCX:', err);
+  }
   const safeClient = sanitizeFileSlug(opts.client.name);
   const projectCode = opts.projectCode || '00-000';
   const todayStr = new Date().toLocaleDateString('es-AR');

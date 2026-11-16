@@ -25,7 +25,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_1',
     axis: 1,
-    axisName: "EJE 1 — Gobernanza y Conducción Estratégica",
+    axisName: "Eje 1 · Gobernanza y Conducción Estratégica",
     code: "1",
     title: "Formalización del Estatuto de Convivencia y Protocolo de Directorio",
     priority: "Alta",
@@ -38,7 +38,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_2',
     axis: 1,
-    axisName: "EJE 1 — Gobernanza y Conducción Estratégica",
+    axisName: "Eje 1 · Gobernanza y Conducción Estratégica",
     code: "1.1",
     title: "Consolidar en un borrador de trabajo los acuerdos ya verbalizados: régimen de votación, distribución de utilidades (socios/reinversión/reserva), ingreso de familiares con experiencia externa previa y sucesión societaria",
     priority: "Alta",
@@ -51,7 +51,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_3',
     axis: 1,
-    axisName: "EJE 1 — Gobernanza y Conducción Estratégica",
+    axisName: "Eje 1 · Gobernanza y Conducción Estratégica",
     code: "1.2",
     title: "Revisión y redacción jurídica del Estatuto con asesor legal",
     priority: "Alta",
@@ -64,7 +64,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_4',
     axis: 1,
-    axisName: "EJE 1 — Gobernanza y Conducción Estratégica",
+    axisName: "Eje 1 · Gobernanza y Conducción Estratégica",
     code: "1.3",
     title: "Firma del Estatuto y de la política de retiros justificada por balance",
     priority: "Alta",
@@ -77,7 +77,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_5',
     axis: 1,
-    axisName: "EJE 1 — Gobernanza y Conducción Estratégica",
+    axisName: "Eje 1 · Gobernanza y Conducción Estratégica",
     code: "2",
     title: "Institucionalización del Directorio",
     priority: "Alta",
@@ -90,7 +90,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_6',
     axis: 1,
-    axisName: "EJE 1 — Gobernanza y Conducción Estratégica",
+    axisName: "Eje 1 · Gobernanza y Conducción Estratégica",
     code: "2.1",
     title: "Instituir la Reunión de Directorio mensual con agenda fija, actas y separación de lo operativo",
     priority: "Alta",
@@ -103,7 +103,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_7',
     axis: 1,
-    axisName: "EJE 1 — Gobernanza y Conducción Estratégica",
+    axisName: "Eje 1 · Gobernanza y Conducción Estratégica",
     code: "2.2",
     title: "Reformular y formalizar Visión, Misión y OMV institucional (con KPIs target) y comunicarlos al personal",
     priority: "Alta",
@@ -116,7 +116,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_8',
     axis: 1,
-    axisName: "EJE 1 — Gobernanza y Conducción Estratégica",
+    axisName: "Eje 1 · Gobernanza y Conducción Estratégica",
     code: "2.3",
     title: "Definir el tablero de control del Directorio (≤10 KPIs) con reportes mensuales por área",
     priority: "Alta",
@@ -129,7 +129,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_9',
     axis: 1,
-    axisName: "EJE 1 — Gobernanza y Conducción Estratégica",
+    axisName: "Eje 1 · Gobernanza y Conducción Estratégica",
     code: "3",
     title: "Transición del rol operador al rol de dueño",
     priority: "Alta",
@@ -142,7 +142,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_10',
     axis: 1,
-    axisName: "EJE 1 — Gobernanza y Conducción Estratégica",
+    axisName: "Eje 1 · Gobernanza y Conducción Estratégica",
     code: "3.1",
     title: "Mapear las tareas operativas de cada socio e identificar las delegables",
     priority: "Alta",
@@ -155,7 +155,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_11',
     axis: 1,
-    axisName: "EJE 1 — Gobernanza y Conducción Estratégica",
+    axisName: "Eje 1 · Gobernanza y Conducción Estratégica",
     code: "3.2",
     title: "Delegar progresivamente en los responsables por área (organigrama del Eje 4) y medir el tiempo estratégico de los socios",
     priority: "Media",
@@ -168,7 +168,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_12',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "1",
     title: "Planificación maestra de trabajos y capacidad",
     priority: "Alta",
@@ -181,7 +181,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_13',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "1.1",
     title: "Diseñar el cronograma maestro: tablero de trabajos confirmados, equipos y liberación de capacidad",
     priority: "Alta",
@@ -194,7 +194,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_14',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "1.2",
     title: "Instituir la rutina semanal de planificación y la regla de aceptación de trabajos según capacidad disponible (fin del sobrecompromiso)",
     priority: "Alta",
@@ -207,7 +207,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_15',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "1.3",
     title: "Reordenar la logística de los trabajos locales para eliminar desplazamientos repetidos: agrupamiento de frentes y checklist de herramientas/materiales por salida",
     priority: "Alta",
@@ -220,7 +220,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_16',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "2",
     title: "Documentación y estandarización de procesos críticos",
     priority: "Alta",
@@ -233,7 +233,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_17',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "2.1",
     title: "Relevar y priorizar los procesos críticos a documentar: operativos, comerciales, de presupuestación, compras y administración",
     priority: "Alta",
@@ -246,7 +246,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_18',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "2.2",
     title: "Redactar procedimientos y checklists estandarizados de los procesos operativos",
     priority: "Alta",
@@ -259,7 +259,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_19',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "2.3",
     title: "Consolidar el manual de operaciones y el protocolo de actualización documental",
     priority: "Media",
@@ -272,7 +272,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_20',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "3",
     title: "Sistema de calidad y control de gestión",
     priority: "Alta",
@@ -285,7 +285,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_21',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "3.1",
     title: "Definir e implementar indicadores de reprocesos, cumplimiento de plazos y registro de no conformidades (acción correctiva en lugar de \"aprendizaje\")",
     priority: "Alta",
@@ -298,7 +298,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_22',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "3.2",
     title: "Implementar la función de control de gestión que vincule lo cotizado con lo efectivamente ejecutado",
     priority: "Alta",
@@ -311,7 +311,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_23',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "3.3",
     title: "Sistematizar la encuesta de satisfacción post-entrega (insumo para NPS)",
     priority: "Media",
@@ -324,7 +324,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_24',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "4",
     title: "Compras, almacén e inventario",
     priority: "Alta",
@@ -337,7 +337,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_25',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "4.1",
     title: "Formalizar el responsable y el proceso de compras con aprobación y trazabilidad (evitar errores de asignación de materiales)",
     priority: "Alta",
@@ -350,7 +350,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_26',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "4.2",
     title: "Implementar el control de stock de almacén al 100% con medición de rotación y DPO",
     priority: "Alta",
@@ -363,7 +363,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_27',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "5",
     title: "Arquitectura digital e información (fuente única de verdad)",
     priority: "Media",
@@ -376,7 +376,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_28',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "5.1",
     title: "Mapear los sistemas activos (CRM, ERP, ofimática, etc.) y definir el plan de integración/interoperabilidad",
     priority: "Media",
@@ -389,7 +389,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_29',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "5.2",
     title: "Formalizar el respaldo (backup) y la política de seguridad de la información, con migración progresiva de la mensajería informal a canales corporativos y confirmaciones de presupuesto por correo",
     priority: "Alta",
@@ -402,7 +402,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_30',
     axis: 2,
-    axisName: "EJE 2 — Procesos y Operaciones",
+    axisName: "Eje 2 · Procesos y Operaciones",
     code: "5.3",
     title: "Automatizar procesos de alto volumen con IA, comenzando por la presupuestación/cotización",
     priority: "Baja",
@@ -415,7 +415,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_31',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "1",
     title: "Flujo de caja único y proyectado",
     priority: "Alta",
@@ -428,7 +428,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_32',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "1.1",
     title: "Integrar los registros de ingresos y egresos en una única herramienta con saldo proyectado y cronograma de vencimientos de cobros y pagos",
     priority: "Alta",
@@ -441,7 +441,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_33',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "1.2",
     title: "Construir la proyección de flujo a 3/6/12 meses (por proyecto + estructura fija) con rutina mensual de actualización",
     priority: "Alta",
@@ -454,7 +454,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_34',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "1.3",
     title: "Medir el runway real (meses de reserva verificados, no intuitivos) y definir escenarios de contingencia",
     priority: "Alta",
@@ -467,7 +467,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_35',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "2",
     title: "Fondo de reserva y política de retiros",
     priority: "Alta",
@@ -480,7 +480,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_36',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "2.1",
     title: "Definir y votar en Directorio el % de rentabilidad de aporte obligatorio al fondo de reserva, no disponible para oportunidades de compra",
     priority: "Alta",
@@ -493,7 +493,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_37',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "2.2",
     title: "Segregar el fondo en cuenta o instrumento financiero separado de la operación",
     priority: "Alta",
@@ -506,7 +506,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_38',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "2.3",
     title: "Formalizar la política de retiros de utilidades con número justificado por balance",
     priority: "Alta",
@@ -519,7 +519,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_39',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "3",
     title: "Costeo real y pricing",
     priority: "Alta",
@@ -532,7 +532,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_40',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "3.1",
     title: "Cuantificar los costos ocultos por área (equipos ociosos, mermas, logística, rotación) y decidir corrección interna o traslado al precio",
     priority: "Alta",
@@ -545,7 +545,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_41',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "3.2",
     title: "Incorporar el costo financiero y el riesgo cambiario a la estructura de precios (pricing)",
     priority: "Alta",
@@ -558,7 +558,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_42',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "3.3",
     title: "Implementar el cierre de proyecto estándar (costo real vs. presupuestado por ítem) en todos los proyectos",
     priority: "Alta",
@@ -571,7 +571,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_43',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "4",
     title: "Contabilidad de gestión vs. formal e inteligencia financiera",
     priority: "Media",
@@ -584,7 +584,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_44',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "4.1",
     title: "Conciliar los márgenes de gestión contra el balance contable e instituir un reporte trimestral de rentabilidad",
     priority: "Media",
@@ -597,7 +597,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_45',
     axis: 3,
-    axisName: "EJE 3 — Finanzas y Control de Gestión",
+    axisName: "Eje 3 · Finanzas y Control de Gestión",
     code: "4.2",
     title: "Evaluar herramientas de inteligencia financiera y regímenes de promoción disponibles para la previsión de inversiones",
     priority: "Baja",
@@ -610,7 +610,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_46',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "1",
     title: "Estructura organizacional formal",
     priority: "Alta",
@@ -623,7 +623,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_47',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "1.1",
     title: "Formalizar el organigrama con responsables por área (Operaciones, Comercial, Administración, Compras, RRHH) y comunicarlo al personal",
     priority: "Alta",
@@ -636,7 +636,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_48',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "1.2",
     title: "Cubrir un rol gerencial clave ajeno a los socios, consolidando la delegación",
     priority: "Media",
@@ -649,7 +649,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_49',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "2",
     title: "Formalización de roles y perfiles de puesto",
     priority: "Alta",
@@ -662,7 +662,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_50',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "2.1",
     title: "Completar las descripciones de puesto de los roles operativos pendientes",
     priority: "Alta",
@@ -675,7 +675,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_51',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "2.2",
     title: "Completar los descriptivos del resto de los roles y definir el protocolo de actualización",
     priority: "Media",
@@ -688,7 +688,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_52',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "3",
     title: "Ciclo de gestión de personas: inducción, desempeño y capacitación",
     priority: "Alta",
@@ -701,7 +701,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_53',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "3.1",
     title: "Rediseñar e implementar la inducción estructurada de ingresantes (retomando el onboarding discontinuado, en versión sostenible)",
     priority: "Alta",
@@ -714,7 +714,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_54',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "3.2",
     title: "Diseñar e implementar la evaluación de desempeño formal (primer ciclo completo)",
     priority: "Media",
@@ -727,7 +727,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_55',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "3.3",
     title: "Armar el plan de capacitación anual con horas y presupuesto por persona, incluyendo el plan de trabajo de los pasantes",
     priority: "Media",
@@ -740,7 +740,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_56',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "4",
     title: "Retención, clima y desarrollo de carrera",
     priority: "Alta",
@@ -753,7 +753,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_57',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "4.1",
     title: "Implementar el registro sistemático de rotación y motivos de baja (línea base)",
     priority: "Media",
@@ -766,7 +766,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_58',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "4.2",
     title: "Realizar la primera medición estructurada de clima laboral",
     priority: "Media",
@@ -779,7 +779,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_59',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "4.3",
     title: "Diseñar la propuesta de valor al empleado y el plan de carrera (razones para quedarse más allá del sueldo: entorno, trato, proyección)",
     priority: "Alta",
@@ -792,7 +792,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_60',
     axis: 4,
-    axisName: "EJE 4 — Talento y Estructura Organizacional",
+    axisName: "Eje 4 · Talento y Estructura Organizacional",
     code: "4.4",
     title: "Consolidar la delegación en mandos medios con objetivos propios por área",
     priority: "Media",
@@ -805,7 +805,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_61',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "1",
     title: "Política comercial y foco estratégico",
     priority: "Alta",
@@ -818,7 +818,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_62',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "1.1",
     title: "Formalizar la segmentación de clientes (grandes/formales vs. chicos/informales) y los criterios de priorización, con foco en el MVP (segmento objetivo)",
     priority: "Alta",
@@ -831,7 +831,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_63',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "1.2",
     title: "Definir el plan de ventas anual con metas por segmento y canal",
     priority: "Alta",
@@ -844,7 +844,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_64',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "2",
     title: "Medición del embudo y del marketing",
     priority: "Alta",
@@ -857,7 +857,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_65',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "2.1",
     title: "Segmentar el embudo comercial en el CRM por tamaño y tipo de proyecto, y medir la conversión por segmento",
     priority: "Alta",
@@ -870,7 +870,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_66',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "2.2",
     title: "Implementar la atribución de leads por canal y el tablero de ROI/CAC de la inversión de marketing",
     priority: "Media",
@@ -883,7 +883,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_67',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "3",
     title: "Nueva unidad de negocio (entrada por servicios de bajo riesgo)",
     priority: "Alta",
@@ -896,7 +896,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_68',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "3.1",
     title: "Análisis de viabilidad y plan de negocio de la nueva unidad (entrada por servicios de bajo riesgo para construir antecedentes)",
     priority: "Alta",
@@ -909,7 +909,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_69',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "3.2",
     title: "Cumplimentar los requisitos de calificación como proveedor del nuevo segmento (documentación, seguridad, trazabilidad — apalancado en los procesos del Eje 2)",
     priority: "Alta",
@@ -922,7 +922,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_70',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "3.3",
     title: "Conformar el equipo propio de la nueva unidad, sin desatender la operación existente",
     priority: "Alta",
@@ -935,7 +935,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_71',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "3.4",
     title: "Ejecutar los primeros contratos de la nueva unidad de negocio",
     priority: "Alta",
@@ -948,7 +948,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_72',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "4",
     title: "Nueva sucursal y nuevas líneas de negocio",
     priority: "Media",
@@ -961,7 +961,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_73',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "4.1",
     title: "Definir el plan de autonomía de la nueva sucursal: metas anuales, estructura y resultado propio (gerente, comercial, administración)",
     priority: "Media",
@@ -974,7 +974,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_74',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "4.2",
     title: "Consolidar la nueva sucursal como unidad de negocio autosustentable",
     priority: "Media",
@@ -987,7 +987,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_75',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "4.3",
     title: "Análisis de viabilidad de nuevas líneas de negocio con decisión formal del Directorio caso por caso",
     priority: "Media",
@@ -1000,7 +1000,7 @@ export const INITIAL_MASTER_PLAN_TASKS: MasterPlanTaskItem[] = [
   {
     id: 'mpe_76',
     axis: 5,
-    axisName: "EJE 5 — Comercial y Diversificación",
+    axisName: "Eje 5 · Comercial y Diversificación",
     code: "4.4",
     title: "Escalar las líneas validadas para reducir la concentración en la línea principal",
     priority: "Media",

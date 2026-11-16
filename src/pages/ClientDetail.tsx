@@ -1,25 +1,25 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { 
-  ArrowLeft, Target, FileText, Calendar, 
-  Layers, ChevronRight,
-  Activity, Compass, Eye, Mic, ShieldAlert, Plus, ShieldCheck, Folder,
-  Briefcase, Download, CheckCircle2
+import {
+ ArrowLeft, Target, FileText, Calendar,
+ Layers, ChevronRight, ChevronDown,
+ Activity, Compass, Eye, Mic, ShieldAlert, Plus, ShieldCheck, Folder,
+ Briefcase, Download, CheckCircle2, HelpCircle, Bot, ExternalLink, ArrowRight, Circle
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import type { ResponseOptionValue } from '../data/diagnosticQuestions';
-import { MASTER_PLAN_AXES, INITIAL_MASTER_PLAN_TASKS, INITIAL_PENTAGON_DATA, INITIAL_RISKS } from '../data/masterPlanData';
+import { MASTER_PLAN_AXES, INITIAL_MASTER_PLAN_TASKS, INITIAL_PENTAGON_DATA } from '../data/masterPlanData';
 import { DEFAULT_GS_AXES_META, type GSAxisStrategicMeta } from '../data/gsAxisMetadata';
-import { exportOfficialMasterPlanWorkbook } from '../lib/gsOfficialExporter';
+import { exportClientFullMappedMasterPlan } from '../lib/gsTemplateMapper';
 import { RelevamientoPropuestaModule } from '../components/views/RelevamientoPropuestaModule';
 import {
-  loadOrgWorkspaceFromDb,
-  saveOrgWorkspaceToDb,
-  loadClientCollabFromDb,
-  saveClientCollabToDb,
+ loadOrgWorkspaceFromDb,
+ saveOrgWorkspaceToDb,
+ loadClientCollabFromDb,
+ saveClientCollabToDb,
 } from '../lib/gsCloudSync';
-import { StepAssistantBanner } from '../components/StepAssistantBanner';
+import { askGrowyContextual } from '../components/StepAssistantBanner';
 import { calculateDiagnosticScores } from '../lib/diagnosticEngine';
 import type { FullDiagnosticResults } from '../lib/diagnosticEngine';
 import { DynamicDiagnosticForm } from '../components/views/DynamicDiagnosticForm';
@@ -36,1715 +36,2046 @@ import ClientRecordingsHistory from '../components/views/ClientRecordingsHistory
 import MasterPlanQuarterlyTracking from '../components/views/MasterPlanQuarterlyTracking';
 import { DocumentosCliente } from '../components/views/DocumentosCliente';
 
-// Circular Gauge Meter for IME Score (e.g. 7.8 / 10)
-function CircularImeMeter({ score = 7.8, maxScore = 10 }: { score: number; maxScore?: number }) {
-  const size = 62;
-  const strokeWidth = 5;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const normalizedScore = Math.min(maxScore, Math.max(0, score));
-  const progressPercent = (normalizedScore / maxScore) * 100;
-  const strokeDashoffset = circumference - (progressPercent / 100) * circumference;
+// Compact Circular Ring for Inline KPI Card (IME Score)
+function MiniImeRing({ score = 7.8, maxScore = 10 }: { score: number; maxScore?: number }) {
+ const size = 44;
+ const strokeWidth = 4.5;
+ const radius = (size - strokeWidth) / 2;
+ const circumference = 2 * Math.PI * radius;
+ const normalizedScore = Math.min(maxScore, Math.max(0, score));
+ const strokeDashoffset = circumference - (normalizedScore / maxScore) * circumference;
 
-  return (
-    <div className="flex items-center gap-3 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs">
-      <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="transform -rotate-90">
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="#E2E8F0"
-            strokeWidth={strokeWidth}
-            fill="transparent"
-          />
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="#0D9488"
-            strokeWidth={strokeWidth}
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            fill="transparent"
-            className="transition-all duration-700 ease-out"
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-xs font-bold text-[#17324D] leading-none font-display">{score}</span>
-          <span className="text-[8px] text-slate-400 font-medium">/{maxScore}</span>
-        </div>
-      </div>
-      <div className="flex flex-col">
-        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Madurez IME</span>
-        <span className="text-xs font-bold text-[#17324D]">Score {score} / 10</span>
-        <span className="text-[10px] text-[#0D9488] font-medium">Meta trienal: 8.0</span>
-      </div>
-    </div>
-  );
-}
-
-// Risk Index Card (e.g. 22%)
-function RiskIndexMeter({ riskPercentage = 22 }: { riskPercentage: number }) {
-  return (
-    <div className="flex items-center gap-3 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs">
-      <div className="w-11 h-11 rounded-xl bg-[#EDF3F8] border border-slate-200 flex flex-col items-center justify-center shrink-0">
-        <span className="text-xs font-bold font-display text-[#17324D] leading-none">{riskPercentage}%</span>
-        <span className="text-[7px] font-bold text-[#0D9488] uppercase mt-0.5">IRE</span>
-      </div>
-      <div className="flex flex-col">
-        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Índice Riesgo</span>
-        <span className="text-xs font-bold text-[#17324D]">{riskPercentage < 30 ? 'Bajo / Moderado' : 'En Mitigación'}</span>
-        <span className="text-[10px] text-slate-400">Matriz 12 Dim.</span>
-      </div>
-    </div>
-  );
+ return (
+ <div className="relative flex items-center justify-center shrink-0" style={{ width: size, height: size }}>
+ <svg width={size} height={size} className="transform -rotate-90">
+ <circle cx={size / 2} cy={size / 2} r={radius} stroke="#E2E8F0" strokeWidth={strokeWidth} fill="transparent" />
+ <circle
+ cx={size / 2}
+ cy={size / 2}
+ r={radius}
+ stroke="#0D9488"
+ strokeWidth={strokeWidth}
+ strokeDasharray={circumference}
+ strokeDashoffset={strokeDashoffset}
+ strokeLinecap="round"
+ fill="transparent"
+ className="transition-all duration-700 ease-out"
+ />
+ </svg>
+ <span className="absolute text-[11px] font-bold text-[#17324D] font-display">{score}</span>
+ </div>
+ );
 }
 
 export default function ClientDetail() {
-  const { id, section, subAction } = useParams<{ id: string; section?: string; subAction?: string }>();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-
-  const [client, setClient] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Active section derived directly from URL route for native browser back/forward history
-  const effectiveSection = section || (subAction ? 'meetings' : undefined);
-
-  const activeTab: 'dashboard' | 'relevamiento' | 'omv' | 'diagnostic' | 'matrices' | 'master_plan' | 'portal_preview' | 'meetings' | 'documents' = useMemo(() => {
-    if (!effectiveSection || effectiveSection === 'dashboard') return 'dashboard';
-    if (effectiveSection === 'relevamiento') return 'relevamiento';
-    if (effectiveSection === 'omv' || effectiveSection === 'omb') return 'omv';
-    if (effectiveSection === 'diagnostic') return 'diagnostic';
-    if (effectiveSection === 'matrices') return 'matrices';
-    if (effectiveSection === 'master-plan' || effectiveSection === 'master_plan') return 'master_plan';
-    if (effectiveSection === 'meetings') return 'meetings';
-    if (effectiveSection === 'portal' || effectiveSection === 'portal_preview') return 'portal_preview';
-    if (effectiveSection === 'documents') return 'documents';
-    return 'dashboard';
-  }, [effectiveSection]);
-
-  const isPlanningMeeting = effectiveSection === 'meetings' && subAction === 'plan';
-  const activeMeetingSession = effectiveSection === 'meetings' && subAction === 'live';
-
-  // Tipos de reunión y submódulos (lee del query string si existe e.g. ?type=kickoff)
-  const meetingLaunchType: MeetingType = (searchParams.get('type') as MeetingType) || 'diagnostico';
-  const [masterPlanSubTab, setMasterPlanSubTab] = useState<'tasks' | 'quarterly_tracking'>('tasks');
-
-  // Modo de visualización: Consultor GS (Back) vs Cliente (Front)
-  const viewMode: 'consultor' | 'cliente' = activeTab === 'portal_preview' ? 'cliente' : 'consultor';
-
-  // Real-time Supabase DB sync indicator
-  const [dbSyncStatus, setDbSyncStatus] = useState<'synced' | 'saving'>('synced');
-
-  // Client Stage (Roadmap) persisted per client in Supabase DB
-  const [clientStage, setClientStageState] = useState<ClientStage>(() => {
-    try {
-      const saved = id ? localStorage.getItem(`gs_client_stage_${id}`) : null;
-      if (saved) return saved as ClientStage;
-    } catch { /* ignore */ }
-    return 'diagnostic_in_progress';
-  });
-
-  const setClientStage = (nextStage: ClientStage) => {
-    setClientStageState(nextStage);
-    if (id) {
-      setDbSyncStatus('saving');
-      try {
-        localStorage.setItem(`gs_client_stage_${id}`, nextStage);
-      } catch { /* ignore */ }
-      saveOrgWorkspaceToDb(id, { clientStage: nextStage }).then(() => setDbSyncStatus('synced'));
-    }
-  };
-
-  // Strategic Axis Metadata (Brecha, Iniciativa Estratégica, OKRs) per client in Supabase DB
-  const [axesMeta, setAxesMeta] = useState<GSAxisStrategicMeta[]>(() => {
-    try {
-      const saved = id ? localStorage.getItem(`gs_axes_meta_${id}`) : null;
-      if (saved) return JSON.parse(saved);
-    } catch { /* ignore */ }
-    return DEFAULT_GS_AXES_META;
-  });
-
-  const handleUpdateAxisMeta = (axisId: number, field: 'brechaAsociada' | 'iniciativaEstrategica' | 'okrText', val: string) => {
-    const next = axesMeta.map((a) => (a.axisId === axisId ? { ...a, [field]: val } : a));
-    setAxesMeta(next);
-    if (id) {
-      setDbSyncStatus('saving');
-      try {
-        localStorage.setItem(`gs_axes_meta_${id}`, JSON.stringify(next));
-      } catch { /* ignore */ }
-      saveOrgWorkspaceToDb(id, { axesMeta: next }).then(() => setDbSyncStatus('synced'));
-    }
-  };
-
-  // Client-reported task progress updates from Client Portal (synced via Supabase DB)
-  const [clientTaskUpdates, setClientTaskUpdates] = useState<Record<string, { suggestedStatus: string; progress: number; note: string; updatedAt: string }>>(() => {
-    try {
-      const saved = id ? localStorage.getItem(`gs_client_task_updates_${id}`) : null;
-      if (saved) return JSON.parse(saved);
-    } catch { /* ignore */ }
-    return {};
-  });
-
-  const handleAcceptClientTaskUpdate = async (code: string) => {
-    const upd = clientTaskUpdates[code];
-    if (!upd) return;
-    setDbSyncStatus('saving');
-    const updatedTasks = tasks.map((t) =>
-      t.code === code
-        ? { ...t, status: upd.suggestedStatus as any, progress: upd.progress }
-        : t
-    );
-    setTasks(updatedTasks);
-    const nextUpdates = { ...clientTaskUpdates };
-    delete nextUpdates[code];
-    setClientTaskUpdates(nextUpdates);
-
-    if (id) {
-      localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(updatedTasks));
-      localStorage.setItem(`gs_client_task_updates_${id}`, JSON.stringify(nextUpdates));
-      await Promise.all([
-        saveOrgWorkspaceToDb(id, { masterPlanTasks: updatedTasks }),
-        saveClientCollabToDb(id, { taskUpdates: nextUpdates }, {
-          activityType: 'consultant_validated_task_update',
-          performedBy: 'Consultor GS',
-          details: { code, status: upd.suggestedStatus, progress: upd.progress },
-        }),
-        (supabase.from('master_plan_tasks') as any)
-          .update({ status: upd.suggestedStatus, progress: upd.progress })
-          .eq('organization_id', id)
-          .eq('code', code),
-      ]);
-      setDbSyncStatus('synced');
-    }
-  };
-
-  // Audit and Approval Statuses (Rojo - Verde) scoped strictly per client
-  const [diagApproval, setDiagApproval] = useState<ApprovalStatus>('draft_review');
-  const [diagAudit, setDiagAudit] = useState<AuditConsultants>({
-    leaderConsultant: 'Martín Gómez (Consultor Senior)',
-    editorConsultant: 'Lucía Fernández (Consultora de Procesos)',
-    approvedBy: 'Abel (Director de Metodología GS)',
-    notes: 'En revisión de control de calidad interno antes de presentar al cliente.'
-  });
-
-  const [omvApproval, setOmvApproval] = useState<ApprovalStatus>('draft_review');
-  const [omvAudit, setOmvAudit] = useState<AuditConsultants>({
-    leaderConsultant: 'Abel (Director de Metodología GS)',
-    approvedBy: 'Abel (Director de Metodología GS)',
-    approvedAt: '20 Ago 2026',
-    notes: 'OMB Rev 0 validado por el cliente en sesión de Kickoff.'
-  });
-
-  const [masterPlanApproval, setMasterPlanApproval] = useState<ApprovalStatus>('draft_review');
-  const [masterPlanAudit, setMasterPlanAudit] = useState<AuditConsultants>({
-    leaderConsultant: 'Martín Gómez (Consultor Senior)',
-    editorConsultant: 'Lucas (Consultor de Implementación)',
-    notes: 'Master Plan de 5 ejes estructurado según Diagnóstico 360°.'
-  });
-
-  const EJEMPLO_SAS_ID = '532a0405-02c2-4e45-8f77-c24bf13ea9de';
-  const EJEMPLO_SAS_DEFAULT_ANSWERS: Record<number, ResponseOptionValue> = {
-    1: 'partial_dev',
-    101: 'partial_dev',
-    2: 'informal_active',
-    102: 'partial_dev',
-    3: 'partial_dev',
-    4: 'informal_active',
-    5: 'partial_dev',
-    201: 'partial_dev',
-    202: 'informal_active',
-    6: 'informal_active',
-    7: 'partial_dev',
-    8: 'informal_active',
-    9: 'partial_dev',
-    301: 'partial_dev',
-    10: 'informal_active',
-    11: 'partial_dev',
-    12: 'informal_active',
-    401: 'partial_dev',
-    13: 'informal_active',
-    14: 'partial_dev',
-    15: 'informal_active',
-    501: 'partial_dev',
-    16: 'informal_active',
-    17: 'partial_dev',
-    18: 'informal_active',
-    19: 'partial_dev',
-    20: 'partial_dev',
-    701: 'partial_dev',
-    21: 'informal_active',
-    22: 'partial_dev',
-    23: 'partial_dev',
-    24: 'partial_dev',
-    25: 'partial_dev',
-    26: 'partial_dev'
-  };
-
-  // Diagnostic Structured Answers (Respuestas cerradas) scoped per client
-  const [diagnosticAnswers, setDiagnosticAnswers] = useState<Record<number, ResponseOptionValue>>({});
-
-  // Cálculo Dinámico en Tiempo Real (Motor Matemático)
-  const diagnosticResults: FullDiagnosticResults = useMemo(() => {
-    return calculateDiagnosticScores(diagnosticAnswers);
-  }, [diagnosticAnswers]);
-
-  // Master Plan State scoped per client
-  const [tasks, setTasks] = useState(INITIAL_MASTER_PLAN_TASKS);
-  const [selectedAxis, setSelectedAxis] = useState<number | 'all'>('all');
-  const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
-  const [newTaskCode, setNewTaskCode] = useState('');
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskAxis, setNewTaskAxis] = useState<number>(1);
-  const [newTaskPriority, setNewTaskPriority] = useState<'Alta' | 'Media' | 'Baja'>('Alta');
-  const [newTaskResponsible, setNewTaskResponsible] = useState('Socio / Líder de Área');
-
-  // Pentagon State & Historical Comparison
-  const [pentagonData] = useState(INITIAL_PENTAGON_DATA);
-  const [selectedPentagonPeriod, setSelectedPentagonPeriod] = useState<string>('LB');
-
-  // Meetings & Planning State
-  const [meetings, setMeetings] = useState<any[]>([]);
-  const [minuteApprovals, setMinuteApprovals] = useState<Record<string, boolean>>({});
-  const [plannedSession, setPlannedSession] = useState<PlannedMeetingData | null>(null);
-
-  const fetchClientData = async () => {
-    setLoading(true);
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('*')
-      .eq('id', id as string)
-      .single();
-
-    if (org) setClient(org);
-
-    // Load consolidated Supabase cloud workspace + Client Portal collaboration inbox
-    const [cloudWs, cloudCollab] = await Promise.all([
-      loadOrgWorkspaceFromDb(id as string),
-      loadClientCollabFromDb(id as string),
-    ]);
-
-    if (cloudWs?.clientStage) setClientStageState(cloudWs.clientStage);
-    if (cloudWs?.axesMeta && cloudWs.axesMeta.length > 0) setAxesMeta(cloudWs.axesMeta);
-    if (cloudCollab?.taskUpdates) setClientTaskUpdates(cloudCollab.taskUpdates);
-
-    // 1. Reset and load Diagnostic Answers strictly for this client (no cross-client bleed)
-    let clientAnswers: Record<number, ResponseOptionValue> =
-      id === EJEMPLO_SAS_ID ? { ...EJEMPLO_SAS_DEFAULT_ANSWERS } : {};
-
-    const { data: diagResp } = await (supabase
-      .from('diagnostic_responses') as any)
-      .select('*')
-      .eq('organization_id', id as string)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (diagResp?.answers && Object.keys(diagResp.answers).length > 0) {
-      const normalizedAnswers: Record<number, ResponseOptionValue> = {};
-      Object.entries(diagResp.answers).forEach(([key, val]) => {
-        const qId = Number(key.replace('q_', ''));
-        if (!isNaN(qId)) {
-          if (typeof val === 'string') {
-            normalizedAnswers[qId] = val as ResponseOptionValue;
-          } else if (val && typeof val === 'object' && 'value' in (val as any)) {
-            normalizedAnswers[qId] = (val as any).value as ResponseOptionValue;
-          }
-        }
-      });
-      if (Object.keys(normalizedAnswers).length > 0) {
-        clientAnswers = { ...clientAnswers, ...normalizedAnswers };
-      }
-    }
-
-    try {
-      const localSaved = localStorage.getItem(`gs_diag_answers_${id}`);
-      if (localSaved) {
-        const parsedLocal = JSON.parse(localSaved);
-        clientAnswers = { ...clientAnswers, ...parsedLocal };
-      }
-    } catch (e) {
-      console.warn('Error reading local diag answers:', e);
-    }
-
-    if (cloudWs?.diagnosticAnswers && Object.keys(cloudWs.diagnosticAnswers).length > 0) {
-      clientAnswers = { ...clientAnswers, ...cloudWs.diagnosticAnswers };
-    }
-
-    setDiagnosticAnswers(clientAnswers);
-
-    // 2. Load Quality Approvals (Rojo vs Verde) for this client
-    let nextOmv: ApprovalStatus = id === EJEMPLO_SAS_ID ? 'approved_published' : 'draft_review';
-    let nextDiag: ApprovalStatus = id === EJEMPLO_SAS_ID ? 'approved_published' : 'draft_review';
-    let nextMp: ApprovalStatus = id === EJEMPLO_SAS_ID ? 'approved_published' : 'draft_review';
-
-    const { data: dbApprovals } = await (supabase.from('quality_approvals') as any)
-      .select('entity_type, approval_status')
-      .eq('organization_id', id as string);
-
-    if (dbApprovals && dbApprovals.length > 0) {
-      const omvRow = dbApprovals.find((a: any) => a.entity_type === 'omv');
-      const diagRow = dbApprovals.find((a: any) => a.entity_type === 'diagnostic_360');
-      const mpRow = dbApprovals.find((a: any) => a.entity_type === 'master_plan');
-      if (omvRow) nextOmv = omvRow.approval_status === 'approved' || omvRow.approval_status === 'approved_published' ? 'approved_published' : 'draft_review';
-      if (diagRow) nextDiag = diagRow.approval_status === 'approved' || diagRow.approval_status === 'approved_published' ? 'approved_published' : 'draft_review';
-      if (mpRow) nextMp = mpRow.approval_status === 'approved' || mpRow.approval_status === 'approved_published' ? 'approved_published' : 'draft_review';
-    }
-
-    const localAppRaw = localStorage.getItem(`gs_approvals_${id}`);
-    if (localAppRaw) {
-      try {
-        const parsed = JSON.parse(localAppRaw);
-        if (parsed.omv) nextOmv = parsed.omv;
-        if (parsed.diagnostic_360) nextDiag = parsed.diagnostic_360;
-        if (parsed.master_plan) nextMp = parsed.master_plan;
-      } catch {
-        // ignore
-      }
-    }
-
-    if (cloudWs?.approvals) {
-      if (cloudWs.approvals.omv) nextOmv = cloudWs.approvals.omv;
-      if (cloudWs.approvals.diagnostic_360) nextDiag = cloudWs.approvals.diagnostic_360;
-      if (cloudWs.approvals.master_plan) nextMp = cloudWs.approvals.master_plan;
-    }
-
-    setOmvApproval(nextOmv);
-    setDiagApproval(nextDiag);
-    setMasterPlanApproval(nextMp);
-
-    // 3. Load Master Plan Tasks strictly for this client (Supabase Cloud Workspace -> master_plan_tasks -> localStorage)
-    const localTasksRaw = localStorage.getItem(`gs_master_plan_tasks_${id}`);
-    if (cloudWs?.masterPlanTasks && cloudWs.masterPlanTasks.length > 0) {
-      setTasks(cloudWs.masterPlanTasks);
-      localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(cloudWs.masterPlanTasks));
-    } else if (localTasksRaw) {
-      try {
-        setTasks(JSON.parse(localTasksRaw));
-      } catch {
-        setTasks(id === EJEMPLO_SAS_ID ? INITIAL_MASTER_PLAN_TASKS : []);
-      }
-    } else if (id === EJEMPLO_SAS_ID) {
-      setTasks(INITIAL_MASTER_PLAN_TASKS);
-    } else {
-      const { data: dbTasks } = await (supabase.from('master_plan_tasks') as any)
-        .select('*')
-        .eq('organization_id', id as string)
-        .order('code', { ascending: true });
-      if (dbTasks && dbTasks.length > 0) {
-        setTasks(
-          dbTasks.map((t: any, idx: number) => ({
-            id: String(t.id || idx + 1),
-            axis: t.axis || 1,
-            axisName: MASTER_PLAN_AXES.find((a) => a.id === (t.axis || 1))?.name || `Eje ${t.axis || 1}`,
-            code: t.code,
-            title: t.title,
-            priority: (t.priority === 'ALTA' ? 'Alta' : t.priority === 'BAJA' ? 'Baja' : 'Media') as 'Alta' | 'Media' | 'Baja',
-            startDate: t.start_date || 'Ago 2026',
-            dueDate: t.due_date || 'Nov 2026',
-            status: (t.status || 'SIN INICIAR').toUpperCase() as any,
-            assignedRole: t.assigned_role || 'Líder de Área',
-            progress: t.progress || 0,
-          }))
-        );
-      } else {
-        setTasks([]);
-      }
-    }
-
-    // 4. Load Meetings & Minutes
-    const { data: mtgs } = await supabase
-      .from('meetings')
-      .select('*, minutes(*)')
-      .eq('organization_id', id as string)
-      .order('meeting_date', { ascending: false });
-
-    if (mtgs) {
-      setMeetings(mtgs);
-      const localMinRaw = localStorage.getItem(`gs_minute_approvals_${id}`);
-      const parsedMin: Record<string, boolean> = localMinRaw ? JSON.parse(localMinRaw) : {};
-      for (const m of mtgs as any[]) {
-        const mins = Array.isArray(m.minutes) ? m.minutes : m.minutes ? [m.minutes] : [];
-        for (const min of mins) {
-          if (parsedMin[min.id] === undefined) {
-            parsedMin[min.id] = min.status === 'approved' || min.status === 'published' || min.quality_status === 'approved';
-          }
-        }
-      }
-      setMinuteApprovals(parsedMin);
-    }
-
-    // Mirror current org metadata to cloud workspace so Client Portal always resolves org details cleanly
-    if (org && id) {
-      saveOrgWorkspaceToDb(id, {
-        orgId: id,
-        orgName: org.name,
-        industry: org.industry || 'PyME',
-        portalAccessCode: org.portal_access_code || 'GS-DEMO-2026',
-        approvals: { omv: nextOmv, diagnostic_360: nextDiag, master_plan: nextMp },
-        diagnosticAnswers: clientAnswers,
-      });
-    }
-
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (id) {
-      fetchClientData();
-    }
-  }, [id]);
-
-  const handleAnswerChange = (questionId: number, value: ResponseOptionValue) => {
-    setDbSyncStatus('saving');
-    setDiagnosticAnswers(prev => {
-      const next = { ...prev, [questionId]: value };
-      if (id) {
-        localStorage.setItem(`gs_diag_answers_${id}`, JSON.stringify(next));
-        const nextScores = calculateDiagnosticScores(next);
-        Promise.all([
-          saveOrgWorkspaceToDb(id, { diagnosticAnswers: next }),
-          (supabase.from('diagnostic_responses') as any).upsert([
-            {
-              organization_id: id,
-              answers: next,
-              pentagon_calculated: nextScores.pentagon,
-              ime_score: nextScores.globalIme,
-              ire_score: nextScores.globalIre,
-              status: 'in_progress',
-            },
-          ]),
-        ]).finally(() => setDbSyncStatus('synced'));
-      }
-      return next;
-    });
-  };
-
-  const handleSaveDiagnostic = async () => {
-    if (id) {
-      localStorage.setItem(`gs_diag_answers_${id}`, JSON.stringify(diagnosticAnswers));
-    }
-    try {
-      const { error } = await (supabase
-        .from('diagnostic_responses') as any)
-        .upsert([{
-          organization_id: id as string,
-          answers: diagnosticAnswers,
-          pentagon_calculated: diagnosticResults.pentagon,
-          ime_score: diagnosticResults.globalIme,
-          ire_score: diagnosticResults.globalIre,
-          status: 'completed'
-        }]);
-
-      if (error) throw error;
-      alert('¡Diagnóstico guardado con éxito en Supabase! Indicadores y matrices recalculados.');
-    } catch (err: any) {
-      console.error('Error guardando diagnóstico:', err);
-      alert('¡Diagnóstico guardado localmente! (Nota: ' + (err?.message || 'sincronizado') + ')');
-    }
-  };
-
-  // Persistencia de auditoría de control de calidad (Rojo - Verde)
-  const handleQualityApprovalChange = async (
-    entityType: 'diagnostic_360' | 'omv' | 'master_plan' | 'minute',
-    newStatus: ApprovalStatus,
-    audit: AuditConsultants
-  ) => {
-    const nextApprovals = {
-      omv: entityType === 'omv' ? newStatus : omvApproval,
-      diagnostic_360: entityType === 'diagnostic_360' ? newStatus : diagApproval,
-      master_plan: entityType === 'master_plan' ? newStatus : masterPlanApproval,
-    };
-
-    if (entityType === 'diagnostic_360') {
-      setDiagApproval(newStatus);
-      setDiagAudit(audit);
-    } else if (entityType === 'omv') {
-      setOmvApproval(newStatus);
-      setOmvAudit(audit);
-    } else if (entityType === 'master_plan') {
-      setMasterPlanApproval(newStatus);
-      setMasterPlanAudit(audit);
-    }
-
-    if (id) {
-      setDbSyncStatus('saving');
-      localStorage.setItem(`gs_approvals_${id}`, JSON.stringify(nextApprovals));
-      saveOrgWorkspaceToDb(id, { approvals: nextApprovals }).then(() => setDbSyncStatus('synced'));
-    }
-
-    try {
-      await (supabase.from('quality_approvals') as any)
-        .delete()
-        .eq('organization_id', id as string)
-        .eq('entity_type', entityType);
-
-      await (supabase.from('quality_approvals') as any).insert([{
-        organization_id: id as string,
-        entity_type: entityType,
-        entity_id: id as string,
-        approval_status: newStatus === 'approved_published' ? 'approved' : 'in_review',
-        consultant_name: audit.approvedBy || audit.leaderConsultant || 'Consultor GS',
-        quality_score: newStatus === 'approved_published' ? 9.8 : 0,
-        comments: audit.notes || (newStatus === 'approved_published' ? 'Aprobado formalmente y publicado al portal del cliente.' : 'Puesto en revisión interna.'),
-        reviewed_at: new Date().toISOString()
-      }]);
-    } catch (err) {
-      console.warn('Could not record quality approval log to Supabase:', err);
-    }
-  };
-
-  const handleTaskStatusChange = async (code: string, newStatus: string) => {
-    const updated = tasks.map((t) =>
-      t.code === code
-        ? {
-            ...t,
-            status: newStatus as any,
-            progress: newStatus === 'FINALIZADO' ? 100 : newStatus === 'EN PROCESO' ? 55 : 0,
-          }
-        : t
-    );
-    setTasks(updated);
-    if (id) {
-      setDbSyncStatus('saving');
-      localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(updated));
-      saveOrgWorkspaceToDb(id, { masterPlanTasks: updated }).then(() => setDbSyncStatus('synced'));
-    }
-    try {
-      await (supabase.from('master_plan_tasks') as any)
-        .update({ status: newStatus, progress: newStatus === 'FINALIZADO' ? 100 : newStatus === 'EN PROCESO' ? 55 : 0 })
-        .eq('organization_id', id as string)
-        .eq('code', code);
-    } catch {
-      // ignore
-    }
-  };
-
-  const handleCreateMasterPlanTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim()) return;
-    const axisObj = MASTER_PLAN_AXES.find((a) => a.id === newTaskAxis) || MASTER_PLAN_AXES[0];
-    const generatedCode = newTaskCode.trim() || `${newTaskAxis}.${tasks.filter((t) => t.axis === newTaskAxis).length + 1}`;
-    const newItem = {
-      id: `mpe_${Date.now()}`,
-      axis: newTaskAxis,
-      axisName: axisObj.name,
-      code: generatedCode,
-      title: newTaskTitle.trim(),
-      priority: newTaskPriority,
-      startDate: 'Ago 2026',
-      dueDate: 'Nov 2026',
-      status: 'SIN INICIAR' as const,
-      assignedRole: newTaskResponsible.trim() || 'Líder de Área',
-      progress: 0,
-    };
-    const updated = [...tasks, newItem];
-    setTasks(updated);
-    if (id) {
-      setDbSyncStatus('saving');
-      localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(updated));
-      saveOrgWorkspaceToDb(id, { masterPlanTasks: updated }).then(() => setDbSyncStatus('synced'));
-    }
-    try {
-      await (supabase.from('master_plan_tasks') as any).insert([{
-        organization_id: id as string,
-        axis: newTaskAxis,
-        code: generatedCode,
-        title: newTaskTitle.trim(),
-        priority: newTaskPriority,
-        status: 'SIN INICIAR',
-        assigned_role: newTaskResponsible.trim() || 'Líder de Área',
-        progress: 0,
-      }]);
-    } catch {
-      // ignore
-    }
-    setIsNewTaskModalOpen(false);
-    setNewTaskCode('');
-    setNewTaskTitle('');
-  };
-
-  const handleToggleMinuteApproval = async (minuteId: string) => {
-    const current = minuteApprovals[minuteId] ?? true;
-    const nextVal = !current;
-    const updated = { ...minuteApprovals, [minuteId]: nextVal };
-    setMinuteApprovals(updated);
-    if (id) {
-      localStorage.setItem(`gs_minute_approvals_${id}`, JSON.stringify(updated));
-    }
-    try {
-      await (supabase.from('minutes') as any)
-        .update({
-          status: nextVal ? 'published' : 'draft',
-          quality_status: nextVal ? 'approved' : 'in_review',
-        })
-        .eq('id', minuteId);
-    } catch {
-      // ignore
-    }
-  };
-
-  // Despacho de notificaciones oficiales por WhatsApp al grupo del cliente
-  const handleSendWhatsAppNotification = async (moduleName: string) => {
-    if (!client) return;
-    const portalUrl = `${window.location.origin}/portal/${client.id}`;
-    const message = `🔔 *CONSULTORA GS - NOTIFICACIÓN ESTRATÉGICA*\n\nEstimado equipo de *${client.name}*:\nLes informamos que se ha aprobado y publicado oficialmente el módulo: *${moduleName}*.\n\nPueden acceder al Portal de Gestión Estratégica con su código de acceso:\n🔑 Código: *${client.portal_access_code || 'GS-DEMO-2026'}*\n🔗 Enlace: ${portalUrl}\n\n_Consultora GS · Metodología GrowLabs_`;
-
-    try {
-      const { error } = await supabase.functions.invoke('send-whatsapp', {
-        body: {
-          organization_id: client.id,
-          number: client.whatsapp_group_id || client.phone || '5491100000000',
-          message: message
-        }
-      });
-      if (error) throw error;
-      alert(`✅ Notificación enviada con éxito al WhatsApp del cliente (${client.name}).`);
-    } catch (err: any) {
-      console.warn('Edge function send-whatsapp no disponible o error:', err);
-      const encoded = encodeURIComponent(message);
-      window.open(`https://wa.me/?text=${encoded}`, '_blank');
-    }
-  };
-
-  // Comparativa del Radar: Período Seleccionado vs Actual en Vivo vs Meta Trienal
-  const currentPeriod = pentagonData.find(p => p.periodCode === selectedPentagonPeriod) || pentagonData[0];
-  const metaPeriod = pentagonData[pentagonData.length - 1];
-
-  const radarChartData = [
-    { subject: 'Gobernanza', Baseline: currentPeriod.gobernanza, Actual: diagnosticResults.pentagon.directorio || 5.0, Meta: metaPeriod.gobernanza },
-    { subject: 'Procesos', Baseline: currentPeriod.procesos, Actual: diagnosticResults.pentagon.procesos || 3.7, Meta: metaPeriod.procesos },
-    { subject: 'Finanzas', Baseline: currentPeriod.finanzas, Actual: diagnosticResults.pentagon.finanzas || 4.0, Meta: metaPeriod.finanzas },
-    { subject: 'Talento', Baseline: currentPeriod.talento, Actual: diagnosticResults.pentagon.talento || 6.0, Meta: metaPeriod.talento },
-    { subject: 'Comercial', Baseline: currentPeriod.comercial, Actual: diagnosticResults.pentagon.comercial || 5.5, Meta: metaPeriod.comercial },
-  ];
-
-  const answeredQuestionsCount = Object.keys(diagnosticAnswers).length;
-  const totalQuestionsCatalog = 100;
-  const profileProgressPercent = Math.min(100, Math.round((answeredQuestionsCount / totalQuestionsCatalog) * 100));
-
-  if (loading) return <div className="p-8 text-center text-zinc-500 font-bold font-display uppercase tracking-wider">Cargando información del cliente...</div>;
-  if (!client) return <div className="p-8 text-center text-zinc-500 font-bold font-display uppercase tracking-wider">Cliente no encontrado.</div>;
-
-  // VISTA CLIENTE EXCLUSIVA (FRONT)
-  if (viewMode === 'cliente') {
-    return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-16">
-        <div className="bg-gradient-to-r from-[#0F2438] via-[#17324D] to-[#115E59] text-white px-5 py-3.5 rounded-2xl flex items-center justify-between text-xs font-semibold shadow-sm">
-          <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#2DD4BF] animate-ping" />
-            Simulación Portal Cliente Activa · Visualizando únicamente entregables aprobados
-          </span>
-          <button
-            onClick={() => navigate(`/clients/${id}`)}
-            className="btn-nordic-teal px-4 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
-          >
-            Volver a Modo Consultor GS
-          </button>
-        </div>
-        <ClientPortalView
-          client={client}
-          results={diagnosticResults}
-          isOmvApproved={omvApproval === 'approved_published'}
-          isDiagnosticApproved={diagApproval === 'approved_published'}
-          isMasterPlanApproved={masterPlanApproval === 'approved_published'}
-          masterPlanTasks={tasks.map((t) => ({
-            code: t.code,
-            axis: t.axis || 1,
-            axisName: t.axisName,
-            title: t.title,
-            priority: t.priority,
-            status: t.status,
-            responsible: t.assignedRole,
-            dueDate: t.dueDate,
-            progress: t.progress,
-          }))}
-        />
-      </div>
-    );
-  }
-
-  // VISTA CONSULTOR GS (BACK)
-  return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
-      {/* Header Principal con Avance en el Perfil del Cliente & Executive Gauges */}
-      <div className="figma-card p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => {
-              if (subAction) {
-                navigate(`/clients/${id}/meetings`);
-              } else if (effectiveSection && effectiveSection !== 'dashboard') {
-                navigate(`/clients/${id}`);
-              } else {
-                navigate('/clients');
-              }
-            }}
-            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
-            title={subAction ? "Volver a Reuniones" : (effectiveSection && effectiveSection !== 'dashboard') ? "Volver al Dashboard del Cliente" : "Volver al Directorio de Clientes"}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-bold font-display tracking-tight text-[#17324D]">{client.name}</h1>
-              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-0.5 text-xs font-medium text-slate-600">
-                {client.industry || 'Empresa SAS'}
-              </span>
-              <span className="inline-flex items-center rounded-full bg-[#F0FDFA] border border-teal-200 px-3 py-0.5 text-xs font-semibold text-[#0F766E]">
-                {clientStage === 'relevamiento'
-                  ? '0. Relevamiento & Propuesta'
-                  : clientStage === 'kickoff_omv'
-                    ? '1. Kickoff & OMV'
-                    : clientStage === 'diagnostic_in_progress'
-                      ? '2. Diagnóstico 360° en curso'
-                      : clientStage === 'diagnostic_closed'
-                        ? '3. Diagnóstico cerrado'
-                        : '4. Master Plan activo'}
-              </span>
-            </div>
-
-            {/* Barra y Estadísticas de Avance en el Perfil del Cliente */}
-            <div className="mt-2.5 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                <Compass className="w-3.5 h-3.5 text-[#0D9488]" />
-                <span>Avance 360°: <strong className="text-[#17324D] font-semibold">{answeredQuestionsCount} / {totalQuestionsCatalog}</strong> ({profileProgressPercent}%)</span>
-              </div>
-              <div className="w-32 bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div 
-                  className="bg-gradient-to-r from-[#17324D] to-[#0D9488] h-full rounded-full transition-all duration-500" 
-                  style={{ width: `${profileProgressPercent}%` }} 
-                />
-              </div>
-              <div 
-                className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-50 text-slate-600 font-mono text-[11px] border border-slate-200/80"
-                title="Identificador único del cliente para blindaje multi-tenant"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-[#0D9488]" />
-                <span>Tenant: <strong className="text-slate-800 font-mono font-semibold">{client.id.substring(0, 8)}</strong></span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Top Gauges: IME circular meter, Risk Index & Link al Portal Cliente */}
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <CircularImeMeter 
-            score={diagnosticResults.globalIme10 || 7.8} 
-            maxScore={10} 
-          />
-          <RiskIndexMeter 
-            riskPercentage={diagnosticResults.globalIre || 22} 
-          />
-          <Link
-            to={`/portal/${client.id}`}
-            className="btn-nordic-primary px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2"
-            title="Abrir portal oficial del cliente"
-          >
-            <Eye className="w-4 h-4 text-[#2DD4BF]" />
-            Portal Cliente ({client.portal_access_code || 'GS-DEMO-2026'})
-          </Link>
-        </div>
-      </div>
-
-      {/* Panel de Gobernanza Consultor GS: Qué puede ver este Cliente en su Portal */}
-      <div className="figma-card p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex items-start sm:items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#EDF3F8] text-[#17324D] flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-5 h-5 text-[#0D9488]" />
-          </div>
-          <div>
-            <span className="text-[11px] font-semibold text-[#17324D] block">
-              Gobierno de Visibilidad del Portal · Clave Corporativa: <strong className="font-mono text-[#0D9488]">{client.portal_access_code || 'GS-DEMO-2026'}</strong>
-            </span>
-            <p className="text-xs text-slate-500">
-              Alterne con 1 clic qué módulos están <strong className="text-emerald-700">Publicados</strong> para <strong>{client.name}</strong> o en <strong className="text-amber-700">Revisión Interna</strong>.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {[
-            {
-              key: 'omv' as const,
-              label: '1. Visión OMV',
-              status: omvApproval,
-              audit: omvAudit,
-            },
-            {
-              key: 'diagnostic_360' as const,
-              label: '2. Diagnóstico 360°',
-              status: diagApproval,
-              audit: diagAudit,
-            },
-            {
-              key: 'master_plan' as const,
-              label: '3. Master Plan',
-              status: masterPlanApproval,
-              audit: masterPlanAudit,
-            },
-          ].map((item) => {
-            const isApproved = item.status === 'approved_published';
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() =>
-                  handleQualityApprovalChange(
-                    item.key,
-                    isApproved ? 'draft_review' : 'approved_published',
-                    item.audit
-                  )
-                }
-                className={`px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                  isApproved
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                }`}
-                title="Clic para alternar visibilidad en el Portal de este Cliente"
-              >
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    isApproved ? 'bg-emerald-500' : 'bg-amber-500'
-                  }`}
-                />
-                {item.label}: {isApproved ? 'Publicado' : 'En Revisión'}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Segmented Pill Navigation (Apple / Linear / Figma Style) */}
-      <div className="bg-slate-200/55 p-1.5 rounded-2xl border border-slate-200/80 overflow-x-auto no-scrollbar">
-        <nav className="flex items-center gap-1 min-w-max" aria-label="Tabs">
-          {[
-            { id: 'dashboard', path: `/clients/${id}`, name: 'Resumen 360°', icon: Activity },
-            { id: 'relevamiento', path: `/clients/${id}/relevamiento`, name: '0. Relevamiento', icon: Briefcase },
-            { id: 'omv', path: `/clients/${id}/omb`, name: '1. Kickoff & OMV', icon: Compass },
-            { id: 'diagnostic', path: `/clients/${id}/diagnostic`, name: '2. Diagnóstico 360°', icon: FileText, badge: `${diagnosticResults.progressPercentage}%` },
-            { id: 'matrices', path: `/clients/${id}/matrices`, name: '3. Matrices & Riesgos', icon: Layers },
-            { id: 'master_plan', path: `/clients/${id}/master-plan`, name: '4. Master Plan', icon: Target },
-            { id: 'documents', path: `/clients/${id}/documents`, name: 'Documentos', icon: Folder },
-            { id: 'meetings', path: `/clients/${id}/meetings`, name: 'Sesiones & Audio', icon: Calendar },
-            { id: 'portal_preview', path: `/clients/${id}/portal`, name: 'Vista Cliente', icon: Eye }
-          ].map(tab => (
-            <Link
-              key={tab.id}
-              to={tab.path}
-              className={`flex items-center gap-2 whitespace-nowrap py-2 px-3.5 rounded-xl text-xs font-medium transition-all ${
-                activeTab === tab.id
-                  ? 'bg-white text-[#17324D] font-semibold shadow-xs border border-slate-200/70'
-                  : 'text-slate-600 hover:text-[#17324D] hover:bg-white/50'
-              }`}
-            >
-              <tab.icon className={`h-3.5 w-3.5 ${activeTab === tab.id ? 'text-[#0D9488]' : 'text-slate-400'}`} />
-              {tab.name}
-              {tab.badge && (
-                <span className={`ml-0.5 rounded-full px-2 py-0.2 text-[10px] font-mono font-semibold ${
-                  activeTab === tab.id ? 'bg-[#F0FDFA] text-[#0F766E] border border-teal-200' : 'bg-slate-200/70 text-slate-600'
-                }`}>
-                  {tab.badge}
-                </span>
-              )}
-            </Link>
-          ))}
-        </nav>
-      </div>
-
-      {/* TAB 1: DASHBOARD 360 */}
-      {activeTab === 'dashboard' && (
-        <div className="space-y-6">
-          <StepAssistantBanner
-            roleBadge="Consultor GS · Centro de Comando"
-            stepTitle={`Expediente 360° de ${client.name} — Visión General y Control de Publicación`}
-            whatToDo="Use la barra superior 'Control de Visibilidad del Cliente' para pasar módulos de ROJO (Oculto) a VERDE (Publicado en Portal), o pulse 'Grabar / Subir Audio Ahora' para iniciar una sesión."
-            autoAssistNote="Cada avance de diagnóstico, OMV, minuta y tarea del Master Plan se respalda automáticamente en la Base de Datos Supabase."
-            growyPrompt={`Haceme un resumen ejecutivo completo del estado actual de ${client.name} y cuál es el siguiente paso recomendado como consultor.`}
-            dbSyncStatus={dbSyncStatus}
-            nextStepLabel="Ir a Etapa Actual"
-            onNextStep={() =>
-              navigate(
-                clientStage === 'relevamiento'
-                  ? `/clients/${id}/relevamiento`
-                  : clientStage === 'kickoff_omv'
-                    ? `/clients/${id}/omb`
-                    : clientStage === 'master_plan_active'
-                      ? `/clients/${id}/master-plan`
-                      : `/clients/${id}/diagnostic`
-              )
-            }
-          />
-          {/* Direct Audio & Transcription Automatic Card */}
-          <div className="bg-gradient-to-br from-[#0F2438] via-[#17324D] to-[#115E59] text-white p-6 sm:p-7 rounded-3xl shadow-[0_16px_38px_-12px_rgba(23,50,77,0.28)] flex flex-col md:flex-row md:items-center justify-between gap-5">
-            <div className="space-y-1.5 max-w-2xl">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#2DD4BF] animate-ping" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5EEAD4]">
-                  Captura Inteligente de Sesión
-                </span>
-              </div>
-              <h2 className="text-lg sm:text-xl font-bold text-white font-display tracking-tight">
-                Audio en Vivo → 100 Preguntas Respondidas + Minuta Oficial .DOCX
-              </h2>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Grabe la reunión o suba el audio. El motor detecta respuestas con cita textual exacta ({answeredQuestionsCount}/100 completadas) y redacta la minuta lista para auditar.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
-              <button
-                onClick={() => navigate(`/clients/${id}/meetings/live`)}
-                className="btn-nordic-teal px-6 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer"
-              >
-                <Mic className="w-4 h-4" />
-                Grabar o Subir Audio
-              </button>
-            </div>
-          </div>
-
-          {/* Polished Pentagon Radar Chart & Recent Recordings Stream */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Pentagon Radar Chart (2 cols) */}
-            <div className="lg:col-span-2 figma-card p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                <div>
-                  <h2 className="font-display text-base font-bold text-[#17324D]">
-                    Pentágono de Madurez (5 Ejes Estratégicos)
-                  </h2>
-                  <p className="text-xs text-slate-500">Comparativa histórica: {currentPeriod.label} vs. Actual en Vivo vs. Meta (8.2)</p>
-                </div>
-                <div className="flex flex-col sm:items-end gap-2">
-                  <div className="flex items-center gap-3 text-xs font-medium">
-                    <span className="flex items-center gap-1 text-slate-500">
-                      <span className="h-2 w-2 rounded-full bg-slate-400" /> {currentPeriod.periodCode} ({currentPeriod.imeActual})
-                    </span>
-                    <span className="flex items-center gap-1 text-[#0D9488] font-semibold">
-                      <span className="h-2 w-2 rounded-full bg-[#0D9488]" /> Actual ({diagnosticResults.globalIme10})
-                    </span>
-                    <span className="flex items-center gap-1 text-[#17324D] font-medium">
-                      <span className="h-2 w-2 rounded-full bg-[#17324D]" /> Meta ({metaPeriod.imeActual})
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 overflow-x-auto max-w-xs sm:max-w-md pb-0.5">
-                    {pentagonData.map(p => (
-                      <button
-                        key={p.periodCode}
-                        onClick={() => setSelectedPentagonPeriod(p.periodCode)}
-                        className={`px-2.5 py-0.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
-                          selectedPentagonPeriod === p.periodCode
-                            ? 'bg-[#17324D] text-white shadow-2xs'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                        title={p.label}
-                      >
-                        {p.periodCode}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="h-80 w-full min-h-[320px] min-w-[280px]">
-                <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={300}>
-                  <RadarChart data={radarChartData}>
-                    <PolarGrid stroke="#e2e8f0" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#17324D', fontSize: 11, fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 10]} stroke="#94a3b8" />
-                    <Tooltip />
-                    <Radar name="Línea Base" dataKey="Baseline" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.14} />
-                    <Radar name="Actual" dataKey="Actual" stroke="#0D9488" fill="#0D9488" fillOpacity={0.26} strokeWidth={2.2} />
-                    <Radar name="Meta Trienal" dataKey="Meta" stroke="#17324D" fill="#17324D" fillOpacity={0.07} strokeDasharray="4 3" strokeWidth={1.6} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Critical Risks Column */}
-            <div className="figma-card p-6 flex flex-col justify-between">
-              <div>
-                <h2 className="font-display text-base font-bold text-[#17324D] mb-1 flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4 text-[#0D9488]" /> Focos Críticos de Riesgo
-                </h2>
-                <p className="text-xs text-slate-500 mb-4">Vulnerabilidades de impacto directo en la gobernanza</p>
-
-                <div className="space-y-3 overflow-y-auto max-h-[250px]">
-                  {diagnosticResults.risks.slice(0, 3).map(r => (
-                    <div key={r.id} className="p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-xl">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-[#17324D]">
-                        <span>{r.code} · {r.category}</span>
-                        <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] font-semibold">{r.severityLevel}</span>
-                      </div>
-                      <p className="text-xs text-slate-800 font-medium mt-1.5">{r.description}</p>
-                      <p className="text-[11px] text-slate-500 mt-1">Acción: {r.suggestedAction}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs text-slate-500">Total detectados: {diagnosticResults.risks.length}</span>
-                <button
-                  onClick={() => navigate(`/clients/${id}/matrices`)}
-                  className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] cursor-pointer"
-                >
-                  Ver Matriz de Riesgos →
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Recordings Preview Strip */}
-          <div className="figma-card p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Mic className="w-4 h-4 text-[#0D9488]" />
-                <h3 className="font-display text-base font-bold text-[#17324D]">
-                  Grabaciones Recientes de Sesiones ({meetings.length})
-                </h3>
-              </div>
-              <button
-                onClick={() => navigate(`/clients/${id}/meetings`)}
-                className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] flex items-center gap-1 cursor-pointer"
-              >
-                Ir a Grabaciones & Minutas →
-              </button>
-            </div>
-            
-            <ClientRecordingsHistory
-              clientId={id as string}
-              clientName={client.name}
-              onNewRecording={(type) => {
-                navigate(`/clients/${id}/meetings/live?type=${type || 'diagnostico'}`);
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* TAB 0: RELEVAMIENTO COMERCIAL & PROPUESTA PREVIA AL KICKOFF */}
-      {activeTab === 'relevamiento' && (
-        <RelevamientoPropuestaModule
-          client={client}
-          onApproveAndGenerateKickoff={(projectCode) => {
-            if (id && projectCode) {
-              localStorage.setItem(`gs_project_code_${id}`, projectCode);
-            }
-            setClientStage('kickoff_omv');
-            navigate(`/clients/${id}/omb`);
-          }}
-          onStartRecording={() => {
-            navigate(`/clients/${id}/meetings/live?type=relevamiento`);
-          }}
-        />
-      )}
-
-      {/* TAB 1: OMV & KICKOFF (AUDIO & TEXTO EN PRESENTE + 8 TARGETS CVA) */}
-      {activeTab === 'omv' && (
-        <OMBModule
-          client={client}
-          stage={clientStage}
-          onStageChange={setClientStage}
-          approvalStatus={omvApproval}
-          auditConsultants={omvAudit}
-          onApprovalChange={(status, audit) => handleQualityApprovalChange('omv', status, audit)}
-          onSendWhatsApp={() => handleSendWhatsAppNotification('OMV Trienal y Minuta de Kickoff')}
-        />
-      )}
-
-      {/* TAB 2: DIAGNÓSTICO DINÁMICO 360° */}
-      {activeTab === 'diagnostic' && (
-        <DynamicDiagnosticForm
-          client={client}
-          stage={clientStage}
-          answers={diagnosticAnswers}
-          onAnswerChange={handleAnswerChange}
-          onSave={handleSaveDiagnostic}
-          approvalStatus={diagApproval}
-          auditConsultants={diagAudit}
-          onApprovalChange={(status, audit) => handleQualityApprovalChange('diagnostic_360', status, audit)}
-          onViewMatrices={() => navigate(`/clients/${id}/matrices`)}
-          onSendWhatsApp={() => handleSendWhatsAppNotification('Formulario de Diagnóstico Integral 360°')}
-          onOpenAudioSession={() => navigate(`/clients/${id}/meetings/live`)}
-        />
-      )}
-
-      {/* TAB 4: MATRICES ESTRATÉGICAS */}
-      {activeTab === 'matrices' && (
-        <div className="space-y-6">
-          <StepAssistantBanner
-            roleBadge="Consultor GS · Etapa 3"
-            stepTitle="Matrices Estratégicas (FODA, PESTEL, Porter) y Matriz de Riesgos (IRE)"
-            whatToDo="Revise los puntajes calculados automáticamente de IME (9 áreas) e IRE (12 dimensiones + 27 riesgos). Cuando cierre el diagnóstico, pase a estructurar el Master Plan."
-            autoAssistNote="Todas las matrices derivan matemáticamente de las respuestas del Diagnóstico 360° guardadas en Base de Datos."
-            growyPrompt={`Explicame los principales riesgos críticos e indicadores IME/IRE detectados en ${client.name}.`}
-            dbSyncStatus={dbSyncStatus}
-            nextStepLabel="Ir a 4. Master Plan"
-            onNextStep={() => navigate(`/clients/${id}/master-plan`)}
-          />
-          <StrategicMatricesView
-            client={client}
-            results={diagnosticResults}
-            onBackToQuestions={() => navigate(`/clients/${id}/diagnostic`)}
-          />
-        </div>
-      )}
-
-      {/* TAB 5: MASTER PLAN ESTRATÉGICO */}
-      {activeTab === 'master_plan' && (
-        <div className="space-y-6">
-          <StepAssistantBanner
-            roleBadge="Consultor GS · Etapa 4"
-            stepTitle="Master Plan en 5 Ejes, Puente AVANCE-EJES y Validación de Avances del Cliente"
-            whatToDo="1) Seleccione un eje para editar su Brecha, Iniciativa y OKRs. 2) Revise y valide los avances reportados por el cliente. 3) Exporte el Workbook Oficial de 6 Hojas con Fórmulas (.XLSX)."
-            autoAssistNote="Regla GS: Los reportes enviados por el cliente desde su Portal aparecen en la bandeja amarilla y solo impactan el Pentágono cuando usted pulsa 'Validar e Impactar'."
-            growyPrompt={`Calculá el puente AVANCE-EJES de ${client.name} y decime si hay avances reportados por el cliente pendientes de validar.`}
-            dbSyncStatus={dbSyncStatus}
-          />
-          <QualityApprovalBadge
-            moduleName="Master Plan Estratégico"
-            status={masterPlanApproval}
-            audit={masterPlanAudit}
-            onStatusChange={(status, audit) => handleQualityApprovalChange('master_plan', status, audit)}
-            clientName={client.name}
-            onSendWhatsApp={() => handleSendWhatsAppNotification('Master Plan Estratégico')}
-          />
-
-          {/* Sub-navegación del Master Plan + Exportación Oficial 6 Hojas (.XLSX) */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-zinc-200 pb-3 font-display">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setMasterPlanSubTab('tasks')}
-                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                  masterPlanSubTab === 'tasks'
-                    ? 'bg-[#17324D] text-white shadow-sm'
-                    : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-100'
-                }`}
-              >
-                <Target className="w-3.5 h-3.5 text-[#14B8A6]" />
-                Plan de Acción MPE & Puente AVANCE-EJES
-              </button>
-              <button
-                onClick={() => setMasterPlanSubTab('quarterly_tracking')}
-                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-                  masterPlanSubTab === 'quarterly_tracking'
-                    ? 'bg-[#17324D] text-white shadow-sm'
-                    : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-100'
-                }`}
-              >
-                <Calendar className="w-3.5 h-3.5 text-[#14B8A6]" />
-                Seguimiento Trimestral PENT-PE (3 Meses)
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                const projectCode = localStorage.getItem(`gs_project_code_${client.id}`) || '26-030';
-                let omvText = '';
-                try {
-                  const rawRevs = localStorage.getItem(`gs_omb_revisions_${client.id}`);
-                  if (rawRevs) {
-                    const revs = JSON.parse(rawRevs);
-                    const rev0 = revs.find((r: any) => r.isBaselineRev0) || revs[0];
-                    if (rev0?.declarationText) omvText = rev0.declarationText;
-                  }
-                } catch { /* ignore */ }
-
-                exportOfficialMasterPlanWorkbook({
-                  projectCode,
-                  clientName: client.name,
-                  revision: 'd',
-                  omvText:
-                    omvText ||
-                    `Hoy es 2029. ${client.name} opera con Directorio activo, procesos trazables, finanzas previsibles, talento autónomo y motor comercial sistemático.`,
-                  globalIme: diagnosticResults.globalIme || 48,
-                  globalIre: diagnosticResults.globalIre || 38,
-                  axesMeta,
-                  tasks,
-                  pentagonPeriods: pentagonData,
-                  risks: INITIAL_RISKS,
-                });
-              }}
-              className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              Exportar Workbook Oficial GS (.XLSX — 6 Hojas con Fórmulas)
-            </button>
-          </div>
-
-          {/* Bandeja de Avances Reportados por el Cliente desde el Portal */}
-          {Object.keys(clientTaskUpdates).length > 0 && (
-            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-display text-xs font-black uppercase tracking-wider text-amber-950 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-amber-700" />
-                  Avances Reportados por el Cliente pendientes de Validación Consultor GS ({Object.keys(clientTaskUpdates).length})
-                </span>
-                <span className="text-[11px] text-amber-800">
-                  Regla GS: El avance del cliente requiere validación humana antes de impactar MPE / PENT-PE
-                </span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {Object.entries(clientTaskUpdates).map(([code, upd]) => {
-                  const taskObj = tasks.find((x) => x.code === code);
-                  return (
-                    <div key={code} className="bg-white rounded-xl border border-amber-200 p-3 flex items-start justify-between gap-3 text-xs">
-                      <div className="space-y-1">
-                        <div className="font-bold text-zinc-900">
-                          <span className="font-mono text-[#0D9488] mr-1.5">{code}</span>
-                          {taskObj?.title || 'Tarea del Master Plan'}
-                        </div>
-                        <p className="text-zinc-600">
-                          Estado sugerido: <strong>{upd.suggestedStatus}</strong> ({upd.progress}%) — <em>"{upd.note}"</em>
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleAcceptClientTaskUpdate(code)}
-                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-display text-[10px] font-bold uppercase shrink-0 cursor-pointer"
-                      >
-                        Validar e Impactar
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {masterPlanSubTab === 'quarterly_tracking' ? (
-            <MasterPlanQuarterlyTracking
-              clientId={id as string}
-              clientName={client.name}
-              onReviewsUpdated={fetchClientData}
-            />
-          ) : (
-            <>
-              {/* Puente AVANCE-EJES en vivo (Coherencia MPE <-> PENT-PE) */}
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-display text-xs font-black uppercase tracking-wider text-slate-900">
-                    Puente Oficial AVANCE-EJES (Ejecución Ponderada MPE ↔ Madurez PENT-PE)
-                  </span>
-                  <span className="text-[11px] text-slate-500">
-                    Tolerancia metodológica GS: ±0,5 pp • Validación humana del consultor antes de actualizar PENT-PE
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
-                  {axesMeta.map((ax) => {
-                    const axisTasks = tasks.filter((t) => (t.axis || 1) === ax.axisId);
-                    const avgMpePct =
-                      axisTasks.length > 0
-                        ? Math.round(axisTasks.reduce((acc, t) => acc + (t.progress || 0), 0) / axisTasks.length)
-                        : 0;
-                    const pentScore =
-                      ax.axisId === 1
-                        ? diagnosticResults.pentagon.directorio || 5.0
-                        : ax.axisId === 2
-                          ? diagnosticResults.pentagon.procesos || 3.7
-                          : ax.axisId === 3
-                            ? diagnosticResults.pentagon.finanzas || 4.0
-                            : ax.axisId === 4
-                              ? diagnosticResults.pentagon.talento || 6.0
-                              : diagnosticResults.pentagon.comercial || 5.5;
-                    const pentPct = Math.round(pentScore * 10);
-                    return (
-                      <div key={ax.axisId} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-                        <div className="font-display font-bold text-slate-900 truncate text-[11px]">
-                          Eje {ax.axisId}: {ax.shortName}
-                        </div>
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-500">MPE Pond.:</span>
-                          <strong className="font-mono text-slate-900">{avgMpePct}%</strong>
-                        </div>
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-500">PENT-PE:</span>
-                          <strong className="font-mono text-[#17324D]">{pentScore.toFixed(1)} ({pentPct}%)</strong>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border-2 border-zinc-900 shadow-sm">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 font-display">
-                  <button
-                    onClick={() => setSelectedAxis('all')}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
-                      selectedAxis === 'all' ? 'bg-[#17324D] text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                    }`}
-                  >
-                    Todos los Ejes (5)
-                  </button>
-                  {MASTER_PLAN_AXES.map(axis => (
-                    <button
-                      key={axis.id}
-                      onClick={() => setSelectedAxis(axis.id)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
-                        selectedAxis === axis.id ? 'bg-[#17324D] text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-                      }`}
-                    >
-                      {axis.name.split(':')[0]}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsNewTaskModalOpen(true)}
-                  className="px-4 py-2 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shrink-0 shadow-crimson transition-all"
-                >
-                  <Plus className="h-4 w-4" /> Nueva Acción
-                </button>
-              </div>
-
-              {/* Ficha Estratégica Editable del Eje (Brecha Asociada, Iniciativa Estratégica, OKRs — Hoja MPE Excel) */}
-              {selectedAxis !== 'all' && (() => {
-                const currentAxisMeta = axesMeta.find((a) => a.axisId === selectedAxis);
-                if (!currentAxisMeta) return null;
-                return (
-                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-display text-xs font-black uppercase tracking-wider text-[#17324D]">
-                        Cabecera Estratégica Hoja MPE — {currentAxisMeta.fullName}
-                      </h4>
-                      <span className="text-[11px] text-slate-400">Se exporta directamente al bloque superior del Eje en el Excel Oficial</span>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">Brecha Asociada (Diagnóstico → OMV)</label>
-                        <textarea
-                          rows={2}
-                          value={currentAxisMeta.brechaAsociada}
-                          onChange={(e) => handleUpdateAxisMeta(currentAxisMeta.axisId, 'brechaAsociada', e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">Iniciativa Estratégica Rectora</label>
-                        <textarea
-                          rows={2}
-                          value={currentAxisMeta.iniciativaEstrategica}
-                          onChange={(e) => handleUpdateAxisMeta(currentAxisMeta.axisId, 'iniciativaEstrategica', e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1">OKRs del Eje</label>
-                        <textarea
-                          rows={2}
-                          value={currentAxisMeta.okrText}
-                          onChange={(e) => handleUpdateAxisMeta(currentAxisMeta.axisId, 'okrText', e.target.value)}
-                          className="w-full rounded-lg border border-slate-300 p-2 text-xs"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {isNewTaskModalOpen && (
-                <div className="bg-zinc-50 p-5 rounded-2xl border-2 border-zinc-900 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-display text-sm font-black uppercase text-zinc-900">
-                      Agregar Nueva Acción al Master Plan de {client.name}
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={() => setIsNewTaskModalOpen(false)}
-                      className="text-xs font-bold text-zinc-500 hover:text-zinc-900"
-                    >
-                      Cerrar ✕
-                    </button>
-                  </div>
-                  <form onSubmit={handleCreateMasterPlanTask} className="grid grid-cols-1 sm:grid-cols-6 gap-3 text-xs">
-                    <div>
-                      <label className="block font-bold text-zinc-700 mb-1">Eje Pentágono</label>
-                      <select
-                        value={newTaskAxis}
-                        onChange={(e) => setNewTaskAxis(Number(e.target.value))}
-                        className="w-full rounded-lg border border-zinc-300 px-2.5 py-2 font-bold bg-white"
-                      >
-                        {MASTER_PLAN_AXES.map((a) => (
-                          <option key={a.id} value={a.id}>{a.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block font-bold text-zinc-700 mb-1">Código</label>
-                      <input
-                        type="text"
-                        value={newTaskCode}
-                        onChange={(e) => setNewTaskCode(e.target.value)}
-                        placeholder="Ej: 1.5.1"
-                        className="w-full rounded-lg border border-zinc-300 px-2.5 py-2 font-mono"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block font-bold text-zinc-700 mb-1">Acción / Iniciativa *</label>
-                      <input
-                        type="text"
-                        required
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        placeholder="Descripción de la acción estratégica..."
-                        className="w-full rounded-lg border border-zinc-300 px-2.5 py-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-bold text-zinc-700 mb-1">Responsable</label>
-                      <input
-                        type="text"
-                        value={newTaskResponsible}
-                        onChange={(e) => setNewTaskResponsible(e.target.value)}
-                        className="w-full rounded-lg border border-zinc-300 px-2.5 py-2"
-                      />
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <select
-                        value={newTaskPriority}
-                        onChange={(e) => setNewTaskPriority(e.target.value as 'Alta' | 'Media' | 'Baja')}
-                        className="rounded-lg border border-zinc-300 px-2 py-2 font-bold bg-white"
-                      >
-                        <option value="Alta">Alta</option>
-                        <option value="Media">Media</option>
-                        <option value="Baja">Baja</option>
-                      </select>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-[#17324D] hover:bg-[#17324D] text-white rounded-lg font-bold uppercase tracking-wider shrink-0"
-                      >
-                        Guardar
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              <div className="bg-white rounded-2xl border-2 border-zinc-900 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto max-h-[600px]">
-                  <table className="min-w-full divide-y-2 divide-zinc-200 text-xs">
-                    <thead className="bg-[#17324D] text-white font-display uppercase tracking-wider sticky top-0 z-10">
-                      <tr>
-                        <th className="px-4 py-3.5 text-left font-bold">Código</th>
-                        <th className="px-4 py-3.5 text-left font-bold">Acción / Iniciativa ({client.name})</th>
-                        <th className="px-4 py-3.5 text-left font-bold">Prioridad</th>
-                        <th className="px-4 py-3.5 text-left font-bold">Responsable</th>
-                        <th className="px-4 py-3.5 text-left font-bold">Plazo</th>
-                        <th className="px-4 py-3.5 text-left font-bold">Estado (Interactivo)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-200 bg-white">
-                      {tasks
-                        .filter(t => selectedAxis === 'all' || t.axis === selectedAxis)
-                        .map((t, idx) => (
-                          <tr key={`${t.code}-${idx}`} className="hover:bg-zinc-50">
-                            <td className="px-4 py-3 font-mono font-bold text-[#0D9488]">{t.code}</td>
-                            <td className="px-4 py-3 font-bold text-zinc-950">
-                              {t.title}
-                              <span className="block text-[10px] font-normal text-zinc-400">{t.axisName}</span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2.5 py-0.5 rounded font-display font-bold uppercase text-[10px] ${
-                                String(t.priority).toUpperCase() === 'ALTA' ? 'bg-[#EDF3F8] text-[#17324D]' : 'bg-zinc-100 text-zinc-700'
-                              }`}>
-                                {t.priority}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-zinc-700 font-medium">{t.assignedRole}</td>
-                            <td className="px-4 py-3 text-zinc-600 font-mono font-semibold">
-                              {t.dueDate || '90 días'}
-                            </td>
-                            <td className="px-4 py-3">
-                              <select
-                                value={t.status}
-                                onChange={(e) => handleTaskStatusChange(t.code, e.target.value)}
-                                className={`px-2.5 py-1 font-display uppercase font-bold text-[10px] rounded border cursor-pointer ${
-                                  t.status === 'FINALIZADO'
-                                    ? 'bg-emerald-600 text-white border-emerald-700'
-                                    : t.status === 'EN PROCESO'
-                                    ? 'bg-amber-500 text-white border-amber-600'
-                                    : t.status === 'RETRASADO'
-                                    ? 'bg-[#0D9488] text-white border-red-700'
-                                    : 'bg-[#17324D] text-white border-zinc-800'
-                                }`}
-                              >
-                                <option value="SIN INICIAR">SIN INICIAR</option>
-                                <option value="EN PROCESO">EN PROCESO</option>
-                                <option value="FINALIZADO">FINALIZADO</option>
-                                <option value="RETRASADO">RETRASADO</option>
-                                <option value="CANCELADO">CANCELADO</option>
-                              </select>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* TAB 6: REUNIONES, GRABACIONES CONTINUAS E HISTORIAL IA */}
-      {activeTab === 'meetings' && (
-        <div className="space-y-6">
-          {(activeMeetingSession || isPlanningMeeting) ? (
-            <ClientMeetingSession
-              client={client}
-              initialMeetingType={plannedSession?.meetingType || meetingLaunchType}
-              initialTitle={plannedSession?.title}
-              initialQuestions={plannedSession?.selectedQuestions}
-              initialStep="recording"
-              onBack={() => {
-                navigate(`/clients/${id}/meetings`);
-                setPlannedSession(null);
-                fetchClientData();
-              }}
-              onDiagnosticUpdated={() => {
-                fetchClientData();
-              }}
-            />
-          ) : (
-            <div className="space-y-6">
-              {/* Header Principal Simplificado: Audio -> 100 Preguntas -> Informe y Minuta */}
-              <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-xs space-y-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#0D9488] animate-ping" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#17324D]">
-                        Flujo Simplificado Automático • {client.name}
-                      </span>
-                    </div>
-                    <h2 className="font-display text-xl sm:text-2xl font-black uppercase text-slate-950 tracking-tight">
-                      Audio y Transcripción → 100 Preguntas + Informe y Minutas
-                    </h2>
-                    <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                      Graba la reunión en vivo o sube un audio. El sistema analiza automáticamente cuáles de las <strong>100 preguntas</strong> se responden en la charla, las contesta en el diagnóstico y genera el <strong>Informe con la Minuta Ejecutiva</strong> en un solo paso.
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      navigate(`/clients/${id}/meetings/live?type=diagnostico`);
-                    }}
-                    className="px-6 py-3.5 bg-[#17324D] hover:bg-[#0F2438] text-white rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-md hover:scale-105 transition-all self-start sm:self-center shrink-0 cursor-pointer"
-                  >
-                    <Mic className="w-4 h-4" /> Grabar / Subir Audio Ahora
-                  </button>
-                </div>
-              </div>
-
-              {/* HISTORIAL ORGANIZADO DE GRABACIONES (AUDIO + WHISPER + VALIDACIONES) */}
-              <ClientRecordingsHistory
-                clientId={id as string}
-                clientName={client.name}
-                onNewRecording={(type) => {
-                  navigate(`/clients/${id}/meetings/live?type=${type || 'diagnostico'}`);
-                }}
-              />
-
-              {/* Subsección: Minutas Tradicionales de Comités */}
-              <div className="space-y-3 pt-6 border-t border-slate-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-slate-500" /> Minutas de Comités y Reuniones Tradicionales ({meetings.length})
-                  </h3>
-                  <Link
-                    to="/meetings"
-                    className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E]"
-                  >
-                    Ver Todas las Minutas
-                  </Link>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {meetings.length === 0 ? (
-                    <div className="col-span-2 bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center text-slate-400 text-xs">
-                      No hay minutas tradicionales adicionales registradas.
-                    </div>
-                  ) : (
-                    meetings.map(m => {
-                      const mins = Array.isArray(m.minutes) ? m.minutes : m.minutes ? [m.minutes] : [];
-                      const firstMin = mins[0];
-                      const isMinApproved = firstMin ? (minuteApprovals[firstMin.id] ?? true) : false;
-                      return (
-                        <div key={m.id} className="bg-white p-5 rounded-2xl border border-slate-200 hover:border-slate-300 shadow-xs hover:shadow-md transition-all space-y-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <h4 className="font-display font-semibold text-sm text-slate-900">{m.title}</h4>
-                              <p className="text-xs text-slate-500 mt-0.5">Fecha: {new Date(m.meeting_date).toLocaleDateString('es-AR')}</p>
-                            </div>
-                            {firstMin && (
-                              <button
-                                type="button"
-                                onClick={() => handleToggleMinuteApproval(firstMin.id)}
-                                className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border transition-colors ${
-                                  isMinApproved
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                                    : 'bg-[#F0FDFA] text-[#17324D] border-teal-300 hover:bg-[#EDF3F8]'
-                                }`}
-                                title="Clic para publicar u ocultar esta minuta en el Portal del Cliente"
-                              >
-                                {isMinApproved ? '✓ Publicada en Portal (Verde)' : '✕ Borrador Interno (Rojo)'}
-                              </button>
-                            )}
-                          </div>
-                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                            <span className="text-[11px] text-slate-400">
-                              {isMinApproved ? 'Visible para el cliente' : 'Oculta para el cliente'}
-                            </span>
-                            <Link
-                              to={`/meetings/${m.id}`}
-                              className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] flex items-center gap-1"
-                            >
-                              Ver y Editar Minuta <ChevronRight className="w-3.5 h-3.5" />
-                            </Link>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB: GESTOR DOCUMENTAL (RAG) */}
-      {activeTab === 'documents' && (
-        <DocumentosCliente
-          client={client}
-          isClientPortal={effectiveSection === 'portal'}
-        />
-      )}
-
-      {/* TAB 7: PORTAL PREVIEW */}
-      {activeTab === 'portal_preview' && (
-        <ClientPortalView
-          client={client}
-          results={diagnosticResults}
-          isOmvApproved={omvApproval === 'approved_published'}
-          isDiagnosticApproved={diagApproval === 'approved_published'}
-          isMasterPlanApproved={masterPlanApproval === 'approved_published'}
-          masterPlanTasks={tasks.map((t) => ({
-            code: t.code,
-            axis: t.axis || 1,
-            axisName: t.axisName,
-            title: t.title,
-            priority: t.priority,
-            status: t.status,
-            responsible: t.assignedRole,
-            dueDate: t.dueDate,
-            progress: t.progress,
-          }))}
-        />
-      )}
-    </div>
-  );
+ const { id, section, subAction } = useParams<{ id: string; section?: string; subAction?: string }>();
+ const navigate = useNavigate();
+ const [searchParams] = useSearchParams();
+
+ const [client, setClient] = useState<any>(null);
+ const [loading, setLoading] = useState(true);
+
+ // Architecture A Popovers (Publication Governance & Contextual Guide)
+ const [publishPopoverOpen, setPublishPopoverOpen] = useState(false);
+ const [guidePopoverOpen, setGuidePopoverOpen] = useState(false);
+ const headerPopoversRef = useRef<HTMLDivElement>(null);
+
+ // Active section derived directly from URL route for native browser back/forward history
+ const effectiveSection = section || (subAction ? 'meetings' : undefined);
+
+ const activeTab: 'dashboard' | 'relevamiento' | 'omv' | 'diagnostic' | 'matrices' | 'master_plan' | 'portal_preview' | 'meetings' | 'documents' = useMemo(() => {
+ if (!effectiveSection || effectiveSection === 'dashboard') return 'dashboard';
+ if (effectiveSection === 'relevamiento') return 'relevamiento';
+ if (effectiveSection === 'omv' || effectiveSection === 'omb') return 'omv';
+ if (effectiveSection === 'diagnostic') return 'diagnostic';
+ if (effectiveSection === 'matrices') return 'matrices';
+ if (effectiveSection === 'master-plan' || effectiveSection === 'master_plan') return 'master_plan';
+ if (effectiveSection === 'meetings') return 'meetings';
+ if (effectiveSection === 'portal' || effectiveSection === 'portal_preview') return 'portal_preview';
+ if (effectiveSection === 'documents') return 'documents';
+ return 'dashboard';
+ }, [effectiveSection]);
+
+ useEffect(() => {
+ setPublishPopoverOpen(false);
+ setGuidePopoverOpen(false);
+ }, [activeTab]);
+
+ useEffect(() => {
+ const onMouseDown = (e: MouseEvent) => {
+ if (headerPopoversRef.current && !headerPopoversRef.current.contains(e.target as Node)) {
+ setPublishPopoverOpen(false);
+ setGuidePopoverOpen(false);
+ }
+ };
+ const onKeyDown = (e: KeyboardEvent) => {
+ if (e.key === 'Escape') {
+ setPublishPopoverOpen(false);
+ setGuidePopoverOpen(false);
+ }
+ };
+ document.addEventListener('mousedown', onMouseDown);
+ document.addEventListener('keydown', onKeyDown);
+ return () => {
+ document.removeEventListener('mousedown', onMouseDown);
+ document.removeEventListener('keydown', onKeyDown);
+ };
+ }, []);
+
+ const isPlanningMeeting = effectiveSection === 'meetings' && subAction === 'plan';
+ const activeMeetingSession = effectiveSection === 'meetings' && subAction === 'live';
+
+ // Tipos de reunión y submódulos (lee del query string si existe e.g. ?type=kickoff)
+ const meetingLaunchType: MeetingType = (searchParams.get('type') as MeetingType) || 'diagnostico';
+ const [masterPlanSubTab, setMasterPlanSubTab] = useState<'tasks' | 'quarterly_tracking'>('tasks');
+
+ // Modo de visualización: Consultor GS (Back) vs Cliente (Front)
+ const viewMode: 'consultor' | 'cliente' = activeTab === 'portal_preview' ? 'cliente' : 'consultor';
+
+ // Real-time Supabase DB sync indicator
+ const [dbSyncStatus, setDbSyncStatus] = useState<'synced' | 'saving'>('synced');
+
+ // Client Stage (Roadmap) persisted per client in Supabase DB
+ const [clientStage, setClientStageState] = useState<ClientStage>(() => {
+ try {
+ const saved = id ? localStorage.getItem(`gs_client_stage_${id}`) : null;
+ if (saved) return saved as ClientStage;
+ } catch { /* ignore */ }
+ return 'diagnostic_in_progress';
+ });
+
+ const setClientStage = (nextStage: ClientStage) => {
+ setClientStageState(nextStage);
+ if (id) {
+ setDbSyncStatus('saving');
+ try {
+ localStorage.setItem(`gs_client_stage_${id}`, nextStage);
+ } catch { /* ignore */ }
+ saveOrgWorkspaceToDb(id, { clientStage: nextStage }).then(() => setDbSyncStatus('synced'));
+ }
+ };
+
+ // Strategic Axis Metadata (Brecha, Iniciativa Estratégica, OKRs) per client in Supabase DB
+ const [axesMeta, setAxesMeta] = useState<GSAxisStrategicMeta[]>(() => {
+ try {
+ const saved = id ? localStorage.getItem(`gs_axes_meta_${id}`) : null;
+ if (saved) return JSON.parse(saved);
+ } catch { /* ignore */ }
+ return DEFAULT_GS_AXES_META;
+ });
+
+ const handleUpdateAxisMeta = (axisId: number, field: 'brechaAsociada' | 'iniciativaEstrategica' | 'okrText', val: string) => {
+ const next = axesMeta.map((a) => (a.axisId === axisId ? { ...a, [field]: val } : a));
+ setAxesMeta(next);
+ if (id) {
+ setDbSyncStatus('saving');
+ try {
+ localStorage.setItem(`gs_axes_meta_${id}`, JSON.stringify(next));
+ } catch { /* ignore */ }
+ saveOrgWorkspaceToDb(id, { axesMeta: next }).then(() => setDbSyncStatus('synced'));
+ }
+ };
+
+ // Client-reported task progress updates from Client Portal (synced via Supabase DB)
+ const [clientTaskUpdates, setClientTaskUpdates] = useState<Record<string, { suggestedStatus: string; progress: number; note: string; updatedAt: string }>>(() => {
+ try {
+ const saved = id ? localStorage.getItem(`gs_client_task_updates_${id}`) : null;
+ if (saved) return JSON.parse(saved);
+ } catch { /* ignore */ }
+ return {};
+ });
+
+ const handleAcceptClientTaskUpdate = async (code: string) => {
+ const upd = clientTaskUpdates[code];
+ if (!upd) return;
+ setDbSyncStatus('saving');
+ const updatedTasks = tasks.map((t) =>
+ t.code === code
+ ? { ...t, status: upd.suggestedStatus as any, progress: upd.progress }
+ : t
+ );
+ setTasks(updatedTasks);
+ const nextUpdates = { ...clientTaskUpdates };
+ delete nextUpdates[code];
+ setClientTaskUpdates(nextUpdates);
+
+ if (id) {
+ localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(updatedTasks));
+ localStorage.setItem(`gs_client_task_updates_${id}`, JSON.stringify(nextUpdates));
+ await Promise.all([
+ saveOrgWorkspaceToDb(id, { masterPlanTasks: updatedTasks }),
+ saveClientCollabToDb(id, { taskUpdates: nextUpdates }, {
+ activityType: 'consultant_validated_task_update',
+ performedBy: 'Consultor GS',
+ details: { code, status: upd.suggestedStatus, progress: upd.progress },
+ }),
+ (supabase.from('master_plan_tasks') as any)
+ .update({ status: upd.suggestedStatus, progress: upd.progress })
+ .eq('organization_id', id)
+ .eq('code', code),
+ ]);
+ setDbSyncStatus('synced');
+ }
+ };
+
+ // Audit and Approval Statuses (Rojo - Verde) scoped strictly per client
+ const [diagApproval, setDiagApproval] = useState<ApprovalStatus>('draft_review');
+ const [diagAudit, setDiagAudit] = useState<AuditConsultants>({
+ leaderConsultant: 'Martín Gómez (Consultor Senior)',
+ editorConsultant: 'Lucía Fernández (Consultora de Procesos)',
+ approvedBy: 'Abel (Director de Metodología GS)',
+ notes: 'En revisión de control de calidad interno antes de presentar al cliente.'
+ });
+
+ const [omvApproval, setOmvApproval] = useState<ApprovalStatus>('draft_review');
+ const [omvAudit, setOmvAudit] = useState<AuditConsultants>({
+ leaderConsultant: 'Abel (Director de Metodología GS)',
+ approvedBy: 'Abel (Director de Metodología GS)',
+ approvedAt: '20 Ago 2026',
+ notes: 'OMB Rev 0 validado por el cliente en sesión de Kickoff.'
+ });
+
+ const [masterPlanApproval, setMasterPlanApproval] = useState<ApprovalStatus>('draft_review');
+ const [masterPlanAudit, setMasterPlanAudit] = useState<AuditConsultants>({
+ leaderConsultant: 'Martín Gómez (Consultor Senior)',
+ editorConsultant: 'Lucas (Consultor de Implementación)',
+ notes: 'Master Plan de 5 ejes estructurado según Diagnóstico 360°.'
+ });
+
+ const EJEMPLO_SAS_ID = '532a0405-02c2-4e45-8f77-c24bf13ea9de';
+ const EJEMPLO_SAS_DEFAULT_ANSWERS: Record<number, ResponseOptionValue> = {
+ 1: 'partial_dev',
+ 101: 'partial_dev',
+ 2: 'informal_active',
+ 102: 'partial_dev',
+ 3: 'partial_dev',
+ 4: 'informal_active',
+ 5: 'partial_dev',
+ 201: 'partial_dev',
+ 202: 'informal_active',
+ 6: 'informal_active',
+ 7: 'partial_dev',
+ 8: 'informal_active',
+ 9: 'partial_dev',
+ 301: 'partial_dev',
+ 10: 'informal_active',
+ 11: 'partial_dev',
+ 12: 'informal_active',
+ 401: 'partial_dev',
+ 13: 'informal_active',
+ 14: 'partial_dev',
+ 15: 'informal_active',
+ 501: 'partial_dev',
+ 16: 'informal_active',
+ 17: 'partial_dev',
+ 18: 'informal_active',
+ 19: 'partial_dev',
+ 20: 'partial_dev',
+ 701: 'partial_dev',
+ 21: 'informal_active',
+ 22: 'partial_dev',
+ 23: 'partial_dev',
+ 24: 'partial_dev',
+ 25: 'partial_dev',
+ 26: 'partial_dev'
+ };
+
+ // Diagnostic Structured Answers (Respuestas cerradas) scoped per client
+ const [diagnosticAnswers, setDiagnosticAnswers] = useState<Record<number, ResponseOptionValue>>({});
+
+ // Cálculo Dinámico en Tiempo Real (Motor Matemático)
+ const diagnosticResults: FullDiagnosticResults = useMemo(() => {
+ return calculateDiagnosticScores(diagnosticAnswers);
+ }, [diagnosticAnswers]);
+
+ // Master Plan State scoped per client
+ const [tasks, setTasks] = useState(INITIAL_MASTER_PLAN_TASKS);
+ const [selectedAxis, setSelectedAxis] = useState<number | 'all'>('all');
+ const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+ const [newTaskCode, setNewTaskCode] = useState('');
+ const [newTaskTitle, setNewTaskTitle] = useState('');
+ const [newTaskAxis, setNewTaskAxis] = useState<number>(1);
+ const [newTaskPriority, setNewTaskPriority] = useState<'Alta' | 'Media' | 'Baja'>('Alta');
+ const [newTaskResponsible, setNewTaskResponsible] = useState('Socio / Líder de Área');
+
+ // Pentagon State & Historical Comparison
+ const [pentagonData] = useState(INITIAL_PENTAGON_DATA);
+ const [selectedPentagonPeriod, setSelectedPentagonPeriod] = useState<string>('LB');
+
+ // Meetings & Planning State
+ const [meetings, setMeetings] = useState<any[]>([]);
+ const [minuteApprovals, setMinuteApprovals] = useState<Record<string, boolean>>({});
+ const [plannedSession, setPlannedSession] = useState<PlannedMeetingData | null>(null);
+
+ const fetchClientData = async () => {
+ setLoading(true);
+ const { data: org } = await supabase
+ .from('organizations')
+ .select('*')
+ .eq('id', id as string)
+ .single();
+
+ if (org) setClient(org);
+
+ // Load consolidated Supabase cloud workspace + Client Portal collaboration inbox
+ const [cloudWs, cloudCollab] = await Promise.all([
+ loadOrgWorkspaceFromDb(id as string),
+ loadClientCollabFromDb(id as string),
+ ]);
+
+ if (cloudWs?.clientStage) setClientStageState(cloudWs.clientStage);
+ if (cloudWs?.axesMeta && cloudWs.axesMeta.length > 0) setAxesMeta(cloudWs.axesMeta);
+ if (cloudCollab?.taskUpdates) setClientTaskUpdates(cloudCollab.taskUpdates);
+
+ // 1. Reset and load Diagnostic Answers strictly for this client (no cross-client bleed)
+ let clientAnswers: Record<number, ResponseOptionValue> =
+ id === EJEMPLO_SAS_ID ? { ...EJEMPLO_SAS_DEFAULT_ANSWERS } : {};
+
+ const { data: diagResp } = await (supabase
+ .from('diagnostic_responses') as any)
+ .select('*')
+ .eq('organization_id', id as string)
+ .order('created_at', { ascending: false })
+ .limit(1)
+ .maybeSingle();
+
+ if (diagResp?.answers && Object.keys(diagResp.answers).length > 0) {
+ const normalizedAnswers: Record<number, ResponseOptionValue> = {};
+ Object.entries(diagResp.answers).forEach(([key, val]) => {
+ const qId = Number(key.replace('q_', ''));
+ if (!isNaN(qId)) {
+ if (typeof val === 'string') {
+ normalizedAnswers[qId] = val as ResponseOptionValue;
+ } else if (val && typeof val === 'object' && 'value' in (val as any)) {
+ normalizedAnswers[qId] = (val as any).value as ResponseOptionValue;
+ }
+ }
+ });
+ if (Object.keys(normalizedAnswers).length > 0) {
+ clientAnswers = { ...clientAnswers, ...normalizedAnswers };
+ }
+ }
+
+ try {
+ const localSaved = localStorage.getItem(`gs_diag_answers_${id}`);
+ if (localSaved) {
+ const parsedLocal = JSON.parse(localSaved);
+ clientAnswers = { ...clientAnswers, ...parsedLocal };
+ }
+ } catch (e) {
+ console.warn('Error reading local diag answers:', e);
+ }
+
+ if (cloudWs?.diagnosticAnswers && Object.keys(cloudWs.diagnosticAnswers).length > 0) {
+ clientAnswers = { ...clientAnswers, ...cloudWs.diagnosticAnswers };
+ }
+
+ setDiagnosticAnswers(clientAnswers);
+
+ // 2. Load Quality Approvals (Rojo vs Verde) for this client
+ let nextOmv: ApprovalStatus = id === EJEMPLO_SAS_ID ? 'approved_published' : 'draft_review';
+ let nextDiag: ApprovalStatus = id === EJEMPLO_SAS_ID ? 'approved_published' : 'draft_review';
+ let nextMp: ApprovalStatus = id === EJEMPLO_SAS_ID ? 'approved_published' : 'draft_review';
+
+ const { data: dbApprovals } = await (supabase.from('quality_approvals') as any)
+ .select('entity_type, approval_status')
+ .eq('organization_id', id as string);
+
+ if (dbApprovals && dbApprovals.length > 0) {
+ const omvRow = dbApprovals.find((a: any) => a.entity_type === 'omv');
+ const diagRow = dbApprovals.find((a: any) => a.entity_type === 'diagnostic_360');
+ const mpRow = dbApprovals.find((a: any) => a.entity_type === 'master_plan');
+ if (omvRow) nextOmv = omvRow.approval_status === 'approved' || omvRow.approval_status === 'approved_published' ? 'approved_published' : 'draft_review';
+ if (diagRow) nextDiag = diagRow.approval_status === 'approved' || diagRow.approval_status === 'approved_published' ? 'approved_published' : 'draft_review';
+ if (mpRow) nextMp = mpRow.approval_status === 'approved' || mpRow.approval_status === 'approved_published' ? 'approved_published' : 'draft_review';
+ }
+
+ const localAppRaw = localStorage.getItem(`gs_approvals_${id}`);
+ if (localAppRaw) {
+ try {
+ const parsed = JSON.parse(localAppRaw);
+ if (parsed.omv) nextOmv = parsed.omv;
+ if (parsed.diagnostic_360) nextDiag = parsed.diagnostic_360;
+ if (parsed.master_plan) nextMp = parsed.master_plan;
+ } catch {
+ // ignore
+ }
+ }
+
+ if (cloudWs?.approvals) {
+ if (cloudWs.approvals.omv) nextOmv = cloudWs.approvals.omv;
+ if (cloudWs.approvals.diagnostic_360) nextDiag = cloudWs.approvals.diagnostic_360;
+ if (cloudWs.approvals.master_plan) nextMp = cloudWs.approvals.master_plan;
+ }
+
+ setOmvApproval(nextOmv);
+ setDiagApproval(nextDiag);
+ setMasterPlanApproval(nextMp);
+
+ // 3. Load Master Plan Tasks strictly for this client (Supabase Cloud Workspace -> master_plan_tasks -> localStorage)
+ const localTasksRaw = localStorage.getItem(`gs_master_plan_tasks_${id}`);
+ if (cloudWs?.masterPlanTasks && cloudWs.masterPlanTasks.length > 0) {
+ setTasks(cloudWs.masterPlanTasks);
+ localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(cloudWs.masterPlanTasks));
+ } else if (localTasksRaw) {
+ try {
+ setTasks(JSON.parse(localTasksRaw));
+ } catch {
+ setTasks(id === EJEMPLO_SAS_ID ? INITIAL_MASTER_PLAN_TASKS : []);
+ }
+ } else if (id === EJEMPLO_SAS_ID) {
+ setTasks(INITIAL_MASTER_PLAN_TASKS);
+ } else {
+ const { data: dbTasks } = await (supabase.from('master_plan_tasks') as any)
+ .select('*')
+ .eq('organization_id', id as string)
+ .order('code', { ascending: true });
+ if (dbTasks && dbTasks.length > 0) {
+ setTasks(
+ dbTasks.map((t: any, idx: number) => ({
+ id: String(t.id || idx + 1),
+ axis: t.axis || 1,
+ axisName: MASTER_PLAN_AXES.find((a) => a.id === (t.axis || 1))?.name || `Eje ${t.axis || 1}`,
+ code: t.code,
+ title: t.title,
+ priority: (t.priority === 'ALTA' ? 'Alta' : t.priority === 'BAJA' ? 'Baja' : 'Media') as 'Alta' | 'Media' | 'Baja',
+ startDate: t.start_date || 'Ago 2026',
+ dueDate: t.due_date || 'Nov 2026',
+ status: (t.status || 'SIN INICIAR').toUpperCase() as any,
+ assignedRole: t.assigned_role || 'Líder de Área',
+ progress: t.progress || 0,
+ }))
+ );
+ } else {
+ setTasks([]);
+ }
+ }
+
+ // 4. Load Meetings & Minutes
+ const { data: mtgs } = await supabase
+ .from('meetings')
+ .select('*, minutes(*)')
+ .eq('organization_id', id as string)
+ .order('meeting_date', { ascending: false });
+
+ if (mtgs) {
+ setMeetings(mtgs);
+ const localMinRaw = localStorage.getItem(`gs_minute_approvals_${id}`);
+ const parsedMin: Record<string, boolean> = localMinRaw ? JSON.parse(localMinRaw) : {};
+ for (const m of mtgs as any[]) {
+ const mins = Array.isArray(m.minutes) ? m.minutes : m.minutes ? [m.minutes] : [];
+ for (const min of mins) {
+ if (parsedMin[min.id] === undefined) {
+ parsedMin[min.id] = min.status === 'approved' || min.status === 'published' || min.quality_status === 'approved';
+ }
+ }
+ }
+ setMinuteApprovals(parsedMin);
+ }
+
+ // Mirror current org metadata to cloud workspace so Client Portal always resolves org details cleanly
+ if (org && id) {
+ saveOrgWorkspaceToDb(id, {
+ orgId: id,
+ orgName: org.name,
+ industry: org.industry || 'PyME',
+ portalAccessCode: org.portal_access_code || 'GS-DEMO-2026',
+ approvals: { omv: nextOmv, diagnostic_360: nextDiag, master_plan: nextMp },
+ diagnosticAnswers: clientAnswers,
+ });
+ }
+
+ setLoading(false);
+ };
+
+ useEffect(() => {
+ if (id) {
+ fetchClientData();
+ }
+ }, [id]);
+
+ const handleAnswerChange = (questionId: number, value: ResponseOptionValue) => {
+ setDbSyncStatus('saving');
+ setDiagnosticAnswers(prev => {
+ const next = { ...prev, [questionId]: value };
+ if (id) {
+ localStorage.setItem(`gs_diag_answers_${id}`, JSON.stringify(next));
+ const nextScores = calculateDiagnosticScores(next);
+ Promise.all([
+ saveOrgWorkspaceToDb(id, { diagnosticAnswers: next }),
+ (supabase.from('diagnostic_responses') as any).upsert([
+ {
+ organization_id: id,
+ answers: next,
+ pentagon_calculated: nextScores.pentagon,
+ ime_score: nextScores.globalIme,
+ ire_score: nextScores.globalIre,
+ status: 'in_progress',
+ },
+ ]),
+ ]).finally(() => setDbSyncStatus('synced'));
+ }
+ return next;
+ });
+ };
+
+ const handleSaveDiagnostic = async () => {
+ if (id) {
+ localStorage.setItem(`gs_diag_answers_${id}`, JSON.stringify(diagnosticAnswers));
+ }
+ try {
+ const { error } = await (supabase
+ .from('diagnostic_responses') as any)
+ .upsert([{
+ organization_id: id as string,
+ answers: diagnosticAnswers,
+ pentagon_calculated: diagnosticResults.pentagon,
+ ime_score: diagnosticResults.globalIme,
+ ire_score: diagnosticResults.globalIre,
+ status: 'completed'
+ }]);
+
+ if (error) throw error;
+ alert('¡Diagnóstico guardado con éxito en Supabase! Indicadores y matrices recalculados.');
+ } catch (err: any) {
+ console.error('Error guardando diagnóstico:', err);
+ alert('¡Diagnóstico guardado localmente! (Nota: ' + (err?.message || 'sincronizado') + ')');
+ }
+ };
+
+ // Persistencia de auditoría de control de calidad (Rojo - Verde)
+ const handleQualityApprovalChange = async (
+ entityType: 'diagnostic_360' | 'omv' | 'master_plan' | 'minute',
+ newStatus: ApprovalStatus,
+ audit: AuditConsultants
+ ) => {
+ const nextApprovals = {
+ omv: entityType === 'omv' ? newStatus : omvApproval,
+ diagnostic_360: entityType === 'diagnostic_360' ? newStatus : diagApproval,
+ master_plan: entityType === 'master_plan' ? newStatus : masterPlanApproval,
+ };
+
+ if (entityType === 'diagnostic_360') {
+ setDiagApproval(newStatus);
+ setDiagAudit(audit);
+ } else if (entityType === 'omv') {
+ setOmvApproval(newStatus);
+ setOmvAudit(audit);
+ } else if (entityType === 'master_plan') {
+ setMasterPlanApproval(newStatus);
+ setMasterPlanAudit(audit);
+ }
+
+ if (id) {
+ setDbSyncStatus('saving');
+ localStorage.setItem(`gs_approvals_${id}`, JSON.stringify(nextApprovals));
+ saveOrgWorkspaceToDb(id, { approvals: nextApprovals }).then(() => setDbSyncStatus('synced'));
+ }
+
+ try {
+ await (supabase.from('quality_approvals') as any)
+ .delete()
+ .eq('organization_id', id as string)
+ .eq('entity_type', entityType);
+
+ await (supabase.from('quality_approvals') as any).insert([{
+ organization_id: id as string,
+ entity_type: entityType,
+ entity_id: id as string,
+ approval_status: newStatus === 'approved_published' ? 'approved' : 'in_review',
+ consultant_name: audit.approvedBy || audit.leaderConsultant || 'Consultor GS',
+ quality_score: newStatus === 'approved_published' ? 9.8 : 0,
+ comments: audit.notes || (newStatus === 'approved_published' ? 'Aprobado formalmente y publicado al portal del cliente.' : 'Puesto en revisión interna.'),
+ reviewed_at: new Date().toISOString()
+ }]);
+ } catch (err) {
+ console.warn('Could not record quality approval log to Supabase:', err);
+ }
+ };
+
+ const handleTaskStatusChange = async (code: string, newStatus: string) => {
+ const updated = tasks.map((t) =>
+ t.code === code
+ ? {
+ ...t,
+ status: newStatus as any,
+ progress: newStatus === 'FINALIZADO' ? 100 : newStatus === 'EN PROCESO' ? 55 : 0,
+ }
+ : t
+ );
+ setTasks(updated);
+ if (id) {
+ setDbSyncStatus('saving');
+ localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(updated));
+ saveOrgWorkspaceToDb(id, { masterPlanTasks: updated }).then(() => setDbSyncStatus('synced'));
+ }
+ try {
+ await (supabase.from('master_plan_tasks') as any)
+ .update({ status: newStatus, progress: newStatus === 'FINALIZADO' ? 100 : newStatus === 'EN PROCESO' ? 55 : 0 })
+ .eq('organization_id', id as string)
+ .eq('code', code);
+ } catch {
+ // ignore
+ }
+ };
+
+ const handleCreateMasterPlanTask = async (e: React.FormEvent) => {
+ e.preventDefault();
+ if (!newTaskTitle.trim()) return;
+ const axisObj = MASTER_PLAN_AXES.find((a) => a.id === newTaskAxis) || MASTER_PLAN_AXES[0];
+ const generatedCode = newTaskCode.trim() || `${newTaskAxis}.${tasks.filter((t) => t.axis === newTaskAxis).length + 1}`;
+ const newItem = {
+ id: `mpe_${Date.now()}`,
+ axis: newTaskAxis,
+ axisName: axisObj.name,
+ code: generatedCode,
+ title: newTaskTitle.trim(),
+ priority: newTaskPriority,
+ startDate: 'Ago 2026',
+ dueDate: 'Nov 2026',
+ status: 'SIN INICIAR' as const,
+ assignedRole: newTaskResponsible.trim() || 'Líder de Área',
+ progress: 0,
+ };
+ const updated = [...tasks, newItem];
+ setTasks(updated);
+ if (id) {
+ setDbSyncStatus('saving');
+ localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(updated));
+ saveOrgWorkspaceToDb(id, { masterPlanTasks: updated }).then(() => setDbSyncStatus('synced'));
+ }
+ try {
+ await (supabase.from('master_plan_tasks') as any).insert([{
+ organization_id: id as string,
+ axis: newTaskAxis,
+ code: generatedCode,
+ title: newTaskTitle.trim(),
+ priority: newTaskPriority,
+ status: 'SIN INICIAR',
+ assigned_role: newTaskResponsible.trim() || 'Líder de Área',
+ progress: 0,
+ }]);
+ } catch {
+ // ignore
+ }
+ setIsNewTaskModalOpen(false);
+ setNewTaskCode('');
+ setNewTaskTitle('');
+ };
+
+ const handleToggleMinuteApproval = async (minuteId: string) => {
+ const current = minuteApprovals[minuteId] ?? true;
+ const nextVal = !current;
+ const updated = { ...minuteApprovals, [minuteId]: nextVal };
+ setMinuteApprovals(updated);
+ if (id) {
+ localStorage.setItem(`gs_minute_approvals_${id}`, JSON.stringify(updated));
+ }
+ try {
+ await (supabase.from('minutes') as any)
+ .update({
+ status: nextVal ? 'published' : 'draft',
+ quality_status: nextVal ? 'approved' : 'in_review',
+ })
+ .eq('id', minuteId);
+ } catch {
+ // ignore
+ }
+ };
+
+ // Despacho de notificaciones oficiales por WhatsApp al grupo del cliente
+ const handleSendWhatsAppNotification = async (moduleName: string) => {
+ if (!client) return;
+ const portalUrl = `${window.location.origin}/portal/${client.id}`;
+ const message = `🔔 *CONSULTORA GS - NOTIFICACIÓN ESTRATÉGICA*\n\nEstimado equipo de *${client.name}*:\nLes informamos que se ha aprobado y publicado oficialmente el módulo: *${moduleName}*.\n\nPueden acceder al Portal de Gestión Estratégica con su código de acceso:\n🔑 Código: *${client.portal_access_code || 'GS-DEMO-2026'}*\n🔗 Enlace: ${portalUrl}\n\n_Consultora GS · Metodología GrowLabs_`;
+
+ try {
+ const { error } = await supabase.functions.invoke('send-whatsapp', {
+ body: {
+ organization_id: client.id,
+ number: client.whatsapp_group_id || client.phone || '5491100000000',
+ message: message
+ }
+ });
+ if (error) throw error;
+ alert(`✅ Notificación enviada con éxito al WhatsApp del cliente (${client.name}).`);
+ } catch (err: any) {
+ console.warn('Edge function send-whatsapp no disponible o error:', err);
+ const encoded = encodeURIComponent(message);
+ window.open(`https://wa.me/?text=${encoded}`, '_blank');
+ }
+ };
+
+ // Comparativa del Radar: Período Seleccionado vs Actual en Vivo vs Meta Trienal
+ const currentPeriod = pentagonData.find(p => p.periodCode === selectedPentagonPeriod) || pentagonData[0];
+ const metaPeriod = pentagonData[pentagonData.length - 1];
+
+ const radarChartData = [
+ { subject: 'Gobernanza', Baseline: currentPeriod.gobernanza, Actual: diagnosticResults.pentagon.directorio || 5.0, Meta: metaPeriod.gobernanza },
+ { subject: 'Procesos', Baseline: currentPeriod.procesos, Actual: diagnosticResults.pentagon.procesos || 3.7, Meta: metaPeriod.procesos },
+ { subject: 'Finanzas', Baseline: currentPeriod.finanzas, Actual: diagnosticResults.pentagon.finanzas || 4.0, Meta: metaPeriod.finanzas },
+ { subject: 'Talento', Baseline: currentPeriod.talento, Actual: diagnosticResults.pentagon.talento || 6.0, Meta: metaPeriod.talento },
+ { subject: 'Comercial', Baseline: currentPeriod.comercial, Actual: diagnosticResults.pentagon.comercial || 5.5, Meta: metaPeriod.comercial },
+ ];
+
+ const answeredQuestionsCount = Object.keys(diagnosticAnswers).length;
+ const totalQuestionsCatalog = 100;
+ const profileProgressPercent = Math.min(100, Math.round((answeredQuestionsCount / totalQuestionsCatalog) * 100));
+
+ if (loading) return <div className="p-8 text-center text-zinc-500 font-bold font-display ">Cargando información del cliente...</div>;
+ if (!client) return <div className="p-8 text-center text-zinc-500 font-bold font-display ">Cliente no encontrado.</div>;
+
+ // VISTA CLIENTE EXCLUSIVA (FRONT)
+ if (viewMode === 'cliente') {
+ return (
+ <div className="space-y-6 max-w-7xl mx-auto pb-16">
+ <div className="bg-gradient-to-r from-[#0F2438] via-[#17324D] to-[#115E59] text-white px-5 py-3.5 rounded-2xl flex items-center justify-between text-xs font-semibold shadow-sm">
+ <span className="flex items-center gap-2">
+ <span className="w-2 h-2 rounded-full bg-[#2DD4BF] animate-ping" />
+ Simulación Portal Cliente Activa · Visualizando únicamente entregables aprobados
+ </span>
+ <button
+ onClick={() => navigate(`/clients/${id}`)}
+ className="btn-nordic-teal px-4 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
+ >
+ Volver a Modo Consultor GS
+ </button>
+ </div>
+ <ClientPortalView
+ client={client}
+ results={diagnosticResults}
+ isOmvApproved={omvApproval === 'approved_published'}
+ isDiagnosticApproved={diagApproval === 'approved_published'}
+ isMasterPlanApproved={masterPlanApproval === 'approved_published'}
+ masterPlanTasks={tasks.map((t) => ({
+ code: t.code,
+ axis: t.axis || 1,
+ axisName: t.axisName,
+ title: t.title,
+ priority: t.priority,
+ status: t.status,
+ responsible: t.assignedRole,
+ dueDate: t.dueDate,
+ progress: t.progress,
+ }))}
+ />
+ </div>
+ );
+ }
+
+ // Architecture A Derived Helpers (Pipeline Step Order, Published Count & Contextual Guide)
+ const stageIndexMap: Record<ClientStage, number> = {
+ relevamiento: 0,
+ kickoff_omv: 1,
+ diagnostic_in_progress: 2,
+ diagnostic_closed: 3,
+ master_plan_active: 4,
+ };
+ const currentStageIdx = stageIndexMap[clientStage] ?? 2;
+ const publishedCount = [omvApproval, diagApproval, masterPlanApproval].filter(
+ (s) => s === 'approved_published'
+ ).length;
+ const pendingClientUpdatesCount = Object.keys(clientTaskUpdates).length;
+
+ const pipelineItems = [
+ { id: 'relevamiento', step: 0, path: `/clients/${id}/relevamiento`, name: '0. Relevamiento', icon: Briefcase },
+ { id: 'omv', step: 1, path: `/clients/${id}/omb`, name: '1. Kickoff & OMV', icon: Compass },
+ { id: 'diagnostic', step: 2, path: `/clients/${id}/diagnostic`, name: '2. Diagnóstico 360°', icon: FileText, badge: `${diagnosticResults.progressPercentage}%` },
+ { id: 'matrices', step: 3, path: `/clients/${id}/matrices`, name: '3. Matrices & Riesgos', icon: Layers, badge: `${diagnosticResults.risks.length}` },
+ {
+ id: 'master_plan',
+ step: 4,
+ path: `/clients/${id}/master-plan`,
+ name: '4. Master Plan',
+ icon: Target,
+ badge: pendingClientUpdatesCount > 0 ? `${pendingClientUpdatesCount} pend.` : `${tasks.length}`,
+ highlightBadge: pendingClientUpdatesCount > 0,
+ },
+ ];
+
+ const toolItems = [
+ { id: 'documents', path: `/clients/${id}/documents`, name: 'Documentos', icon: Folder },
+ { id: 'meetings', path: `/clients/${id}/meetings`, name: 'Sesiones & Audio', icon: Mic, badge: `${meetings.length}` },
+ { id: 'portal_preview', path: `/clients/${id}/portal`, name: 'Vista Cliente', icon: Eye },
+ ];
+
+ const activeGuide = (() => {
+ switch (activeTab) {
+ case 'relevamiento':
+ return {
+ badge: 'Etapa 0 · Relevamiento',
+ title: 'Relevamiento Comercial & Propuesta Económica',
+ text: 'Asigne el código de proyecto (ej. 26-030), registre la primera entrevista comercial y apruebe el presupuesto para habilitar el Kickoff.',
+ prompt: `Explicame cómo estructurar el Relevamiento Comercial (Etapa 0) para ${client.name}.`,
+ nextLabel: 'Ir a 1. Kickoff & OMV',
+ nextPath: `/clients/${id}/omb`,
+ };
+ case 'omv':
+ return {
+ badge: 'Etapa 1 · Kickoff & OMV',
+ title: 'Declaración OMV en Presente y 8 Targets CVA',
+ text: 'Redacte el Objetivo Material Visualizado a 3 años en tiempo presente y complete los 8 valores meta CVA antes de publicar al cliente.',
+ prompt: `Mostrame el estado actual del OMV y los 8 Targets CVA de ${client.name}.`,
+ nextLabel: 'Ir a 2. Diagnóstico 360°',
+ nextPath: `/clients/${id}/diagnostic`,
+ };
+ case 'diagnostic':
+ return {
+ badge: 'Etapa 2 · Diagnóstico 360°',
+ title: 'Relevamiento de 100 Preguntas en 10 Áreas',
+ text: 'Complete las respuestas por área o utilice Grabar Sesión para responder automáticamente con citas textuales desde el audio.',
+ prompt: `¿Qué áreas del Diagnóstico 360° de ${client.name} faltan completar y cuáles son críticas?`,
+ nextLabel: 'Ir a 3. Matrices & Riesgos',
+ nextPath: `/clients/${id}/matrices`,
+ };
+ case 'matrices':
+ return {
+ badge: 'Etapa 3 · Matrices & Riesgos',
+ title: 'Matrices FODA, PESTEL, Porter e Índice IRE',
+ text: 'Revise los puntajes calculados automáticamente de IME (9 áreas) e IRE (12 dimensiones y matriz de riesgos) derivados del diagnóstico.',
+ prompt: `Explicame los principales riesgos críticos e indicadores IME/IRE detectados en ${client.name}.`,
+ nextLabel: 'Ir a 4. Master Plan',
+ nextPath: `/clients/${id}/master-plan`,
+ };
+ case 'master_plan':
+ return {
+ badge: 'Etapa 4 · Master Plan',
+ title: 'Plan MPE en 5 Ejes, Puente AVANCE-EJES y Exportación .XLSX',
+ text: 'Edite Brecha, Iniciativa y OKRs por eje, valide avances reportados por el cliente y descargue el Workbook oficial mapeado (6 hojas).',
+ prompt: `Calculá el puente AVANCE-EJES de ${client.name} y decime si hay avances pendientes de validar.`,
+ };
+ default:
+ return {
+ badge: 'Resumen Ejecutivo 360°',
+ title: `Centro de Comando · ${client.name}`,
+ text: 'Controle la publicación al Portal desde el menú desplegable superior, navegue por las etapas 0→4 a la izquierda o inicie una grabación en vivo.',
+ prompt: `Haceme un resumen ejecutivo del estado actual de ${client.name} y el próximo paso sugerido.`,
+ nextLabel: 'Ir a Etapa Activa',
+ nextPath:
+ clientStage === 'relevamiento'
+ ? `/clients/${id}/relevamiento`
+ : clientStage === 'kickoff_omv'
+ ? `/clients/${id}/omb`
+ : clientStage === 'master_plan_active'
+ ? `/clients/${id}/master-plan`
+ : `/clients/${id}/diagnostic`,
+ };
+ }
+ })();
+
+ // VISTA CONSULTOR GS (ARQUITECTURA A · SUB-SIDEBAR + POPOVER)
+ return (
+ <div className="space-y-4 max-w-[1440px] mx-auto pb-12">
+ {/* Single Compact Command Header */}
+ <div
+ ref={headerPopoversRef}
+ className="relative z-20 bg-white rounded-2xl border border-slate-200/90 px-4 py-2.5 shadow-2xs flex flex-wrap items-center justify-between gap-3"
+ >
+ {/* Left: Back + Client Identity + Stage Pill + ? Guía Trigger */}
+ <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+ <button
+ type="button"
+ onClick={() => {
+ if (subAction) {
+ navigate(`/clients/${id}/meetings`);
+ } else if (effectiveSection && effectiveSection !== 'dashboard') {
+ navigate(`/clients/${id}`);
+ } else {
+ navigate('/clients');
+ }
+ }}
+ className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer shrink-0"
+ title={
+ subAction
+ ? 'Volver a Sesiones'
+ : effectiveSection && effectiveSection !== 'dashboard'
+ ? 'Volver al Resumen 360°'
+ : 'Volver a Cartera de Clientes'
+ }
+ >
+ <ArrowLeft className="h-4 w-4" />
+ </button>
+
+ <h1 className="text-base sm:text-lg font-bold font-display tracking-tight text-[#17324D] truncate">
+ {client.name}
+ </h1>
+
+ <span className="hidden md:inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
+ {client.industry || 'Empresa SAS'}
+ </span>
+
+ <span className="inline-flex items-center rounded-lg bg-[#F0FDFA] border border-teal-200/90 px-2.5 py-0.5 text-[11px] font-semibold text-[#0F766E]">
+ {clientStage === 'relevamiento'
+ ? 'Etapa 0 · Relevamiento'
+ : clientStage === 'kickoff_omv'
+ ? 'Etapa 1 · Kickoff & OMV'
+ : clientStage === 'diagnostic_in_progress'
+ ? 'Etapa 2 · Diagnóstico'
+ : clientStage === 'diagnostic_closed'
+ ? 'Etapa 3 · Matrices'
+ : 'Etapa 4 · Master Plan'}
+ </span>
+
+ {/* Contextual ? Guía Trigger */}
+ <button
+ type="button"
+ onClick={() => {
+ setGuidePopoverOpen((prev) => !prev);
+ setPublishPopoverOpen(false);
+ }}
+ className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors cursor-pointer ${
+ guidePopoverOpen
+ ? 'bg-[#EDF3F8] border-slate-300 text-[#17324D]'
+ : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-[#17324D]'
+ }`}
+ >
+ <HelpCircle className="w-3.5 h-3.5 text-[#0D9488]" />
+ <span>Guía</span>
+ </button>
+
+ {dbSyncStatus === 'saving' && (
+ <span className="text-[11px] text-slate-400 font-medium animate-pulse">
+ Guardando...
+ </span>
+ )}
+ </div>
+
+ {/* Right: Publication Governance Popover Trigger + Grabar Sesión Primary CTA */}
+ <div className="flex flex-wrap items-center gap-2 shrink-0">
+ <button
+ type="button"
+ onClick={() => {
+ setPublishPopoverOpen((prev) => !prev);
+ setGuidePopoverOpen(false);
+ }}
+ className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+ publishedCount === 3
+ ? 'bg-emerald-50/80 text-emerald-800 border-emerald-200 hover:bg-emerald-100/80'
+ : 'bg-white text-[#17324D] border-slate-200 hover:bg-slate-50'
+ }`}
+ title="Configurar qué módulos están publicados en el Portal del Cliente"
+ >
+ <Eye className="w-3.5 h-3.5 text-[#0D9488]" />
+ <span>Publicación ({publishedCount}/3)</span>
+ <ChevronDown className={`w-3.5 h-3.5 transition-transform ${publishPopoverOpen ? 'rotate-180' : ''}`} />
+ </button>
+
+ <button
+ type="button"
+ onClick={() => navigate(`/clients/${id}/meetings/live`)}
+ className="btn-nordic-primary px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+ >
+ <Mic className="w-3.5 h-3.5 text-[#2DD4BF]" />
+ <span>Grabar Sesión</span>
+ </button>
+ </div>
+
+ {/* Anchored Popover 1: Contextual Guide (? Guía) */}
+ {guidePopoverOpen && (
+ <div className="absolute left-4 top-full mt-2 w-[92vw] max-w-md bg-white rounded-2xl border border-slate-200 shadow-[0_20px_50px_-12px_rgba(23,50,77,0.2)] p-4 z-40 space-y-3">
+ <div className="flex items-center justify-between gap-2">
+ <span className="px-2.5 py-0.5 rounded-md bg-[#EDF3F8] text-[#17324D] text-[11px] font-semibold">
+ {activeGuide.badge}
+ </span>
+ <button
+ type="button"
+ onClick={() => setGuidePopoverOpen(false)}
+ className="text-xs text-slate-400 hover:text-slate-700 cursor-pointer"
+ >
+ Cerrar ✕
+ </button>
+ </div>
+ <div>
+ <h3 className="font-display text-sm font-bold text-[#17324D]">{activeGuide.title}</h3>
+ <p className="text-xs text-slate-600 leading-relaxed mt-1">{activeGuide.text}</p>
+ </div>
+ <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+ <button
+ type="button"
+ onClick={() => {
+ setGuidePopoverOpen(false);
+ askGrowyContextual(activeGuide.prompt);
+ }}
+ className="px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-[#17324D] border border-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+ >
+ <Bot className="w-3.5 h-3.5 text-[#0D9488]" />
+ Consultar a Growy
+ </button>
+ {activeGuide.nextLabel && activeGuide.nextPath && (
+ <button
+ type="button"
+ onClick={() => {
+ setGuidePopoverOpen(false);
+ navigate(activeGuide.nextPath!);
+ }}
+ className="btn-nordic-teal px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+ >
+ <span>{activeGuide.nextLabel}</span>
+ <ArrowRight className="w-3.5 h-3.5" />
+ </button>
+ )}
+ </div>
+ </div>
+ )}
+
+ {/* Anchored Popover 2: Portal Visibility Governance (👁 Publicación X/3) */}
+ {publishPopoverOpen && (
+ <div className="absolute right-0 top-full mt-2 w-[92vw] sm:w-96 bg-white rounded-2xl border border-slate-200 shadow-[0_20px_50px_-12px_rgba(23,50,77,0.22)] p-4 z-40 space-y-3.5">
+ <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
+ <div>
+ <h3 className="font-display text-xs font-bold text-[#17324D] flex items-center gap-1.5">
+ <ShieldCheck className="w-4 h-4 text-[#0D9488]" />
+ Gobierno de Visibilidad del Portal
+ </h3>
+ <p className="text-[11px] text-slate-500 mt-0.5">
+ Clave corporativa:{' '}
+ <strong className="font-mono text-[#0F766E]">
+ {client.portal_access_code || 'GS-DEMO-2026'}
+ </strong>
+ </p>
+ </div>
+ <button
+ type="button"
+ onClick={() => setPublishPopoverOpen(false)}
+ className="text-xs text-slate-400 hover:text-slate-700 cursor-pointer"
+ >
+ ✕
+ </button>
+ </div>
+
+ <div className="space-y-2">
+ {[
+ { key: 'omv' as const, label: '1. Visión OMV & Targets', status: omvApproval, audit: omvAudit },
+ { key: 'diagnostic_360' as const, label: '2. Diagnóstico 360°', status: diagApproval, audit: diagAudit },
+ { key: 'master_plan' as const, label: '3. Master Plan Estratégico', status: masterPlanApproval, audit: masterPlanAudit },
+ ].map((item) => {
+ const isApproved = item.status === 'approved_published';
+ return (
+ <div
+ key={item.key}
+ className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80"
+ >
+ <span className="text-xs font-semibold text-slate-800">{item.label}</span>
+ <button
+ type="button"
+ onClick={() =>
+ handleQualityApprovalChange(
+ item.key,
+ isApproved ? 'draft_review' : 'approved_published',
+ item.audit
+ )
+ }
+ className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+ isApproved
+ ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+ : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+ }`}
+ >
+ <span className={`w-1.5 h-1.5 rounded-full ${isApproved ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+ {isApproved ? 'Publicado' : 'En revisión'}
+ </button>
+ </div>
+ );
+ })}
+ </div>
+
+ <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+ <Link
+ to={`/clients/${id}/portal`}
+ onClick={() => setPublishPopoverOpen(false)}
+ className="text-xs font-semibold text-slate-600 hover:text-[#17324D]"
+ >
+ Simular vista aquí
+ </Link>
+ <Link
+ to={`/portal/${client.id}`}
+ className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#EDF3F8] hover:bg-slate-200/80 text-[#17324D] text-xs font-semibold transition-colors"
+ >
+ <span>Abrir Portal Cliente</span>
+ <ExternalLink className="w-3.5 h-3.5 text-[#0D9488]" />
+ </Link>
+ </div>
+ </div>
+ )}
+ </div>
+
+ {/* Mobile Horizontal Quick Selector (< lg) */}
+ <div className="lg:hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+ {[
+ { id: 'dashboard', path: `/clients/${id}`, name: 'Resumen 360°' },
+ ...pipelineItems,
+ ...toolItems,
+ ].map((item) => (
+ <Link
+ key={item.id}
+ to={item.path}
+ className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+ activeTab === item.id
+ ? 'bg-[#17324D] text-white border-[#17324D] font-semibold'
+ : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+ }`}
+ >
+ {item.name}
+ </Link>
+ ))}
+ </div>
+
+ {/* Master-Detail Layout: 3-Col Semantic Sub-Sidebar + 9-Col Workspace */}
+ <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+ {/* Left Semantic Sub-Sidebar (3 cols on desktop) */}
+ <aside className="hidden lg:block lg:col-span-3 lg:sticky lg:top-4 bg-white rounded-2xl border border-slate-200/90 p-3 shadow-2xs space-y-3.5">
+ {/* Overview Link */}
+ <Link
+ to={`/clients/${id}`}
+ className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+ activeTab === 'dashboard'
+ ? 'bg-[#EDF3F8] text-[#17324D] font-semibold shadow-[inset_3px_0_0_#0D9488]'
+ : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+ }`}
+ >
+ <span className="flex items-center gap-2.5">
+ <Activity className={`h-4 w-4 ${activeTab === 'dashboard' ? 'text-[#0D9488]' : 'text-slate-400'}`} />
+ <span>Resumen 360°</span>
+ </span>
+ {activeTab === 'dashboard' && <span className="h-1.5 w-1.5 rounded-full bg-[#0D9488]" />}
+ </Link>
+
+ {/* Consulting Pipeline 0 -> 4 */}
+ <div className="space-y-1.5">
+ <div className="px-2.5 flex items-center justify-between">
+ <span className="text-[11px] font-semibold text-slate-400">Ciclo Consultoría 0 → 4</span>
+ <span className="text-[10px] font-mono text-slate-400">{profileProgressPercent}%</span>
+ </div>
+ <div className="ml-2.5 pl-2.5 border-l-2 border-slate-200/90 space-y-1">
+ {pipelineItems.map((item) => {
+ const isActive = activeTab === item.id;
+ const isCompleted = item.step < currentStageIdx;
+ const isCurrentStage = item.step === currentStageIdx;
+ return (
+ <Link
+ key={item.id}
+ to={item.path}
+ className={`flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs transition-all ${
+ isActive
+ ? 'bg-[#EDF3F8] text-[#17324D] font-semibold shadow-[inset_3px_0_0_#0D9488]'
+ : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
+ }`}
+ >
+ <span className="flex items-center gap-2 min-w-0">
+ {isCompleted ? (
+ <CheckCircle2 className="h-3.5 w-3.5 text-[#0D9488] shrink-0" />
+ ) : isCurrentStage ? (
+ <span className="h-2 w-2 rounded-full bg-[#0D9488] shrink-0 ml-0.5 mr-1" />
+ ) : (
+ <Circle className="h-3 w-3 text-slate-300 shrink-0 ml-0.5" />
+ )}
+ <span className="truncate">{item.name}</span>
+ </span>
+ {item.badge && (
+ <span
+ className={`px-1.5 py-0.5 rounded-md text-[10px] font-mono font-semibold shrink-0 ${
+ item.highlightBadge
+ ? 'bg-amber-100 text-amber-800 border border-amber-200'
+ : isActive
+ ? 'bg-white text-[#0F766E] border border-teal-200/80'
+ : 'bg-slate-100 text-slate-500'
+ }`}
+ >
+ {item.badge}
+ </span>
+ )}
+ </Link>
+ );
+ })}
+ </div>
+ </div>
+
+ {/* Cross-Cutting Tools & Client Mirror */}
+ <div className="pt-2.5 border-t border-slate-100 space-y-1">
+ <span className="px-2.5 text-[11px] font-semibold text-slate-400 block mb-1">
+ Herramientas & Portal
+ </span>
+ {toolItems.map((item) => {
+ const isActive = activeTab === item.id;
+ return (
+ <Link
+ key={item.id}
+ to={item.path}
+ className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+ isActive
+ ? 'bg-[#EDF3F8] text-[#17324D] font-semibold shadow-[inset_3px_0_0_#0D9488]'
+ : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+ }`}
+ >
+ <span className="flex items-center gap-2.5 truncate">
+ <item.icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#0D9488]' : 'text-slate-400'}`} />
+ <span className="truncate">{item.name}</span>
+ </span>
+ {item.badge && (
+ <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-500 text-[10px] font-mono font-semibold">
+ {item.badge}
+ </span>
+ )}
+ </Link>
+ );
+ })}
+ </div>
+ </aside>
+
+ {/* Right Main Workspace (9 cols on desktop) */}
+ <div className="lg:col-span-9 min-w-0 space-y-5">
+ {/* TAB 1: DASHBOARD 360 (Immediate Above-the-Fold KPIs + Radar + Risks) */}
+ {activeTab === 'dashboard' && (
+ <div className="space-y-4">
+ {/* Inline 3-Card KPI Strip */}
+ <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+ <div className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs flex items-center gap-3">
+ <MiniImeRing score={diagnosticResults.globalIme10 || 7.8} maxScore={10} />
+ <div className="min-w-0">
+ <span className="text-[11px] font-medium text-slate-500 block">Madurez IME</span>
+ <span className="text-sm font-bold text-[#17324D] font-display block">
+ {diagnosticResults.globalIme10 || 7.8} / 10
+ </span>
+ <span className="text-[11px] text-[#0D9488] font-medium">Meta trienal: 8.0</span>
+ </div>
+ </div>
+
+ <div className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs flex items-center gap-3">
+ <div className="w-11 h-11 rounded-xl bg-[#EDF3F8] border border-slate-200/80 flex flex-col items-center justify-center shrink-0">
+ <span className="text-xs font-bold font-display text-[#17324D] leading-none">
+ {diagnosticResults.globalIre || 22}%
+ </span>
+ <span className="text-[9px] font-semibold text-[#0D9488] mt-0.5">IRE</span>
+ </div>
+ <div className="min-w-0">
+ <span className="text-[11px] font-medium text-slate-500 block">Riesgo IRE</span>
+ <span className="text-sm font-bold text-[#17324D] font-display block truncate">
+ {(diagnosticResults.globalIre || 22) < 30 ? 'Bajo / Moderado' : 'En mitigación'}
+ </span>
+ <span className="text-[11px] text-slate-400">Matriz 12 dimensiones</span>
+ </div>
+ </div>
+
+ <div className="bg-white rounded-xl border border-slate-200/90 p-3.5 shadow-2xs flex flex-col justify-between gap-2">
+ <div className="flex items-center justify-between gap-2">
+ <span className="text-[11px] font-medium text-slate-500">Avance Diagnóstico 360°</span>
+ <span
+ className="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded"
+ title="Identificador aislado multi-tenant"
+ >
+ ID {client.id.substring(0, 6)}
+ </span>
+ </div>
+ <div className="flex items-baseline justify-between">
+ <span className="text-sm font-bold text-[#17324D] font-display">
+ {answeredQuestionsCount} / {totalQuestionsCatalog} respuestas
+ </span>
+ <span className="text-xs font-semibold text-[#0D9488]">{profileProgressPercent}%</span>
+ </div>
+ <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+ <div
+ className="bg-gradient-to-r from-[#17324D] to-[#0D9488] h-full rounded-full transition-all duration-500"
+ style={{ width: `${profileProgressPercent}%` }}
+ />
+ </div>
+ </div>
+ </div>
+
+ {/* Immediate Charts Grid: Pentagon Radar (3/5) + Next Action & Critical Risks (2/5) */}
+ <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+ {/* Pentagon Radar Chart (3 cols) */}
+ <div className="xl:col-span-3 bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2">
+ <div>
+ <h2 className="font-display text-sm sm:text-base font-bold text-[#17324D]">
+ Pentágono de Madurez (5 Ejes Estratégicos)
+ </h2>
+ <p className="text-xs text-slate-500">
+ {currentPeriod.label} vs. Actual en vivo vs. Meta ({metaPeriod.imeActual})
+ </p>
+ </div>
+ <div className="flex flex-col sm:items-end gap-1.5">
+ <div className="flex items-center gap-2.5 text-[11px] font-medium">
+ <span className="flex items-center gap-1 text-slate-500">
+ <span className="h-2 w-2 rounded-full bg-slate-400" /> {currentPeriod.periodCode} ({currentPeriod.imeActual})
+ </span>
+ <span className="flex items-center gap-1 text-[#0D9488] font-semibold">
+ <span className="h-2 w-2 rounded-full bg-[#0D9488]" /> Actual ({diagnosticResults.globalIme10})
+ </span>
+ <span className="flex items-center gap-1 text-[#17324D] font-medium">
+ <span className="h-2 w-2 rounded-full bg-[#17324D]" /> Meta ({metaPeriod.imeActual})
+ </span>
+ </div>
+ <div className="flex items-center gap-1 overflow-x-auto max-w-xs pb-0.5">
+ {pentagonData.map((p) => (
+ <button
+ key={p.periodCode}
+ type="button"
+ onClick={() => setSelectedPentagonPeriod(p.periodCode)}
+ className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all cursor-pointer ${
+ selectedPentagonPeriod === p.periodCode
+ ? 'bg-[#17324D] text-white shadow-2xs'
+ : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+ }`}
+ title={p.label}
+ >
+ {p.periodCode}
+ </button>
+ ))}
+ </div>
+ </div>
+ </div>
+ <div className="h-72 w-full min-h-[285px]">
+ <ResponsiveContainer width="100%" height={285} minWidth={0} minHeight={270}>
+ <RadarChart data={radarChartData}>
+ <PolarGrid stroke="#e2e8f0" />
+ <PolarAngleAxis
+ dataKey="subject"
+ tick={{ fill: '#17324D', fontSize: 11, fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }}
+ />
+ <PolarRadiusAxis angle={30} domain={[0, 10]} stroke="#94a3b8" />
+ <Tooltip />
+ <Radar name="Línea Base" dataKey="Baseline" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.14} />
+ <Radar name="Actual" dataKey="Actual" stroke="#0D9488" fill="#0D9488" fillOpacity={0.26} strokeWidth={2.2} />
+ <Radar
+ name="Meta Trienal"
+ dataKey="Meta"
+ stroke="#17324D"
+ fill="#17324D"
+ fillOpacity={0.07}
+ strokeDasharray="4 3"
+ strokeWidth={1.6}
+ />
+ </RadarChart>
+ </ResponsiveContainer>
+ </div>
+ </div>
+
+ {/* Next Recommended Action + Critical Risks (2 cols) */}
+ <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs flex flex-col justify-between gap-4">
+ <div className="space-y-3.5">
+ {/* Next Action Card */}
+ <button
+ type="button"
+ onClick={() =>
+ navigate(
+ pendingClientUpdatesCount > 0
+ ? `/clients/${id}/master-plan`
+ : activeGuide.nextPath || `/clients/${id}/diagnostic`
+ )
+ }
+ className="w-full text-left p-3 rounded-xl bg-gradient-to-r from-[#F0FDFA] to-[#EDF3F8] border border-teal-200/80 hover:border-[#0D9488] transition-all flex items-center justify-between gap-2 cursor-pointer group"
+ >
+ <div className="min-w-0">
+ <span className="text-[10px] font-semibold text-[#0F766E] block">
+ Siguiente acción recomendada
+ </span>
+ <span className="text-xs font-bold text-[#17324D] block truncate mt-0.5">
+ {pendingClientUpdatesCount > 0
+ ? `Validar ${pendingClientUpdatesCount} avance(s) del cliente en Master Plan`
+ : `Continuar en ${
+ clientStage === 'relevamiento'
+ ? '0. Relevamiento Comercial'
+ : clientStage === 'kickoff_omv'
+ ? '1. Kickoff & OMV'
+ : clientStage === 'master_plan_active'
+ ? '4. Master Plan Estratégico'
+ : `2. Diagnóstico 360° (${answeredQuestionsCount}/100)`
+ }`}
+ </span>
+ </div>
+ <ChevronRight className="w-4 h-4 text-[#0D9488] shrink-0 group-hover:translate-x-0.5 transition-transform" />
+ </button>
+
+ <div>
+ <h2 className="font-display text-sm font-bold text-[#17324D] flex items-center gap-1.5">
+ <ShieldAlert className="h-4 w-4 text-[#0D9488]" /> Focos Críticos de Riesgo
+ </h2>
+ <div className="space-y-2 mt-2.5 overflow-y-auto max-h-[205px]">
+ {diagnosticResults.risks.slice(0, 3).map((r) => (
+ <div key={r.id} className="p-2.5 bg-slate-50/90 border border-slate-200/80 rounded-xl">
+ <div className="flex items-center justify-between text-[11px] font-semibold text-[#17324D]">
+ <span className="truncate">{r.code} · {r.category}</span>
+ <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] font-semibold shrink-0">
+ {r.severityLevel}
+ </span>
+ </div>
+ <p className="text-xs text-slate-700 font-medium mt-1 line-clamp-2">{r.description}</p>
+ </div>
+ ))}
+ </div>
+ </div>
+ </div>
+
+ <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+ <span className="text-xs text-slate-500">Total detectados: {diagnosticResults.risks.length}</span>
+ <button
+ type="button"
+ onClick={() => navigate(`/clients/${id}/matrices`)}
+ className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] cursor-pointer"
+ >
+ Ver Matriz de Riesgos →
+ </button>
+ </div>
+ </div>
+ </div>
+
+ {/* Quick Recordings Preview Strip */}
+ <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs space-y-3.5">
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-2">
+ <Mic className="w-4 h-4 text-[#0D9488]" />
+ <h3 className="font-display text-sm font-bold text-[#17324D]">
+ Grabaciones Recientes de Sesiones ({meetings.length})
+ </h3>
+ </div>
+ <button
+ type="button"
+ onClick={() => navigate(`/clients/${id}/meetings`)}
+ className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] flex items-center gap-1 cursor-pointer"
+ >
+ Ir a Sesiones & Minutas →
+ </button>
+ </div>
+
+ <ClientRecordingsHistory
+ clientId={id as string}
+ clientName={client.name}
+ onNewRecording={(type) => {
+ navigate(`/clients/${id}/meetings/live?type=${type || 'diagnostico'}`);
+ }}
+ />
+ </div>
+ </div>
+ )}
+
+ {/* TAB 0: RELEVAMIENTO COMERCIAL & PROPUESTA PREVIA AL KICKOFF */}
+ {activeTab === 'relevamiento' && (
+ <RelevamientoPropuestaModule
+ client={client}
+ onApproveAndGenerateKickoff={(projectCode) => {
+ if (id && projectCode) {
+ localStorage.setItem(`gs_project_code_${id}`, projectCode);
+ }
+ setClientStage('kickoff_omv');
+ navigate(`/clients/${id}/omb`);
+ }}
+ onStartRecording={() => {
+ navigate(`/clients/${id}/meetings/live?type=relevamiento`);
+ }}
+ />
+ )}
+
+ {/* TAB 1: OMV & KICKOFF (AUDIO & TEXTO EN PRESENTE + 8 TARGETS CVA) */}
+ {activeTab === 'omv' && (
+ <OMBModule
+ client={client}
+ stage={clientStage}
+ onStageChange={setClientStage}
+ approvalStatus={omvApproval}
+ auditConsultants={omvAudit}
+ onApprovalChange={(status, audit) => handleQualityApprovalChange('omv', status, audit)}
+ onSendWhatsApp={() => handleSendWhatsAppNotification('OMV Trienal y Minuta de Kickoff')}
+ />
+ )}
+
+ {/* TAB 2: DIAGNÓSTICO DINÁMICO 360° */}
+ {activeTab === 'diagnostic' && (
+ <DynamicDiagnosticForm
+ client={client}
+ stage={clientStage}
+ answers={diagnosticAnswers}
+ onAnswerChange={handleAnswerChange}
+ onSave={handleSaveDiagnostic}
+ approvalStatus={diagApproval}
+ auditConsultants={diagAudit}
+ onApprovalChange={(status, audit) => handleQualityApprovalChange('diagnostic_360', status, audit)}
+ onViewMatrices={() => navigate(`/clients/${id}/matrices`)}
+ onSendWhatsApp={() => handleSendWhatsAppNotification('Formulario de Diagnóstico Integral 360°')}
+ onOpenAudioSession={() => navigate(`/clients/${id}/meetings/live`)}
+ />
+ )}
+
+ {/* TAB 3: MATRICES ESTRATÉGICAS */}
+ {activeTab === 'matrices' && (
+ <StrategicMatricesView
+ client={client}
+ results={diagnosticResults}
+ onBackToQuestions={() => navigate(`/clients/${id}/diagnostic`)}
+ />
+ )}
+
+ {/* TAB 4: MASTER PLAN ESTRATÉGICO */}
+ {activeTab === 'master_plan' && (
+ <div className="space-y-5">
+ <QualityApprovalBadge
+ moduleName="Master Plan Estratégico"
+ status={masterPlanApproval}
+ audit={masterPlanAudit}
+ onStatusChange={(status, audit) => handleQualityApprovalChange('master_plan', status, audit)}
+ clientName={client.name}
+ onSendWhatsApp={() => handleSendWhatsAppNotification('Master Plan Estratégico')}
+ />
+
+ {/* Sub-navegación del Master Plan + Exportación Oficial 6 Hojas (.XLSX) */}
+ <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-zinc-200 pb-3 font-display">
+ <div className="flex flex-wrap items-center gap-2">
+ <button
+ onClick={() => setMasterPlanSubTab('tasks')}
+ className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+ masterPlanSubTab === 'tasks'
+ ? 'bg-[#17324D] text-white shadow-sm'
+ : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-100'
+ }`}
+ >
+ <Target className="w-3.5 h-3.5 text-[#14B8A6]" />
+ Plan de Acción MPE & Puente AVANCE-EJES
+ </button>
+ <button
+ onClick={() => setMasterPlanSubTab('quarterly_tracking')}
+ className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+ masterPlanSubTab === 'quarterly_tracking'
+ ? 'bg-[#17324D] text-white shadow-sm'
+ : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-100'
+ }`}
+ >
+ <Calendar className="w-3.5 h-3.5 text-[#14B8A6]" />
+ Seguimiento Trimestral PENT-PE (3 Meses)
+ </button>
+ </div>
+
+ <div className="flex flex-wrap items-center gap-2">
+ <button
+ type="button"
+ onClick={() => {
+ const consultantNames = [
+ masterPlanAudit.leaderConsultant,
+ masterPlanAudit.editorConsultant,
+ ]
+ .filter(Boolean)
+ .join('  |  ');
+
+ void exportClientFullMappedMasterPlan({
+ client,
+ tasks,
+ axesMeta,
+ diagnosticResults,
+ pentagonPeriods: pentagonData,
+ consultantNames: consultantNames || 'Martín Gómez  |  Lucía Fernández — GS Consultora',
+ mode: 'revd',
+ });
+ }}
+ className="btn-nordic-teal px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer"
+ title="Modelo completo 6 hojas con ponderación de incidencia, puente AVANCE-EJES, gráficos Radar y Gantt"
+ >
+ <Download className="w-4 h-4" />
+ Exportar Master Plan Revd (6 hojas)
+ </button>
+
+ <button
+ type="button"
+ onClick={() => {
+ const consultantNames = [
+ masterPlanAudit.leaderConsultant,
+ masterPlanAudit.editorConsultant,
+ ]
+ .filter(Boolean)
+ .join('  |  ');
+
+ void exportClientFullMappedMasterPlan({
+ client,
+ tasks,
+ axesMeta,
+ diagnosticResults,
+ pentagonPeriods: pentagonData,
+ consultantNames: consultantNames || 'Martín Gómez  |  Lucía Fernández — GS Consultora',
+ mode: 'rev0',
+ });
+ }}
+ className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-[#17324D] border border-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+ title="Plantilla inicial Rev0 de 5 hojas"
+ >
+ <Download className="w-3.5 h-3.5 text-[#0D9488]" />
+ Plantilla Rev0 (5 hojas)
+ </button>
+ </div>
+ </div>
+
+ {/* Bandeja de Avances Reportados por el Cliente desde el Portal */}
+ {Object.keys(clientTaskUpdates).length > 0 && (
+ <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 space-y-3">
+ <div className="flex items-center justify-between">
+ <span className="font-display text-xs font-bold text-amber-950 flex items-center gap-2">
+ <CheckCircle2 className="w-4 h-4 text-amber-700" />
+ Avances Reportados por el Cliente pendientes de Validación Consultor GS ({Object.keys(clientTaskUpdates).length})
+ </span>
+ <span className="text-[11px] text-amber-800">
+ Regla GS: El avance del cliente requiere validación humana antes de impactar MPE / PENT-PE
+ </span>
+ </div>
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+ {Object.entries(clientTaskUpdates).map(([code, upd]) => {
+ const taskObj = tasks.find((x) => x.code === code);
+ return (
+ <div key={code} className="bg-white rounded-xl border border-amber-200 p-3 flex items-start justify-between gap-3 text-xs">
+ <div className="space-y-1">
+ <div className="font-bold text-zinc-900">
+ <span className="font-mono text-[#0D9488] mr-1.5">{code}</span>
+ {taskObj?.title || 'Tarea del Master Plan'}
+ </div>
+ <p className="text-zinc-600">
+ Estado sugerido: <strong>{upd.suggestedStatus}</strong> ({upd.progress}%) — <em>"{upd.note}"</em>
+ </p>
+ </div>
+ <button
+ type="button"
+ onClick={() => handleAcceptClientTaskUpdate(code)}
+ className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-display text-[10px] font-bold shrink-0 cursor-pointer"
+ >
+ Validar e Impactar
+ </button>
+ </div>
+ );
+ })}
+ </div>
+ </div>
+ )}
+
+ {masterPlanSubTab === 'quarterly_tracking' ? (
+ <MasterPlanQuarterlyTracking
+ clientId={id as string}
+ clientName={client.name}
+ onReviewsUpdated={fetchClientData}
+ />
+ ) : (
+ <>
+ {/* Puente AVANCE-EJES en vivo (Coherencia MPE <-> PENT-PE) */}
+ <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+ <div className="flex flex-wrap items-center justify-between gap-2">
+ <span className="font-display text-xs font-bold text-slate-900">
+ Puente Oficial AVANCE-EJES (Ejecución Ponderada MPE ↔ Madurez PENT-PE)
+ </span>
+ <span className="text-[11px] text-slate-500">
+ Tolerancia metodológica GS: ±0,5 pp • Validación humana del consultor antes de actualizar PENT-PE
+ </span>
+ </div>
+ <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+ {axesMeta.map((ax) => {
+ const axisTasks = tasks.filter((t) => (t.axis || 1) === ax.axisId);
+ const avgMpePct =
+ axisTasks.length > 0
+ ? Math.round(axisTasks.reduce((acc, t) => acc + (t.progress || 0), 0) / axisTasks.length)
+ : 0;
+ const pentScore =
+ ax.axisId === 1
+ ? diagnosticResults.pentagon.directorio || 5.0
+ : ax.axisId === 2
+ ? diagnosticResults.pentagon.procesos || 3.7
+ : ax.axisId === 3
+ ? diagnosticResults.pentagon.finanzas || 4.0
+ : ax.axisId === 4
+ ? diagnosticResults.pentagon.talento || 6.0
+ : diagnosticResults.pentagon.comercial || 5.5;
+ const pentPct = Math.round(pentScore * 10);
+ return (
+ <div key={ax.axisId} className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+ <div className="font-display font-bold text-slate-900 truncate text-[11px]">
+ Eje {ax.axisId}: {ax.shortName}
+ </div>
+ <div className="flex items-center justify-between text-[11px]">
+ <span className="text-slate-500">MPE Pond.:</span>
+ <strong className="font-mono text-slate-900">{avgMpePct}%</strong>
+ </div>
+ <div className="flex items-center justify-between text-[11px]">
+ <span className="text-slate-500">PENT-PE:</span>
+ <strong className="font-mono text-[#17324D]">{pentScore.toFixed(1)} ({pentPct}%)</strong>
+ </div>
+ </div>
+ );
+ })}
+ </div>
+ </div>
+
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs">
+ <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 font-display">
+ <button
+ onClick={() => setSelectedAxis('all')}
+ className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+ selectedAxis === 'all' ? 'bg-[#17324D] text-white shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+ }`}
+ >
+ Todos los Ejes (5)
+ </button>
+ {MASTER_PLAN_AXES.map(axis => (
+ <button
+ key={axis.id}
+ onClick={() => setSelectedAxis(axis.id)}
+ className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+ selectedAxis === axis.id ? 'bg-[#17324D] text-white shadow-2xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+ }`}
+ >
+ {axis.name.split('·')[0].split(':')[0]}
+ </button>
+ ))}
+ </div>
+ <button
+ type="button"
+ onClick={() => setIsNewTaskModalOpen(true)}
+ className="px-4 py-2 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl text-xs font-bold font-display flex items-center gap-2 shrink-0 transition-all cursor-pointer"
+ >
+ <Plus className="h-4 w-4" /> Nueva Acción
+ </button>
+ </div>
+
+ {/* Ficha Estratégica Editable del Eje (Brecha Asociada, Iniciativa Estratégica, OKRs — Hoja MPE Excel) */}
+ {selectedAxis !== 'all' && (() => {
+ const currentAxisMeta = axesMeta.find((a) => a.axisId === selectedAxis);
+ if (!currentAxisMeta) return null;
+ return (
+ <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+ <div className="flex items-center justify-between">
+ <h4 className="font-display text-xs font-bold text-[#17324D]">
+ Cabecera Estratégica Hoja MPE — {currentAxisMeta.fullName}
+ </h4>
+ <span className="text-[11px] text-slate-400">Se exporta directamente al bloque superior del Eje en el Excel Oficial</span>
+ </div>
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+ <div>
+ <label className="block font-bold text-slate-700 mb-1">Brecha Asociada (Diagnóstico → OMV)</label>
+ <textarea
+ rows={2}
+ value={currentAxisMeta.brechaAsociada}
+ onChange={(e) => handleUpdateAxisMeta(currentAxisMeta.axisId, 'brechaAsociada', e.target.value)}
+ className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+ />
+ </div>
+ <div>
+ <label className="block font-bold text-slate-700 mb-1">Iniciativa Estratégica Rectora</label>
+ <textarea
+ rows={2}
+ value={currentAxisMeta.iniciativaEstrategica}
+ onChange={(e) => handleUpdateAxisMeta(currentAxisMeta.axisId, 'iniciativaEstrategica', e.target.value)}
+ className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+ />
+ </div>
+ <div>
+ <label className="block font-bold text-slate-700 mb-1">OKRs del Eje</label>
+ <textarea
+ rows={2}
+ value={currentAxisMeta.okrText}
+ onChange={(e) => handleUpdateAxisMeta(currentAxisMeta.axisId, 'okrText', e.target.value)}
+ className="w-full rounded-lg border border-slate-300 p-2 text-xs"
+ />
+ </div>
+ </div>
+ </div>
+ );
+ })()}
+
+ {isNewTaskModalOpen && (
+ <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-4">
+ <div className="flex items-center justify-between">
+ <h4 className="font-display text-sm font-bold text-[#17324D]">
+ Agregar Nueva Acción al Master Plan de {client.name}
+ </h4>
+ <button
+ type="button"
+ onClick={() => setIsNewTaskModalOpen(false)}
+ className="text-xs font-bold text-slate-500 hover:text-slate-900 cursor-pointer"
+ >
+ Cerrar ✕
+ </button>
+ </div>
+ <form onSubmit={handleCreateMasterPlanTask} className="grid grid-cols-1 sm:grid-cols-6 gap-3 text-xs">
+ <div>
+ <label className="block font-bold text-slate-700 mb-1">Eje Pentágono</label>
+ <select
+ value={newTaskAxis}
+ onChange={(e) => setNewTaskAxis(Number(e.target.value))}
+ className="w-full rounded-lg border border-slate-300 px-2.5 py-2 font-bold bg-white"
+ >
+ {MASTER_PLAN_AXES.map((a) => (
+ <option key={a.id} value={a.id}>{a.name}</option>
+ ))}
+ </select>
+ </div>
+ <div>
+ <label className="block font-bold text-slate-700 mb-1">Código</label>
+ <input
+ type="text"
+ value={newTaskCode}
+ onChange={(e) => setNewTaskCode(e.target.value)}
+ placeholder="Ej: 1.5.1"
+ className="w-full rounded-lg border border-slate-300 px-2.5 py-2 font-mono bg-white"
+ />
+ </div>
+ <div className="sm:col-span-2">
+ <label className="block font-bold text-slate-700 mb-1">Acción / Iniciativa *</label>
+ <input
+ type="text"
+ required
+ value={newTaskTitle}
+ onChange={(e) => setNewTaskTitle(e.target.value)}
+ placeholder="Descripción de la acción estratégica..."
+ className="w-full rounded-lg border border-slate-300 px-2.5 py-2 bg-white"
+ />
+ </div>
+ <div>
+ <label className="block font-bold text-slate-700 mb-1">Responsable</label>
+ <input
+ type="text"
+ value={newTaskResponsible}
+ onChange={(e) => setNewTaskResponsible(e.target.value)}
+ className="w-full rounded-lg border border-slate-300 px-2.5 py-2 bg-white"
+ />
+ </div>
+ <div className="flex items-end gap-2">
+ <select
+ value={newTaskPriority}
+ onChange={(e) => setNewTaskPriority(e.target.value as 'Alta' | 'Media' | 'Baja')}
+ className="rounded-lg border border-slate-300 px-2 py-2 font-bold bg-white"
+ >
+ <option value="Alta">Alta</option>
+ <option value="Media">Media</option>
+ <option value="Baja">Baja</option>
+ </select>
+ <button
+ type="submit"
+ className="px-4 py-2 bg-[#17324D] hover:bg-[#0F2438] text-white rounded-lg font-bold shrink-0 cursor-pointer"
+ >
+ Guardar
+ </button>
+ </div>
+ </form>
+ </div>
+ )}
+
+ <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+ <div className="overflow-x-auto max-h-[600px]">
+ <table className="min-w-full divide-y divide-slate-200 text-xs">
+ <thead className="bg-[#17324D] text-white font-display sticky top-0 z-10">
+ <tr>
+ <th className="px-4 py-3 text-left font-semibold">Código</th>
+ <th className="px-4 py-3 text-left font-semibold">Acción / Iniciativa ({client.name})</th>
+ <th className="px-4 py-3 text-left font-semibold">Prioridad</th>
+ <th className="px-4 py-3 text-left font-semibold">Responsable</th>
+ <th className="px-4 py-3 text-left font-semibold">Plazo</th>
+ <th className="px-4 py-3 text-left font-semibold">Estado (Interactivo)</th>
+ </tr>
+ </thead>
+ <tbody className="divide-y divide-slate-100 bg-white">
+ {tasks
+ .filter(t => selectedAxis === 'all' || t.axis === selectedAxis)
+ .map((t, idx) => (
+ <tr key={`${t.code}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
+ <td className="px-4 py-3 font-mono font-bold text-[#0D9488]">{t.code}</td>
+ <td className="px-4 py-3 font-medium text-slate-900">
+ {t.title}
+ <span className="block text-[11px] font-normal text-slate-400 mt-0.5">
+ {(t.axisName || '').replace(/^EJE\s+(\d+)\s*[—-]\s*/i, 'Eje $1 · ')}
+ </span>
+ </td>
+ <td className="px-4 py-3">
+ <span className={`px-2.5 py-0.5 rounded-lg font-medium text-[11px] ${
+ String(t.priority).toUpperCase() === 'ALTA' ? 'bg-[#EDF3F8] text-[#17324D]' : 'bg-slate-100 text-slate-700'
+ }`}>
+ {t.priority}
+ </span>
+ </td>
+ <td className="px-4 py-3 text-slate-700 font-medium">{t.assignedRole}</td>
+ <td className="px-4 py-3 text-slate-600 font-mono font-medium">
+ {t.dueDate || '90 días'}
+ </td>
+ <td className="px-4 py-3">
+ <select
+ value={t.status}
+ onChange={(e) => handleTaskStatusChange(t.code, e.target.value)}
+ className={`px-2.5 py-1 font-medium text-[11px] rounded-lg border cursor-pointer ${
+ t.status === 'FINALIZADO'
+ ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+ : t.status === 'EN PROCESO'
+ ? 'bg-amber-50 text-amber-800 border-amber-200'
+ : t.status === 'RETRASADO'
+ ? 'bg-rose-50 text-rose-800 border-rose-200'
+ : 'bg-slate-100 text-slate-700 border-slate-200'
+ }`}
+ >
+ <option value="SIN INICIAR">Sin iniciar</option>
+ <option value="EN PROCESO">En proceso</option>
+ <option value="FINALIZADO">Finalizado</option>
+ <option value="RETRASADO">Retrasado</option>
+ <option value="CANCELADO">Cancelado</option>
+ </select>
+ </td>
+ </tr>
+ ))}
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </>
+ )}
+ </div>
+ )}
+
+ {/* TAB 6: REUNIONES, GRABACIONES CONTINUAS E HISTORIAL IA */}
+ {activeTab === 'meetings' && (
+ <div className="space-y-5">
+ {(activeMeetingSession || isPlanningMeeting) ? (
+ <ClientMeetingSession
+ client={client}
+ initialMeetingType={plannedSession?.meetingType || meetingLaunchType}
+ initialTitle={plannedSession?.title}
+ initialQuestions={plannedSession?.selectedQuestions}
+ initialStep="recording"
+ onBack={() => {
+ navigate(`/clients/${id}/meetings`);
+ setPlannedSession(null);
+ fetchClientData();
+ }}
+ onDiagnosticUpdated={() => {
+ fetchClientData();
+ }}
+ />
+ ) : (
+ <div className="space-y-5">
+ {/* Header Simplificado: Audio -> 100 Preguntas -> Informe y Minuta */}
+ <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs">
+ <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+ <div>
+ <div className="flex items-center gap-2 mb-1">
+ <span className="h-2 w-2 rounded-full bg-[#0D9488] animate-ping" />
+ <span className="text-[11px] font-semibold text-[#0F766E]">
+ Flujo Automático · {client.name}
+ </span>
+ </div>
+ <h2 className="font-display text-lg font-bold text-[#17324D] tracking-tight">
+ Audio y Transcripción → 100 Preguntas + Informe y Minutas
+ </h2>
+ <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
+ Grabe la reunión en vivo o suba un audio. El sistema cruza la conversación contra las <strong>100 preguntas</strong> del diagnóstico y redacta la <strong>Minuta Ejecutiva</strong> lista para auditar.
+ </p>
+ </div>
+
+ <button
+ onClick={() => {
+ navigate(`/clients/${id}/meetings/live?type=diagnostico`);
+ }}
+ className="btn-nordic-primary px-5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 self-start sm:self-center shrink-0 cursor-pointer"
+ >
+ <Mic className="w-4 h-4 text-[#2DD4BF]" /> Grabar / Subir Audio
+ </button>
+ </div>
+ </div>
+
+ {/* HISTORIAL ORGANIZADO DE GRABACIONES */}
+ <ClientRecordingsHistory
+ clientId={id as string}
+ clientName={client.name}
+ onNewRecording={(type) => {
+ navigate(`/clients/${id}/meetings/live?type=${type || 'diagnostico'}`);
+ }}
+ />
+
+ {/* Subsección: Minutas Tradicionales de Comités */}
+ <div className="space-y-3 pt-5 border-t border-slate-200">
+ <div className="flex items-center justify-between">
+ <h3 className="font-display text-sm font-bold text-[#17324D] flex items-center gap-2">
+ <Calendar className="w-4 h-4 text-[#0D9488]" /> Minutas de Comités y Reuniones ({meetings.length})
+ </h3>
+ <Link
+ to="/meetings"
+ className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E]"
+ >
+ Ver todas las minutas →
+ </Link>
+ </div>
+
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+ {meetings.length === 0 ? (
+ <div className="col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 text-center text-slate-400 text-xs">
+ No hay minutas adicionales registradas.
+ </div>
+ ) : (
+ meetings.map(m => {
+ const mins = Array.isArray(m.minutes) ? m.minutes : m.minutes ? [m.minutes] : [];
+ const firstMin = mins[0];
+ const isMinApproved = firstMin ? (minuteApprovals[firstMin.id] ?? true) : false;
+ return (
+ <div key={m.id} className="bg-white p-4 rounded-2xl border border-slate-200 hover:border-slate-300 shadow-2xs transition-all space-y-3">
+ <div className="flex items-start justify-between gap-2">
+ <div>
+ <h4 className="font-display font-semibold text-sm text-[#17324D]">{m.title}</h4>
+ <p className="text-xs text-slate-500 mt-0.5">Fecha: {new Date(m.meeting_date).toLocaleDateString('es-AR')}</p>
+ </div>
+ {firstMin && (
+ <button
+ type="button"
+ onClick={() => handleToggleMinuteApproval(firstMin.id)}
+ className={`px-2.5 py-1 text-[10px] font-semibold rounded-lg border transition-colors cursor-pointer ${
+ isMinApproved
+ ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+ : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+ }`}
+ title="Clic para publicar u ocultar esta minuta en el Portal del Cliente"
+ >
+ {isMinApproved ? '✓ Publicada' : 'En revisión'}
+ </button>
+ )}
+ </div>
+ <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+ <span className="text-[11px] text-slate-400">
+ {isMinApproved ? 'Visible para el cliente' : 'Oculta para el cliente'}
+ </span>
+ <Link
+ to={`/meetings/${m.id}`}
+ className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] flex items-center gap-1"
+ >
+ Ver y Editar Minuta <ChevronRight className="w-3.5 h-3.5" />
+ </Link>
+ </div>
+ </div>
+ );
+ })
+ )}
+ </div>
+ </div>
+ </div>
+ )}
+ </div>
+ )}
+
+ {/* TAB: GESTOR DOCUMENTAL (RAG) */}
+ {activeTab === 'documents' && (
+ <DocumentosCliente
+ client={client}
+ isClientPortal={effectiveSection === 'portal'}
+ />
+ )}
+
+ {/* TAB 7: PORTAL PREVIEW */}
+ {activeTab === 'portal_preview' && (
+ <ClientPortalView
+ client={client}
+ results={diagnosticResults}
+ isOmvApproved={omvApproval === 'approved_published'}
+ isDiagnosticApproved={diagApproval === 'approved_published'}
+ isMasterPlanApproved={masterPlanApproval === 'approved_published'}
+ masterPlanTasks={tasks.map((t) => ({
+ code: t.code,
+ axis: t.axis || 1,
+ axisName: t.axisName,
+ title: t.title,
+ priority: t.priority,
+ status: t.status,
+ responsible: t.assignedRole,
+ dueDate: t.dueDate,
+ progress: t.progress,
+ }))}
+ />
+ )}
+ </div>
+ </div>
+ </div>
+ );
 }
