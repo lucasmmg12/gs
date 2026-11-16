@@ -47,10 +47,10 @@ const scatterData = [
 const KPI = ({ title, value, subtext, trend, icon: Icon }: any) => (
   <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-gray-200/60 hover:shadow-lg transition-all duration-300">
     <div className="flex justify-between items-start mb-4">
-      <div className="p-3 bg-red-50 rounded-xl">
-        <Icon className="w-6 h-6 text-red-600" />
+      <div className="p-3 bg-[#F0FDFA] rounded-xl">
+        <Icon className="w-6 h-6 text-[#0D9488]" />
       </div>
-      <div className={`flex items-center gap-1 text-sm font-bold px-2 py-1 rounded-full ${trend >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+      <div className={`flex items-center gap-1 text-sm font-bold px-2 py-1 rounded-full ${trend >= 0 ? 'bg-green-100 text-green-700' : 'bg-[#EDF3F8] text-[#0F766E]'}`}>
         {trend >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
         {Math.abs(trend)}%
       </div>
@@ -67,7 +67,7 @@ export const FinanzasCliente: React.FC<FinanzasClienteProps> = ({ client }) => {
       
       <div>
         <h2 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-          <DollarSign className="w-8 h-8 text-red-600" /> 
+          <DollarSign className="w-8 h-8 text-[#0D9488]" /> 
           Gabinete Financiero - {client.name}
         </h2>
         <p className="text-gray-500 mt-1">Análisis de rentabilidad, flujo de caja y distribución de costos operativos.</p>

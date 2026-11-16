@@ -44,7 +44,7 @@ export const MetricasPerformance: React.FC<MetricasPerformanceProps> = ({ client
       {/* Header */}
       <div>
         <h2 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-          <Activity className="w-8 h-8 text-red-600" />
+          <Activity className="w-8 h-8 text-[#0D9488]" />
           Performance Global de GS Consultora
         </h2>
         <p className="text-gray-500 mt-1">
@@ -56,7 +56,7 @@ export const MetricasPerformance: React.FC<MetricasPerformanceProps> = ({ client
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-gray-200/60 hover:shadow-lg transition-all group relative">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-red-50 rounded-xl"><Briefcase className="w-6 h-6 text-red-600" /></div>
+            <div className="p-3 bg-[#F0FDFA] rounded-xl"><Briefcase className="w-6 h-6 text-[#0D9488]" /></div>
             <span className="flex items-center gap-1 text-sm font-bold px-2 py-1 bg-green-100 text-green-700 rounded-full">
               <ArrowUpRight className="w-4 h-4" /> 2 Nuevos
             </span>
@@ -70,7 +70,7 @@ export const MetricasPerformance: React.FC<MetricasPerformanceProps> = ({ client
 
         <div className="bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-gray-200/60 hover:shadow-lg transition-all group relative">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-red-50 rounded-xl"><Target className="w-6 h-6 text-red-600" /></div>
+            <div className="p-3 bg-[#F0FDFA] rounded-xl"><Target className="w-6 h-6 text-[#0D9488]" /></div>
             <span className="flex items-center gap-1 text-sm font-bold px-2 py-1 bg-green-100 text-green-700 rounded-full">
               <ArrowUpRight className="w-4 h-4" /> +8.4%
             </span>
@@ -86,7 +86,7 @@ export const MetricasPerformance: React.FC<MetricasPerformanceProps> = ({ client
 
         <div className="bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-gray-200/60 hover:shadow-lg transition-all group relative">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-red-50 rounded-xl"><TrendingUp className="w-6 h-6 text-red-600" /></div>
+            <div className="p-3 bg-[#F0FDFA] rounded-xl"><TrendingUp className="w-6 h-6 text-[#0D9488]" /></div>
             <span className="flex items-center gap-1 text-sm font-bold px-2 py-1 bg-green-100 text-green-700 rounded-full">
               <ArrowUpRight className="w-4 h-4" /> +15.2%
             </span>
@@ -100,8 +100,8 @@ export const MetricasPerformance: React.FC<MetricasPerformanceProps> = ({ client
 
         <div className="bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-gray-200/60 hover:shadow-lg transition-all group relative">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 bg-red-50 rounded-xl"><ShieldCheck className="w-6 h-6 text-red-600" /></div>
-            <span className="flex items-center gap-1 text-sm font-bold px-2 py-1 bg-red-100 text-red-700 rounded-full">
+            <div className="p-3 bg-[#F0FDFA] rounded-xl"><ShieldCheck className="w-6 h-6 text-[#0D9488]" /></div>
+            <span className="flex items-center gap-1 text-sm font-bold px-2 py-1 bg-[#EDF3F8] text-[#0F766E] rounded-full">
               <ArrowDownRight className="w-4 h-4" /> -2 pts
             </span>
           </div>

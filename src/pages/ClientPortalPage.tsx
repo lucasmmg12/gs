@@ -16,6 +16,8 @@ import { calculateDiagnosticScores, type FullDiagnosticResults } from '../lib/di
 import type { ResponseOptionValue } from '../data/diagnosticQuestions';
 import { INITIAL_MASTER_PLAN_TASKS } from '../data/masterPlanData';
 import { ArrowLeft, ShieldCheck, Lock, Activity, LogOut, ShieldAlert, Eye } from 'lucide-react';
+import { loadOrgWorkspaceFromDb, loadPublicOrgsDirectoryFromDb } from '../lib/gsCloudSync';
+import GrowyChat from '../components/GrowyChat';
 
 const EJEMPLO_SAS_ID = '532a0405-02c2-4e45-8f77-c24bf13ea9de';
 
@@ -110,19 +112,58 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
         return;
       }
 
-      // 2. Fetch organization
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', id)
-        .single();
+      // 2. Fetch organization + Supabase Cloud Workspace (supports both Auth session & Corporate Code access)
+      const [{ data: dbOrg }, cloudWs, pubDir] = await Promise.all([
+        supabase.from('organizations').select('*').eq('id', id).maybeSingle(),
+        loadOrgWorkspaceFromDb(id),
+        loadPublicOrgsDirectoryFromDb(),
+      ]);
 
-      if (orgError || !org) {
+      const dirMatch = pubDir.find((d) => d.id === id);
+      const org: any =
+        dbOrg ||
+        (cloudWs?.orgName
+          ? {
+              id,
+              name: cloudWs.orgName,
+              industry: cloudWs.industry || 'PyME en Desarrollo',
+              portal_access_code: cloudWs.portalAccessCode || 'GS-DEMO-2026',
+              portal_active: true,
+            }
+          : dirMatch
+            ? {
+                id: dirMatch.id,
+                name: dirMatch.name,
+                industry: dirMatch.industry || 'PyME en Desarrollo',
+                portal_access_code: dirMatch.portal_access_code || 'GS-DEMO-2026',
+                portal_active: true,
+              }
+            : id === EJEMPLO_SAS_ID
+              ? {
+                  id: EJEMPLO_SAS_ID,
+                  name: 'EJEMPLO SAS',
+                  industry: 'Ingeniería y Servicios Industriales',
+                  portal_access_code: 'GS-DEMO-2026',
+                  portal_active: true,
+                }
+              : null);
+
+      if (!org) {
         setLoading(false);
         return;
       }
 
       setClient(org);
+
+      // Hydrate local cache from Supabase Cloud Workspace so exporters (.DOCX / .XLSX) on Client PC have full data
+      if (cloudWs) {
+        if (cloudWs.projectCode) localStorage.setItem(`gs_project_code_${id}`, cloudWs.projectCode);
+        if (cloudWs.omvTargets) localStorage.setItem(`gs_omv_targets_${id}`, JSON.stringify(cloudWs.omvTargets));
+        if (cloudWs.qualitativeAnswers)
+          localStorage.setItem(`gs_qualitative_answers_${id}`, JSON.stringify(cloudWs.qualitativeAnswers));
+        if (cloudWs.areaKpis) localStorage.setItem(`gs_area_kpis_${id}`, JSON.stringify(cloudWs.areaKpis));
+        if (cloudWs.axesMeta) localStorage.setItem(`gs_axes_meta_${id}`, JSON.stringify(cloudWs.axesMeta));
+      }
 
       // Check authentication status for this specific organization
       const verifiedInSession = sessionStorage.getItem(`gs_portal_verified_${id}`) === 'true';
@@ -166,6 +207,19 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
         }
       }
 
+      if (cloudWs?.approvals) {
+        if (cloudWs.approvals.omv)
+          omvOk = cloudWs.approvals.omv === 'approved_published' || (cloudWs.approvals.omv as string) === 'approved';
+        if (cloudWs.approvals.diagnostic_360)
+          diagOk =
+            cloudWs.approvals.diagnostic_360 === 'approved_published' ||
+            (cloudWs.approvals.diagnostic_360 as string) === 'approved';
+        if (cloudWs.approvals.master_plan)
+          mpOk =
+            cloudWs.approvals.master_plan === 'approved_published' ||
+            (cloudWs.approvals.master_plan as string) === 'approved';
+      }
+
       setIsOmvApproved(omvOk);
       setIsDiagnosticApproved(diagOk);
       setIsMasterPlanApproved(mpOk);
@@ -199,6 +253,10 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
         } catch {
           // ignore
         }
+      }
+
+      if (cloudWs?.diagnosticAnswers && Object.keys(cloudWs.diagnosticAnswers).length > 0) {
+        answers = { ...answers, ...cloudWs.diagnosticAnswers };
       }
 
       setResults(calculateDiagnosticScores(answers));
@@ -362,7 +420,21 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
       };
 
       const localTasksRaw = localStorage.getItem(`gs_master_plan_tasks_${id}`);
-      if (localTasksRaw) {
+      if (cloudWs?.masterPlanTasks && cloudWs.masterPlanTasks.length > 0) {
+        setMasterPlanTasks(
+          cloudWs.masterPlanTasks.map((t: any) => ({
+            code: t.code,
+            axis: t.axis || t.axisId || 1,
+            axisName: t.axisName || axisLabels[t.axis || t.axisId || 1],
+            title: t.title || t.task,
+            priority: t.priority || 'Alta',
+            status: t.status || 'SIN INICIAR',
+            responsible: t.assignedRole || t.responsible || t.assigned_role || 'Socio / Líder',
+            dueDate: t.dueDate || t.endDate || t.due_date || '90 días',
+            progress: t.progress || 0,
+          }))
+        );
+      } else if (localTasksRaw) {
         try {
           const parsedLocal = JSON.parse(localTasksRaw);
           setMasterPlanTasks(
@@ -462,9 +534,9 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#EEF2F6] flex flex-col items-center justify-center p-6 text-slate-500">
-        <Activity className="w-8 h-8 text-[#6B1D2F] animate-spin mb-3" />
-        <p className="text-sm font-medium">Verificando permisos y cargando Portal Ejecutivo...</p>
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-slate-500">
+        <Activity className="w-8 h-8 text-[#0D9488] animate-spin mb-3" />
+        <p className="text-sm font-medium text-[#17324D]">Verificando permisos y cargando Portal Ejecutivo...</p>
       </div>
     );
   }
@@ -473,25 +545,25 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
   if (crossTenantBlocked) {
     const allowedOrgId = roleInfo?.organizationId || sessionStorage.getItem('gs_active_client_org');
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
-        <div className="bg-white p-8 rounded-2xl border-2 border-red-600 shadow-obsidian max-w-md w-full space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center mx-auto">
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center">
+        <div className="figma-card p-8 max-w-md w-full space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
             <ShieldAlert className="w-6 h-6" />
           </div>
-          <span className="px-2.5 py-0.5 rounded bg-red-100 text-red-800 text-[10px] font-black uppercase tracking-wider">
+          <span className="px-3 py-0.5 rounded-full bg-[#EDF3F8] text-[#17324D] text-[10px] font-bold uppercase tracking-wider">
             Seguridad Multitenant GS
           </span>
-          <h2 className="text-xl font-black text-zinc-950 font-display uppercase">
+          <h2 className="text-xl font-bold text-[#17324D] font-display">
             Acceso Restringido a Otra Organización
           </h2>
-          <p className="text-xs text-zinc-600 leading-relaxed">
-            Por política estricta de confidencialidad de <strong>Consultora GS</strong>, cada cliente tiene acceso única y exclusivamente a su propio expediente corporativo.
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Por política estricta de confidencialidad de <strong>Estudio GS</strong>, cada cliente tiene acceso única y exclusivamente a su propio expediente corporativo.
           </p>
           <div className="pt-2 flex flex-col gap-2">
             {allowedOrgId && (
               <Link
                 to={`/portal/${allowedOrgId}`}
-                className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+                className="btn-nordic-teal w-full py-2.5 px-4 rounded-xl text-xs font-semibold"
               >
                 Ir a Mi Portal Autorizado
               </Link>
@@ -499,7 +571,7 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
             <button
               type="button"
               onClick={handleClientSignOut}
-              className="w-full py-2 px-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors"
+              className="w-full py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
             >
               Cerrar Sesión
             </button>
@@ -511,13 +583,13 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
 
   if (!client) {
     return (
-      <div className="min-h-screen bg-[#EEF2F6] flex flex-col items-center justify-center p-6 text-center">
-        <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm max-w-md w-full space-y-4">
-          <h2 className="text-xl font-bold text-slate-900 font-display">Portal no disponible</h2>
+      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 text-center">
+        <div className="figma-card p-8 max-w-md w-full space-y-4">
+          <h2 className="text-xl font-bold text-[#17324D] font-display">Portal no disponible</h2>
           <p className="text-xs text-slate-500">No se encontró la empresa solicitada o el enlace ha caducado.</p>
           <Link
             to="/login"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#6B1D2F] text-white rounded-xl text-xs font-semibold hover:bg-[#541524] transition-colors"
+            className="btn-nordic-primary inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold"
           >
             <ArrowLeft className="w-4 h-4" /> Ir al Inicio de Sesión
           </Link>
@@ -529,21 +601,21 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
   // Si requiere autenticación por código de acceso exclusivo de la empresa
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl border-2 border-zinc-900 shadow-obsidian max-w-md w-full space-y-5">
-          <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-            <div className="w-11 h-11 rounded-xl bg-[#6B1D2F] text-white flex items-center justify-center font-black font-display">
+      <div className="min-h-screen bg-gradient-to-br from-[#F8FAFC] via-white to-[#EDF3F8] flex flex-col items-center justify-center p-4">
+        <div className="bg-white p-8 sm:p-9 rounded-3xl border border-slate-200/90 shadow-[0_24px_60px_-15px_rgba(23,50,77,0.12)] max-w-md w-full space-y-6">
+          <div className="flex items-center gap-3.5 pb-4 border-b border-slate-100">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#17324D] to-[#0D9488] text-white flex items-center justify-center font-bold font-display shadow-xs">
               GS
             </div>
             <div>
-              <h2 className="text-base font-black text-slate-900 font-display uppercase">{client.name}</h2>
-              <span className="text-[11px] text-slate-500 font-medium">Portal Ejecutivo Exclusivo para Clientes</span>
+              <h2 className="text-base font-bold text-[#17324D] font-display">{client.name}</h2>
+              <span className="text-[11px] text-[#0D9488] font-medium">Portal Ejecutivo Exclusivo</span>
             </div>
           </div>
 
           <div className="space-y-1">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-              <Lock className="w-4 h-4 text-[#6B1D2F]" /> Ingrese su Código Corporativo de Acceso
+            <h3 className="text-sm font-bold text-[#17324D] flex items-center gap-1.5">
+              <Lock className="w-4 h-4 text-[#0D9488]" /> Ingrese su Código Corporativo
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed">
               Introduzca la clave confidencial asignada a <strong>{client.name}</strong> por su consultor GS para visualizar los entregables aprobados.
@@ -556,27 +628,27 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
                 type="password"
                 value={accessCode}
                 onChange={(e) => setAccessCode(e.target.value)}
-                placeholder="Código de Acceso GS"
-                className="w-full px-3.5 py-2.5 rounded-xl border-2 border-slate-300 focus:border-[#6B1D2F] focus:ring-1 focus:ring-[#6B1D2F] text-sm uppercase tracking-widest font-mono font-bold"
+                placeholder="Ej: GS-DEMO-2026"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 focus:outline-none text-sm uppercase tracking-widest font-mono font-semibold"
                 required
               />
-              {errorMsg && <p className="text-xs text-red-600 mt-1.5 font-bold">{errorMsg}</p>}
+              {errorMsg && <p className="text-xs text-rose-600 mt-1.5 font-medium">{errorMsg}</p>}
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-xs transition-colors"
+              className="btn-nordic-teal w-full py-3 rounded-xl text-xs font-semibold tracking-wide cursor-pointer"
             >
               Desbloquear Portal de {client.name}
             </button>
           </form>
 
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-            <span className="flex items-center gap-1 font-medium text-emerald-700">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Aislamiento Multitenant Activo
+            <span className="flex items-center gap-1 font-medium text-[#0F766E]">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#0D9488]" /> Entorno Multi-tenant Aislado
             </span>
-            <Link to="/login" className="hover:text-slate-700 font-bold">
-              Cambiar de cuenta →
+            <Link to="/login" className="hover:text-[#17324D] font-semibold">
+              Cambiar cuenta →
             </Link>
           </div>
         </div>
@@ -585,56 +657,56 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
   }
 
   return (
-    <div className="min-h-screen bg-[#EEF2F6] pb-16">
-      {/* Top Banner: Diferenciado estrictamente entre Vista Previa Consultor vs Vista Cliente Real */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+    <div className="min-h-screen bg-[#F8FAFC] pb-16">
+      {/* Top Translucent Glass Bar */}
+      <div className="figma-glass border-b border-slate-200/80 px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3">
           {isConsultantViewer && (
             <Link
               to={`/clients/${client.id}`}
-              className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors flex items-center gap-1.5 px-3 text-xs font-bold"
+              className="py-1.5 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[#17324D] transition-colors flex items-center gap-1.5 text-xs font-semibold shadow-2xs"
               title="Volver al Back-Office de Consultor GS"
             >
-              <ArrowLeft className="w-4 h-4 text-[#6B1D2F]" />
-              Volver al Expediente Consultor
+              <ArrowLeft className="w-4 h-4 text-[#0D9488]" />
+              Expediente Consultor
             </Link>
           )}
           <div>
-            <span className="text-[10px] font-bold text-[#6B1D2F] uppercase tracking-wider block">
+            <span className="text-[10px] font-semibold text-[#0D9488] uppercase tracking-wider block">
               {isConsultantViewer
-                ? 'Modo Vista Previa Consultor GS (Simulación Exacta del Cliente)'
-                : 'Portal Oficial de la Empresa • Sesión Segura'}
+                ? 'Vista Previa Consultor GS · Espejo del Cliente'
+                : 'Portal Ejecutivo Corporativo · Sesión Segura'}
             </span>
-            <h1 className="text-sm font-bold text-slate-900 font-display leading-tight">{client.name}</h1>
+            <h1 className="text-sm font-bold text-[#17324D] font-display leading-tight">{client.name}</h1>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           {isConsultantViewer ? (
             <div className="flex items-center gap-2">
-              <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold">
-                <Eye className="w-3.5 h-3.5 text-amber-600" />
-                Previsualizando como Cliente ({client.name})
+              <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F0FDFA] text-[#0F766E] border border-teal-200 text-[11px] font-semibold">
+                <Eye className="w-3.5 h-3.5 text-[#0D9488]" />
+                Vista Cliente ({client.name})
               </span>
               <Link
                 to={`/clients/${client.id}`}
-                className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors"
+                className="btn-nordic-primary px-3.5 py-1.5 rounded-xl text-xs font-semibold"
               >
-                Editar Aprobaciones en Back-Office GS
+                Configurar Aprobaciones
               </Link>
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Entorno Aislado • Datos Validados GS
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F0FDFA] text-[#0F766E] border border-teal-200 text-[11px] font-semibold">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#0D9488]" /> Datos Auditados GS
               </span>
               <button
                 type="button"
                 onClick={handleClientSignOut}
-                className="px-3 py-1.5 bg-zinc-900 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
+                className="px-3.5 py-1.5 bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                Salir del Portal
+                Salir
               </button>
             </div>
           )}
@@ -656,6 +728,9 @@ export default function ClientPortalPage({ roleInfo, session }: ClientPortalPage
           quarterlyReviews={quarterlyReviews}
         />
       </div>
+
+      {/* Copiloto Growy en Modo Cliente Aislado */}
+      <GrowyChat activeClientId={client.id} activeClientName={client.name} roleMode="client" />
     </div>
   );
 }

@@ -66,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, u
     <div className="w-64 bg-gradient-to-b from-black via-[#1a0505] to-red-950 text-white h-full flex flex-col fixed left-0 top-0 shadow-2xl border-r border-red-900/30 overflow-y-auto">
       <div className="p-8 pb-4 shrink-0">
         <h1 className="text-2xl font-extrabold tracking-tight">
-          <span className="text-white drop-shadow-sm">Estudio GS</span> <span className="text-red-600 drop-shadow-sm">Consultora</span>
+          <span className="text-white drop-shadow-sm">Estudio GS</span> <span className="text-[#0D9488] drop-shadow-sm">Consultora</span>
         </h1>
         <div className="h-px w-full bg-gradient-to-r from-red-600/50 to-transparent mt-6"></div>
       </div>
@@ -89,7 +89,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, u
                       }`}
                     >
                       {isActive && <div className="absolute inset-0 bg-gradient-to-r from-red-600/20 to-transparent pointer-events-none"></div>}
-                      <Icon className={`w-4 h-4 relative z-10 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-red-500 drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]' : ''}`} />
+                      <Icon className={`w-4 h-4 relative z-10 transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-[#14B8A6] drop-shadow-[0_0_8px_rgba(220,38,38,0.5)]' : ''}`} />
                       <span className="font-medium text-sm relative z-10 tracking-wide">{item.label}</span>
                     </button>
                   </li>
@@ -106,15 +106,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView, u
             onClick={toggleRole}
             className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all border ${
               userRole === 'consultor' 
-                ? 'bg-transparent border-red-500/50 text-red-400 hover:bg-red-500/10' 
-                : 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-900/50 hover:bg-red-500'
+                ? 'bg-transparent border-[#0D9488]/50 text-[#5EEAD4] hover:bg-[#F0FDFA]0/10' 
+                : 'bg-[#0D9488] border-[#0D9488] text-white shadow-lg shadow-red-900/50 hover:bg-[#F0FDFA]0'
             }`}
           >
             {userRole === 'consultor' ? 'Cambiar a Vista Cliente' : 'Volver a Modo Consultor'}
           </button>
         )}
 
-        <div className="bg-black/40 rounded-lg p-4 backdrop-blur-sm border border-white/5">
+        <div className="bg-[#17324D]/40 rounded-lg p-4 backdrop-blur-sm border border-white/5">
           <p className="text-xs text-gray-400 text-center font-medium tracking-wider uppercase">Sistema de Gestión</p>
           <p className="text-[10px] text-gray-600 text-center mt-1">&copy; 2026 Estudio GS Consultora</p>
         </div>

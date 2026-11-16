@@ -34,7 +34,7 @@ export default function VoiceRecorder({ onBack }: { currentUser?: any; onBack?: 
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="animate-spin text-red-600 h-8 w-8" />
+        <Loader2 className="animate-spin text-[#0D9488] h-8 w-8" />
       </div>
     );
   }
@@ -44,7 +44,7 @@ export default function VoiceRecorder({ onBack }: { currentUser?: any; onBack?: 
       {clients.length > 1 && (
         <div className="bg-white p-4 rounded-2xl border-2 border-zinc-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-[#6B1D2F]" />
+            <Building2 className="w-4 h-4 text-[#17324D]" />
             <span className="font-display text-xs font-black uppercase tracking-wider text-zinc-900">
               Seleccionar Cliente para Grabación y Autocompletado (100 Preguntas):
             </span>
@@ -55,7 +55,7 @@ export default function VoiceRecorder({ onBack }: { currentUser?: any; onBack?: 
               const found = clients.find(c => c.id === e.target.value);
               if (found) setSelectedClient(found);
             }}
-            className="px-3.5 py-2 rounded-xl border-2 border-zinc-300 focus:border-[#6B1D2F] focus:outline-none text-xs font-bold text-zinc-900 bg-zinc-50"
+            className="px-3.5 py-2 rounded-xl border-2 border-zinc-300 focus:border-[#17324D] focus:outline-none text-xs font-bold text-zinc-900 bg-zinc-50"
           >
             {clients.map(c => (
               <option key={c.id} value={c.id}>

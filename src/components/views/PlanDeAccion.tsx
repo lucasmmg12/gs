@@ -28,7 +28,7 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
     switch (status) {
       case 'Completado': return 'bg-green-100 text-green-800';
       case 'En Progreso': return 'bg-blue-100 text-blue-800';
-      case 'Bloqueado': return 'bg-red-100 text-red-800';
+      case 'Bloqueado': return 'bg-[#EDF3F8] text-[#17324D]';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -37,7 +37,7 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
     switch (status) {
       case 'Completado': return <CheckCircle2 className="w-4 h-4 text-green-600" />;
       case 'En Progreso': return <Clock className="w-4 h-4 text-blue-600" />;
-      case 'Bloqueado': return <AlertCircle className="w-4 h-4 text-red-600" />;
+      case 'Bloqueado': return <AlertCircle className="w-4 h-4 text-[#0D9488]" />;
       default: return <Clock className="w-4 h-4 text-gray-500" />;
     }
   };
@@ -103,7 +103,7 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
         <div className="space-y-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <Target className="w-5 h-5 text-red-600" /> Procesos Activos
+              <Target className="w-5 h-5 text-[#0D9488]" /> Procesos Activos
             </h3>
             <div className="space-y-4">
               {client.processes.map(process => (
@@ -118,7 +118,7 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full ${process.status === 'Bloqueado' ? 'bg-red-500' : process.status === 'Completado' ? 'bg-green-500' : 'bg-red-600'}`} 
+                      className={`h-2 rounded-full ${process.status === 'Bloqueado' ? 'bg-[#F0FDFA]0' : process.status === 'Completado' ? 'bg-green-500' : 'bg-[#0D9488]'}`} 
                       style={{ width: `${process.progress}%` }}
                     ></div>
                   </div>
@@ -135,7 +135,7 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
             <h3 className="text-lg font-semibold text-gray-800">Intervenciones en la Realidad</h3>
             <button 
               onClick={() => setShowNewForm(!showNewForm)}
-              className="flex items-center gap-1 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-red-100 transition-colors border border-red-200"
+              className="flex items-center gap-1 bg-[#F0FDFA] text-[#0F766E] px-3 py-1.5 rounded-lg text-sm font-bold hover:bg-[#EDF3F8] transition-colors border border-teal-200/80"
             >
               <Plus className="w-4 h-4" /> Crear
             </button>
@@ -148,7 +148,7 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
                 placeholder="Título de la intervención..."
                 value={newTopic}
                 onChange={e => setNewTopic(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-[#0D9488]"
                 required
               />
               <input 
@@ -156,7 +156,7 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
                 placeholder="Problema a desbloquear..."
                 value={newProblem}
                 onChange={e => setNewProblem(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-[#0D9488]"
                 required
               />
               <input 
@@ -164,12 +164,12 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
                 placeholder="Consultor asignado..."
                 value={newTutor}
                 onChange={e => setNewTutor(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:border-[#0D9488]"
                 required
               />
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowNewForm(false)} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
-                <button type="submit" className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold">Guardar</button>
+                <button type="submit" className="px-3 py-1.5 text-sm bg-[#0D9488] text-white rounded-lg hover:bg-[#0F766E] font-bold">Guardar</button>
               </div>
             </form>
           )}
@@ -189,7 +189,7 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
                       {intervencion.status}
                     </span>
                   </div>
-                  <p className="text-xs text-red-600 font-semibold mb-2">Bloqueo: {intervencion.linkedProblem}</p>
+                  <p className="text-xs text-[#0D9488] font-semibold mb-2">Bloqueo: {intervencion.linkedProblem}</p>
                   
                   <div className="flex justify-between items-center text-xs text-gray-500">
                     <span>Consultor: {intervencion.tutor}</span>
@@ -207,11 +207,11 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
                   <div className="p-4 bg-white animate-in slide-in-from-top-2 duration-200">
                     <div className="flex justify-between items-center mb-3">
                       <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Checklist de Ejecución</span>
-                      <span className="text-xs font-bold text-red-600">{intervencion.progress}% Completado</span>
+                      <span className="text-xs font-bold text-[#0D9488]">{intervencion.progress}% Completado</span>
                     </div>
                     
                     <div className="w-full bg-gray-100 rounded-full h-1.5 mb-3">
-                      <div className="bg-red-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${intervencion.progress}%` }}></div>
+                      <div className="bg-[#F0FDFA]0 h-1.5 rounded-full transition-all duration-500" style={{ width: `${intervencion.progress}%` }}></div>
                     </div>
 
                     <div className="space-y-2">
@@ -224,7 +224,7 @@ export const PlanDeAccion: React.FC<PlanDeAccionProps> = ({ client }) => {
                           {check.completed ? (
                             <CheckSquare className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
                           ) : (
-                            <Square className="w-4 h-4 text-gray-300 group-hover:text-red-400 transition-colors shrink-0 mt-0.5" />
+                            <Square className="w-4 h-4 text-gray-300 group-hover:text-[#5EEAD4] transition-colors shrink-0 mt-0.5" />
                           )}
                           <span className={`text-sm ${check.completed ? 'text-gray-400 line-through' : 'text-gray-700'}`}>
                             {check.task}

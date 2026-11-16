@@ -172,7 +172,7 @@ export default function MeetingDetail() {
               <h1 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-zinc-950">
                 {meeting.title}
               </h1>
-              <span className="inline-flex items-center rounded-full bg-zinc-950 px-3 py-1 text-xs font-black uppercase tracking-wider text-red-400 border border-red-600/40">
+              <span className="inline-flex items-center rounded-full bg-[#17324D] px-3 py-1 text-xs font-black uppercase tracking-wider text-[#5EEAD4] border border-[#0D9488]/40">
                 {meeting.organizations?.name}
               </span>
             </div>
@@ -190,7 +190,7 @@ export default function MeetingDetail() {
               className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider border flex items-center gap-1.5 transition-all ${
                 isPublishedToClient
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                  : 'bg-red-50 text-red-800 border-red-300 hover:bg-red-100'
+                  : 'bg-[#F0FDFA] text-[#17324D] border-teal-300 hover:bg-[#EDF3F8]'
               }`}
             >
               {isPublishedToClient ? (
@@ -200,7 +200,7 @@ export default function MeetingDetail() {
                 </>
               ) : (
                 <>
-                  <EyeOff className="w-4 h-4 text-red-600" />
+                  <EyeOff className="w-4 h-4 text-[#0D9488]" />
                   Borrador Interno GS (Rojo)
                 </>
               )}
@@ -248,9 +248,9 @@ export default function MeetingDetail() {
             <button
               type="button"
               onClick={handleDownloadPDF}
-              className="px-3.5 py-2 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 bg-[#17324D] hover:bg-[#17324D] text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
             >
-              <Download className="w-4 h-4 text-red-500" />
+              <Download className="w-4 h-4 text-[#14B8A6]" />
               PDF
             </button>
           </div>
@@ -272,7 +272,7 @@ export default function MeetingDetail() {
         <div className="bg-white rounded-2xl border-2 border-zinc-900 shadow-sm p-8 space-y-6">
           <div className="border-b-2 border-zinc-900 pb-4 flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
             <div>
-              <span className="font-display text-xs font-black text-red-600 uppercase tracking-widest">
+              <span className="font-display text-xs font-black text-[#0D9488] uppercase tracking-widest">
                 Consultora GS · Minuta de Seguimiento Oficial (Rev 0)
               </span>
               <h2 className="font-display text-2xl sm:text-3xl font-black uppercase tracking-tight text-zinc-950 mt-1">
@@ -289,7 +289,7 @@ export default function MeetingDetail() {
               className={`text-xs font-black px-3 py-1 rounded-full uppercase border ${
                 isPublishedToClient
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                  : 'bg-red-50 text-red-800 border-red-300'
+                  : 'bg-[#F0FDFA] text-[#17324D] border-teal-300'
               }`}
             >
               {isPublishedToClient ? 'Visible en Portal Cliente' : 'Borrador Oculto al Cliente'}
@@ -329,7 +329,7 @@ export default function MeetingDetail() {
               <div className="overflow-x-auto rounded-xl border border-zinc-200">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-zinc-900 text-white font-display uppercase text-[10px] tracking-wider">
+                    <tr className="bg-[#17324D] text-white font-display uppercase text-[10px] tracking-wider">
                       <th className="py-2.5 px-4">Acción / Compromiso</th>
                       <th className="py-2.5 px-4">Responsable</th>
                       <th className="py-2.5 px-4">Plazo / Fecha</th>
@@ -340,7 +340,7 @@ export default function MeetingDetail() {
                       <tr key={idx} className="hover:bg-zinc-50">
                         <td className="py-2.5 px-4 font-medium text-zinc-900">{c.accion || c.TAREA}</td>
                         <td className="py-2.5 px-4 text-zinc-600 font-semibold">{c.responsable || c.RESPONSABLE}</td>
-                        <td className="py-2.5 px-4 font-mono font-bold text-red-700">{c.fecha || c.FECHA_LIMITE}</td>
+                        <td className="py-2.5 px-4 font-mono font-bold text-[#0F766E]">{c.fecha || c.FECHA_LIMITE}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -350,8 +350,8 @@ export default function MeetingDetail() {
           )}
 
           {reflection && (
-            <div className="p-5 rounded-xl bg-zinc-950 text-zinc-200 border border-zinc-800 space-y-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-red-400 block">
+            <div className="p-5 rounded-xl bg-[#17324D] text-zinc-200 border border-zinc-800 space-y-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#5EEAD4] block">
                 Reflexión General del Consultor GS
               </span>
               <p className="text-xs leading-relaxed italic">"{reflection}"</p>
@@ -363,7 +363,7 @@ export default function MeetingDetail() {
       {transcription && (
         <div className="bg-white rounded-xl border-2 border-zinc-900 shadow-sm p-6 space-y-3">
           <h3 className="font-display text-sm font-bold uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-            <Mic className="h-4 w-4 text-red-600" /> Transcripción Cruda de la Sesión
+            <Mic className="h-4 w-4 text-[#0D9488]" /> Transcripción Cruda de la Sesión
           </h3>
           <pre className="text-xs bg-gray-50 p-4 rounded-lg font-mono text-gray-700 whitespace-pre-wrap max-h-60 overflow-y-auto">
             {transcription.content_corrected || transcription.content_raw}

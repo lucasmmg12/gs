@@ -43,14 +43,14 @@ export const GanttChart: React.FC<GanttChartProps> = ({ gantt }) => {
               </div>
               <div className="w-2/3 relative h-8 rounded bg-gray-50 border border-gray-100">
                 <div 
-                  className="absolute top-0 bottom-0 bg-red-100 border border-red-300 rounded overflow-hidden"
+                  className="absolute top-0 bottom-0 bg-[#EDF3F8] border border-teal-300 rounded overflow-hidden"
                   style={{ 
                     left: `${(item.startMonth / 6) * 100}%`, 
                     width: `${(item.durationMonths / 6) * 100}%` 
                   }}
                 >
                   <div 
-                    className="h-full bg-red-600 transition-all"
+                    className="h-full bg-[#0D9488] transition-all"
                     style={{ width: `${item.progress}%` }}
                   ></div>
                 </div>
@@ -60,8 +60,8 @@ export const GanttChart: React.FC<GanttChartProps> = ({ gantt }) => {
         </div>
         
         <div className="mt-8 flex gap-4 text-xs text-gray-500 justify-center">
-          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-600 rounded-sm"></div> Progreso Actual</div>
-          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-100 border border-red-300 rounded-sm"></div> Tiempo Planificado</div>
+          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-[#0D9488] rounded-sm"></div> Progreso Actual</div>
+          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-[#EDF3F8] border border-teal-300 rounded-sm"></div> Tiempo Planificado</div>
         </div>
       </div>
     </div>

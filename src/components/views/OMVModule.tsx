@@ -73,7 +73,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
                 onClick={() => onStageChange(s.id)}
                 className={`p-4 rounded-xl border-2 text-left transition-all ${
                   isCurrent
-                    ? 'bg-black text-white border-black shadow-md border-l-4 border-l-red-600'
+                    ? 'bg-[#17324D] text-white border-[#17324D] shadow-md border-l-4 border-l-[#0D9488]'
                     : isPassed
                       ? 'bg-zinc-50 border-zinc-300 text-zinc-900'
                       : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400'
@@ -81,7 +81,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className={`font-display text-[11px] font-bold uppercase tracking-wider ${
-                    isCurrent ? 'text-red-400' : isPassed ? 'text-emerald-700' : 'text-zinc-400'
+                    isCurrent ? 'text-[#5EEAD4]' : isPassed ? 'text-emerald-700' : 'text-zinc-400'
                   }`}>
                     Etapa {s.step}
                   </span>
@@ -102,8 +102,8 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
       {/* 2. OMV en los 2 Formatos Exigidos: Podcast/Audio y Documento Escrito en Presente */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Columna Izquierda: Reproductor Podcast OMV */}
-        <div className="bg-gradient-to-b from-black via-zinc-950 to-red-950 text-white p-6 rounded-2xl shadow-obsidian border-2 border-red-900/50 space-y-5 lg:col-span-1">
-          <div className="flex items-center gap-2 text-red-500">
+        <div className="bg-gradient-to-b from-[#0F2438] via-[#17324D] to-[#115E59] text-white p-6 rounded-2xl shadow-obsidian border-2 border-teal-400/25 space-y-5 lg:col-span-1">
+          <div className="flex items-center gap-2 text-[#14B8A6]">
             <Volume2 className="w-5 h-5" />
             <span className="font-display text-xs font-bold uppercase tracking-wider">Formato 1: Audio / Podcast</span>
           </div>
@@ -120,21 +120,21 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
           {/* Reproductor de Audio Simulado */}
           <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-3 backdrop-blur-xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-red-400">03:45 / 08:20</span>
-              <span className="font-display text-[10px] font-bold bg-red-600/30 text-red-300 px-2.5 py-0.5 rounded uppercase tracking-wider border border-red-500/40">
+              <span className="text-xs font-mono font-bold text-[#5EEAD4]">03:45 / 08:20</span>
+              <span className="font-display text-[10px] font-bold bg-[#0D9488]/25 text-[#5EEAD4] px-2.5 py-0.5 rounded uppercase tracking-wider border border-teal-400/35">
                 IA Voice GS
               </span>
             </div>
 
             <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden cursor-pointer">
-              <div className="bg-red-600 h-full rounded-full w-2/5 shadow-[0_0_10px_rgba(220,38,38,0.8)]" />
+              <div className="bg-[#0D9488] h-full rounded-full w-2/5 shadow-[0_0_10px_rgba(13,148,136,0.45)]" />
             </div>
 
             <div className="flex items-center justify-center gap-4 pt-2">
               <button
                 type="button"
                 onClick={() => setIsPlaying(!isPlaying)}
-                className="w-12 h-12 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-crimson transition-transform hover:scale-110"
+                className="w-12 h-12 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-full flex items-center justify-center shadow-crimson transition-transform hover:scale-110"
               >
                 {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
               </button>
@@ -147,7 +147,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
               onClick={() => alert('Descargando archivo podcast_omv.mp3')}
               className="w-full py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
             >
-              <Download className="w-4 h-4 text-red-400" />
+              <Download className="w-4 h-4 text-[#5EEAD4]" />
               Descargar Audio MP3 para el Cliente
             </button>
           </div>
@@ -157,7 +157,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
         <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between border-b-2 border-zinc-100 pb-3">
             <div className="flex items-center gap-2.5">
-              <FileText className="w-5 h-5 text-red-600" />
+              <FileText className="w-5 h-5 text-[#0D9488]" />
               <div>
                 <h3 className="font-display text-base font-bold text-zinc-950 uppercase tracking-wide">
                   Formato 2: Declaración Escrita OMV (Kickoff)
@@ -174,16 +174,16 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
                 onClick={() => setIsEditingText(!isEditingText)}
                 className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 transition-colors border border-zinc-300"
               >
-                {isEditingText ? <Save className="w-3.5 h-3.5 text-red-600" /> : <Edit3 className="w-3.5 h-3.5 text-red-600" />}
+                {isEditingText ? <Save className="w-3.5 h-3.5 text-[#0D9488]" /> : <Edit3 className="w-3.5 h-3.5 text-[#0D9488]" />}
                 {isEditingText ? 'Guardar' : 'Editar'}
               </button>
 
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="px-3.5 py-1.5 bg-black hover:bg-zinc-800 text-white rounded-lg text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+                className="px-3.5 py-1.5 bg-[#17324D] hover:bg-[#0F2438] text-white rounded-lg text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 transition-colors"
               >
-                <Download className="w-3.5 h-3.5 text-red-400" />
+                <Download className="w-3.5 h-3.5 text-[#5EEAD4]" />
                 Exportar
               </button>
             </div>
@@ -194,7 +194,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
               rows={8}
               value={omvText}
               onChange={e => setOmvText(e.target.value)}
-              className="w-full text-xs font-sans rounded-xl border-2 border-zinc-300 focus:border-red-600 focus:ring-red-600 p-4 leading-relaxed"
+              className="w-full text-xs font-sans rounded-xl border-2 border-zinc-300 focus:border-[#0D9488] focus:ring-[#0D9488] p-4 leading-relaxed"
             />
           ) : (
             <div className="bg-zinc-50 p-6 rounded-xl border border-zinc-200 text-xs text-zinc-800 leading-relaxed space-y-3 font-serif">
@@ -204,8 +204,8 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
             </div>
           )}
 
-          <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl flex items-start gap-3 text-xs text-zinc-300">
-            <Sparkles className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+          <div className="bg-[#17324D] border border-zinc-800 p-4 rounded-xl flex items-start gap-3 text-xs text-zinc-300">
+            <Sparkles className="w-4 h-4 text-[#14B8A6] shrink-0 mt-0.5" />
             <p className="font-medium">
               <strong className="text-white font-display uppercase tracking-wide">Requisito Metodológico GS:</strong> Este texto constituye la portada oficial del Master Plan Estratégico y sirve como ancla de alineación durante las remediciones trimestrales del Pentágono.
             </p>

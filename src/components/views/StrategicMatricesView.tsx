@@ -35,14 +35,14 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
             className="p-2.5 hover:bg-zinc-100 rounded-xl text-zinc-700 transition-colors border border-zinc-200"
             title="Volver a las preguntas"
           >
-            <ArrowLeft className="w-5 h-5 text-red-600" />
+            <ArrowLeft className="w-5 h-5 text-[#0D9488]" />
           </button>
           <div>
             <div className="flex items-center gap-3">
               <h2 className="text-2xl font-black font-display text-zinc-950 uppercase tracking-wide">
                 Matrices Estratégicas y Diagnóstico 360
               </h2>
-              <span className="px-3 py-1 text-xs font-bold font-display uppercase tracking-wider rounded-md bg-black text-white border border-zinc-700">
+              <span className="px-3 py-1 text-xs font-bold font-display uppercase tracking-wider rounded-md bg-[#17324D] text-white border border-zinc-700">
                 {results.maturityStatus.label}
               </span>
             </div>
@@ -58,13 +58,13 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
             onClick={() => window.print()}
             className="px-4 py-2.5 bg-white border-2 border-zinc-900 hover:bg-zinc-100 text-zinc-900 rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shadow-xs transition-colors"
           >
-            <Printer className="w-4 h-4 text-red-600" />
+            <Printer className="w-4 h-4 text-[#0D9488]" />
             Imprimir Informe
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('full_report')}
-            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shadow-crimson transition-all hover:scale-105"
+            className="px-5 py-2.5 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shadow-crimson transition-all hover:scale-105"
           >
             <FileText className="w-4 h-4" />
             Ver Informe Completo
@@ -78,7 +78,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
           onClick={() => setActiveTab('overview')}
           className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${
             activeTab === 'overview'
-              ? 'bg-black text-white shadow-md border border-zinc-900'
+              ? 'bg-[#17324D] text-white shadow-md border border-zinc-900'
               : 'text-zinc-600 hover:bg-zinc-100'
           }`}
         >
@@ -89,7 +89,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
           onClick={() => setActiveTab('foda_tows')}
           className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${
             activeTab === 'foda_tows'
-              ? 'bg-black text-white shadow-md border border-zinc-900'
+              ? 'bg-[#17324D] text-white shadow-md border border-zinc-900'
               : 'text-zinc-600 hover:bg-zinc-100'
           }`}
         >
@@ -100,7 +100,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
           onClick={() => setActiveTab('pestel_porter')}
           className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${
             activeTab === 'pestel_porter'
-              ? 'bg-black text-white shadow-md border border-zinc-900'
+              ? 'bg-[#17324D] text-white shadow-md border border-zinc-900'
               : 'text-zinc-600 hover:bg-zinc-100'
           }`}
         >
@@ -111,7 +111,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
           onClick={() => setActiveTab('risks')}
           className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${
             activeTab === 'risks'
-              ? 'bg-black text-white shadow-md border border-zinc-900'
+              ? 'bg-[#17324D] text-white shadow-md border border-zinc-900'
               : 'text-zinc-600 hover:bg-zinc-100'
           }`}
         >
@@ -122,8 +122,8 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
           onClick={() => setActiveTab('full_report')}
           className={`px-4 py-2.5 rounded-xl transition-all whitespace-nowrap ${
             activeTab === 'full_report'
-              ? 'bg-red-600 text-white shadow-crimson border border-red-600'
-              : 'text-red-700 hover:bg-red-50'
+              ? 'bg-[#0D9488] text-white shadow-crimson border border-[#0D9488]'
+              : 'text-[#0F766E] hover:bg-[#F0FDFA]'
           }`}
         >
           5. Informe Completo
@@ -141,7 +141,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
               <span className="font-display text-xs font-bold text-zinc-500 uppercase tracking-widest block">IME Global</span>
               <div className="flex items-baseline gap-2 mt-2">
                 <span className="font-display text-4xl font-black text-zinc-950">{results.globalIme}%</span>
-                <span className="font-display text-sm font-bold text-red-600">({results.globalIme10} / 10)</span>
+                <span className="font-display text-sm font-bold text-[#0D9488]">({results.globalIme10} / 10)</span>
               </div>
               <p className="text-[11px] text-zinc-400 mt-1 font-medium">
                 Índice de Madurez Empresarial (Meta: 7.5 - 8.0)
@@ -149,9 +149,9 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
             </div>
 
             <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm">
-              <span className="font-display text-xs font-bold text-red-600 uppercase tracking-widest block">IRE Global</span>
+              <span className="font-display text-xs font-bold text-[#0D9488] uppercase tracking-widest block">IRE Global</span>
               <div className="flex items-baseline gap-2 mt-2">
-                <span className="font-display text-4xl font-black text-red-600">{results.globalIre}%</span>
+                <span className="font-display text-4xl font-black text-[#0D9488]">{results.globalIre}%</span>
                 <span className="font-display text-xs font-bold text-zinc-400 uppercase">Riesgo</span>
               </div>
               <p className="text-[11px] text-zinc-400 mt-1 font-medium">
@@ -190,10 +190,10 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
             <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm lg:col-span-1 space-y-4">
               <div className="flex items-center justify-between border-b-2 border-zinc-100 pb-3">
                 <h3 className="font-display text-base font-bold text-zinc-950 uppercase tracking-wide flex items-center gap-2">
-                  <Award className="w-4 h-4 text-red-600" />
+                  <Award className="w-4 h-4 text-[#0D9488]" />
                   Pentágono del Orden (1 a 10)
                 </h3>
-                <span className="font-display text-[10px] font-bold bg-black text-red-400 px-2.5 py-0.5 rounded uppercase tracking-wider">
+                <span className="font-display text-[10px] font-bold bg-[#17324D] text-[#5EEAD4] px-2.5 py-0.5 rounded uppercase tracking-wider">
                   Trimestral
                 </span>
               </div>
@@ -217,7 +217,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                     </div>
                     <div className="w-full bg-zinc-100 h-2.5 rounded-full overflow-hidden border border-zinc-200">
                       <div
-                        className="bg-red-600 h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(220,38,38,0.4)]"
+                        className="bg-[#0D9488] h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(13,148,136,0.35)]"
                         style={{ width: `${(axis.score / 10) * 100}%` }}
                       />
                     </div>
@@ -225,8 +225,8 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                 ))}
               </div>
 
-              <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 text-xs text-zinc-200 mt-4">
-                <strong className="font-display text-sm font-bold text-red-400 uppercase tracking-wider block">
+              <div className="bg-[#17324D] p-4 rounded-xl border border-zinc-800 text-xs text-zinc-200 mt-4">
+                <strong className="font-display text-sm font-bold text-[#5EEAD4] uppercase tracking-wider block">
                   Promedio Actual: {results.pentagon.promedioGeneral} / 10
                 </strong>
                 <p className="text-[11px] text-zinc-400 mt-1 font-medium">
@@ -239,14 +239,14 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
             <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between border-b-2 border-zinc-100 pb-3">
                 <h3 className="font-display text-base font-bold text-zinc-950 uppercase tracking-wide flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-red-600" />
+                  <Activity className="w-4 h-4 text-[#0D9488]" />
                   Cuadro de Madurez y Riesgo por Área (10 Ejes)
                 </h3>
               </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
-                  <thead className="bg-zinc-900 text-white font-display uppercase tracking-wider text-[11px]">
+                  <thead className="bg-[#17324D] text-white font-display uppercase tracking-wider text-[11px]">
                     <tr>
                       <th className="py-3 px-3">Eje Temático</th>
                       <th className="py-3 px-3">Pentágono</th>
@@ -281,7 +281,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                         <td className="py-3 px-3 text-center">
                           <span className={`font-bold font-display px-2.5 py-0.5 rounded ${
                             area.ireScore >= 60 
-                              ? 'text-red-700 bg-red-50 border border-red-200' 
+                              ? 'text-[#0F766E] bg-[#F0FDFA] border border-teal-200/80' 
                               : area.ireScore >= 40 
                                 ? 'text-amber-700 bg-amber-50 border border-amber-200' 
                                 : 'text-emerald-700 bg-emerald-50 border border-emerald-200'
@@ -329,7 +329,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                   ) : (
                     results.foda.fortalezas.map((f, i) => (
                       <li key={i} className="flex items-start gap-2 font-medium">
-                        <span className="font-bold text-red-600">•</span>
+                        <span className="font-bold text-[#0D9488]">•</span>
                         <span>{f.text} <strong className="text-[10px] text-zinc-500">({f.questionCode})</strong></span>
                       </li>
                     ))
@@ -341,10 +341,10 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
               <div className="bg-white border-2 border-zinc-900 rounded-xl p-5 space-y-3">
                 <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
                   <h4 className="font-display text-xs font-bold text-zinc-950 uppercase tracking-wider flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-red-600" />
+                    <TrendingUp className="w-4 h-4 text-[#0D9488]" />
                     Oportunidades ({results.foda.oportunidades.length})
                   </h4>
-                  <span className="text-[10px] bg-red-50 text-red-700 font-bold px-2 py-0.5 rounded uppercase">Externo</span>
+                  <span className="text-[10px] bg-[#F0FDFA] text-[#0F766E] font-bold px-2 py-0.5 rounded uppercase">Externo</span>
                 </div>
                 <ul className="space-y-2 text-xs text-zinc-800">
                   {results.foda.oportunidades.length === 0 ? (
@@ -352,7 +352,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                   ) : (
                     results.foda.oportunidades.map((o, i) => (
                       <li key={i} className="flex items-start gap-2 font-medium">
-                        <span className="font-bold text-red-600">•</span>
+                        <span className="font-bold text-[#0D9488]">•</span>
                         <span>{o.text} <strong className="text-[10px] text-zinc-500">({o.questionCode})</strong></span>
                       </li>
                     ))
@@ -386,11 +386,11 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
               {/* Amenazas */}
               <div className="bg-white border-2 border-red-900 rounded-xl p-5 space-y-3">
                 <div className="flex items-center justify-between border-b border-red-100 pb-2">
-                  <h4 className="font-display text-xs font-bold text-red-700 uppercase tracking-wider flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-red-600" />
+                  <h4 className="font-display text-xs font-bold text-[#0F766E] uppercase tracking-wider flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-[#0D9488]" />
                     Amenazas ({results.foda.amenazas.length})
                   </h4>
-                  <span className="text-[10px] bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded uppercase">Riesgo</span>
+                  <span className="text-[10px] bg-[#EDF3F8] text-[#17324D] font-bold px-2 py-0.5 rounded uppercase">Riesgo</span>
                 </div>
                 <ul className="space-y-2 text-xs text-zinc-800">
                   {results.foda.amenazas.length === 0 ? (
@@ -398,8 +398,8 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                   ) : (
                     results.foda.amenazas.map((a, i) => (
                       <li key={i} className="flex items-start gap-2 font-medium">
-                        <span className="font-bold text-red-600">•</span>
-                        <span>{a.text} <strong className="text-[10px] text-red-700">({a.questionCode})</strong></span>
+                        <span className="font-bold text-[#0D9488]">•</span>
+                        <span>{a.text} <strong className="text-[10px] text-[#0F766E]">({a.questionCode})</strong></span>
                       </li>
                     ))
                   )}
@@ -423,7 +423,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
               {results.tows.map((t, idx) => (
                 <div key={idx} className="p-5 rounded-xl border-2 border-zinc-200 bg-zinc-50/70 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 bg-black text-white text-[10px] font-bold font-display uppercase tracking-wider rounded">
+                    <span className="px-2.5 py-0.5 bg-[#17324D] text-white text-[10px] font-bold font-display uppercase tracking-wider rounded">
                       Estrategia {t.type}
                     </span>
                   </div>
@@ -485,7 +485,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                       <ul className="space-y-1.5 text-xs text-zinc-700 font-medium">
                         {items.map((it, i) => (
                           <li key={i} className="flex items-start gap-1.5">
-                            <span className="text-red-600 font-bold">•</span>
+                            <span className="text-[#0D9488] font-bold">•</span>
                             <span>{it.impactText}</span>
                           </li>
                         ))}
@@ -514,7 +514,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                   <div className="flex items-center justify-between">
                     <span className={`text-[10px] font-bold font-display uppercase tracking-wider px-2.5 py-0.5 rounded ${
                       p.intensity === 'Alta' 
-                        ? 'bg-red-600 text-white' 
+                        ? 'bg-[#0D9488] text-white' 
                         : p.intensity === 'Media' 
                           ? 'bg-zinc-800 text-white' 
                           : 'bg-zinc-200 text-zinc-800'
@@ -554,7 +554,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                   type="button"
                   onClick={() => setRiskSubTab('master_plan_risks')}
                   className={`px-3 py-1.5 rounded-lg transition-all ${
-                    riskSubTab === 'master_plan_risks' ? 'bg-black text-white shadow-xs' : 'text-zinc-600 hover:text-zinc-900'
+                    riskSubTab === 'master_plan_risks' ? 'bg-[#17324D] text-white shadow-xs' : 'text-zinc-600 hover:text-zinc-900'
                   }`}
                 >
                   Matriz MPE (27 Riesgos)
@@ -563,7 +563,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                   type="button"
                   onClick={() => setRiskSubTab('session_risks')}
                   className={`px-3 py-1.5 rounded-lg transition-all ${
-                    riskSubTab === 'session_risks' ? 'bg-black text-white shadow-xs' : 'text-zinc-600 hover:text-zinc-900'
+                    riskSubTab === 'session_risks' ? 'bg-[#17324D] text-white shadow-xs' : 'text-zinc-600 hover:text-zinc-900'
                   }`}
                 >
                   Detectados en Sesión ({results.risks.length})
@@ -571,7 +571,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
               </div>
               <div className="text-right pl-3 border-l border-zinc-200">
                 <span className="font-display text-[10px] text-zinc-400 block font-bold uppercase tracking-wider">IRE Global</span>
-                <span className="font-display text-2xl font-black text-red-600">{results.globalIre}%</span>
+                <span className="font-display text-2xl font-black text-[#0D9488]">{results.globalIre}%</span>
               </div>
             </div>
           </div>
@@ -584,7 +584,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                   Registro de <strong>27 Riesgos Organizacionales</strong> vinculados a las iniciativas de mitigación del Master Plan.
                 </span>
                 <div className="flex items-center gap-2 text-[10px] font-display font-bold uppercase">
-                  <span className="px-2 py-0.5 rounded bg-red-600 text-white">Extremo (15-25)</span>
+                  <span className="px-2 py-0.5 rounded bg-[#0D9488] text-white">Extremo (15-25)</span>
                   <span className="px-2 py-0.5 rounded bg-amber-500 text-white">Alto (10-14)</span>
                   <span className="px-2 py-0.5 rounded bg-zinc-700 text-white">Medio (5-9)</span>
                 </div>
@@ -592,7 +592,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
 
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
-                  <thead className="bg-zinc-900 text-white font-display uppercase tracking-wider text-[11px]">
+                  <thead className="bg-[#17324D] text-white font-display uppercase tracking-wider text-[11px]">
                     <tr>
                       <th className="py-3 px-3">Código</th>
                       <th className="py-3 px-3">Categoría</th>
@@ -607,7 +607,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                   <tbody className="divide-y divide-zinc-200">
                     {INITIAL_RISKS.map(r => (
                       <tr key={r.id} className="hover:bg-zinc-50">
-                        <td className="py-2.5 px-3 font-mono font-bold text-red-600">{r.code}</td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-[#0D9488]">{r.code}</td>
                         <td className="py-2.5 px-3 font-bold text-zinc-900 whitespace-nowrap">{r.category}</td>
                         <td className="py-2.5 px-3 max-w-xs font-medium text-zinc-800">
                           <span className="font-bold text-zinc-950 block">{r.riskName}</span>
@@ -616,7 +616,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                         <td className="py-2.5 px-3 text-center">
                           <span className={`px-2 py-0.5 rounded font-display text-[10px] font-bold ${
                             r.levelInherent >= 16
-                              ? 'bg-red-600 text-white'
+                              ? 'bg-[#0D9488] text-white'
                               : r.levelInherent >= 10
                                 ? 'bg-amber-500 text-white'
                                 : 'bg-zinc-800 text-white'
@@ -645,7 +645,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
             /* Subpestaña 2: Riesgos Detectados en Sesión Actual */
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
-                <thead className="bg-zinc-900 text-white font-display uppercase tracking-wider text-[11px]">
+                <thead className="bg-[#17324D] text-white font-display uppercase tracking-wider text-[11px]">
                   <tr>
                     <th className="py-3 px-3">Código</th>
                     <th className="py-3 px-3">Categoría</th>
@@ -666,7 +666,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                   ) : (
                     results.risks.map(r => (
                       <tr key={r.id} className="hover:bg-zinc-50">
-                        <td className="py-3 px-3 font-mono font-bold text-red-600">{r.code}</td>
+                        <td className="py-3 px-3 font-mono font-bold text-[#0D9488]">{r.code}</td>
                         <td className="py-3 px-3 font-bold text-zinc-900">{r.category}</td>
                         <td className="py-3 px-3 text-zinc-700 max-w-xs font-medium">{r.description}</td>
                         <td className="py-3 px-3 text-center font-semibold text-zinc-800">{r.probability}</td>
@@ -674,9 +674,9 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                         <td className="py-3 px-3 text-center">
                           <span className={`px-2.5 py-0.5 rounded font-display text-[10px] font-bold uppercase tracking-wider ${
                             r.severityLevel === 'Extremo' 
-                              ? 'bg-red-600 text-white' 
+                              ? 'bg-[#0D9488] text-white' 
                               : r.severityLevel === 'Alto' 
-                                ? 'bg-zinc-900 text-red-400 border border-red-700' 
+                                ? 'bg-[#17324D] text-[#5EEAD4] border border-red-700' 
                                 : 'bg-zinc-100 text-zinc-800'
                           }`}>
                             {r.severityLevel} ({r.severityScore})
@@ -701,7 +701,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
           {/* Encabezado Formal del Informe */}
           <div className="border-b-4 border-zinc-950 pb-6 flex items-start justify-between">
             <div>
-              <span className="font-display text-xs font-bold text-red-600 uppercase tracking-widest block">
+              <span className="font-display text-xs font-bold text-[#0D9488] uppercase tracking-widest block">
                 Estudio GS Consultora — Metodología de Tutoría
               </span>
               <h1 className="font-display text-3xl font-black text-zinc-950 mt-1 uppercase tracking-wide">
@@ -713,7 +713,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
             </div>
             <div className="text-right">
               <span className="font-display text-xs font-bold text-zinc-400 block uppercase tracking-wider">Dictamen Oficial</span>
-              <span className="inline-block px-3 py-1 rounded-lg text-xs font-bold font-display uppercase tracking-wider mt-1 bg-black text-white border border-zinc-700">
+              <span className="inline-block px-3 py-1 rounded-lg text-xs font-bold font-display uppercase tracking-wider mt-1 bg-[#17324D] text-white border border-zinc-700">
                 {results.maturityStatus.label}
               </span>
             </div>
@@ -727,7 +727,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
             <p className="text-xs text-zinc-700 leading-relaxed font-medium">
               El presente informe sintetiza el estado real de profesionalización y ordenamiento de <strong>{client.name}</strong> tras el ciclo de evaluación diagnóstica. Se relevaron las 10 áreas funcionales bajo la metodología del Pentágono del Orden.
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-zinc-950 text-white p-5 rounded-xl border border-zinc-800 text-center">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-[#17324D] text-white p-5 rounded-xl border border-zinc-800 text-center">
               <div>
                 <span className="font-display text-[10px] text-zinc-400 uppercase font-bold tracking-wider block">Madurez (IME)</span>
                 <span className="font-display text-2xl font-black text-white">{results.globalIme}%</span>
@@ -737,8 +737,8 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                 <span className="font-display text-2xl font-black text-white">{results.globalIme10} / 10</span>
               </div>
               <div>
-                <span className="font-display text-[10px] text-red-400 uppercase font-bold tracking-wider block">Riesgo (IRE)</span>
-                <span className="font-display text-2xl font-black text-red-500">{results.globalIre}%</span>
+                <span className="font-display text-[10px] text-[#5EEAD4] uppercase font-bold tracking-wider block">Riesgo (IRE)</span>
+                <span className="font-display text-2xl font-black text-[#14B8A6]">{results.globalIre}%</span>
               </div>
               <div>
                 <span className="font-display text-[10px] text-zinc-400 uppercase font-bold tracking-wider block">Riesgos Críticos</span>
@@ -765,7 +765,7 @@ export const StrategicMatricesView: React.FC<StrategicMatricesViewProps> = ({
                 <div key={ax.name} className="p-4 rounded-xl border-2 border-zinc-200 bg-white space-y-1">
                   <div className="flex justify-between items-center">
                     <span className="font-display font-bold text-zinc-950 uppercase text-xs">{ax.name}</span>
-                    <span className="font-display text-xs font-bold text-red-600">{ax.score} / 10</span>
+                    <span className="font-display text-xs font-bold text-[#0D9488]">{ax.score} / 10</span>
                   </div>
                   <p className="text-[11px] text-zinc-500 font-medium">{ax.desc}</p>
                 </div>

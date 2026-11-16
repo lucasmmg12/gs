@@ -24,7 +24,7 @@ export const Dashboard360: React.FC<Dashboard360Props> = ({ client }) => {
       <div className="flex justify-between items-end relative z-10">
         <div>
           <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dashboard 360</h2>
-          <p className="text-gray-500 mt-1 font-medium">Visión general del estado actual de <span className="text-red-600 font-bold">{client.name}</span></p>
+          <p className="text-gray-500 mt-1 font-medium">Visión general del estado actual de <span className="text-[#0D9488] font-bold">{client.name}</span></p>
         </div>
         <button 
           onClick={handleDownload}
@@ -52,8 +52,8 @@ export const Dashboard360: React.FC<Dashboard360Props> = ({ client }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
         <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-gray-200/60 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-red-50 rounded-xl group-hover:bg-red-100 transition-colors">
-              <Target className="w-6 h-6 text-red-600" />
+            <div className="p-3 bg-[#F0FDFA] rounded-xl group-hover:bg-[#EDF3F8] transition-colors">
+              <Target className="w-6 h-6 text-[#0D9488]" />
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Tareas Completadas</p>
@@ -67,8 +67,8 @@ export const Dashboard360: React.FC<Dashboard360Props> = ({ client }) => {
         
         <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-gray-200/60 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-red-50 rounded-xl group-hover:bg-red-100 transition-colors">
-              <Calendar className="w-6 h-6 text-red-600" />
+            <div className="p-3 bg-[#F0FDFA] rounded-xl group-hover:bg-[#EDF3F8] transition-colors">
+              <Calendar className="w-6 h-6 text-[#0D9488]" />
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Días en Programa</p>
@@ -82,8 +82,8 @@ export const Dashboard360: React.FC<Dashboard360Props> = ({ client }) => {
 
         <div className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-gray-200/60 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-red-50 rounded-xl group-hover:bg-red-100 transition-colors">
-              <Zap className="w-6 h-6 text-red-600" />
+            <div className="p-3 bg-[#F0FDFA] rounded-xl group-hover:bg-[#EDF3F8] transition-colors">
+              <Zap className="w-6 h-6 text-[#0D9488]" />
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Adherencia a la Realidad</p>
@@ -117,7 +117,7 @@ export const Dashboard360: React.FC<Dashboard360Props> = ({ client }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10">
         <div className="lg:col-span-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-gray-200/60 p-8 hover:shadow-lg transition-all duration-300">
           <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <Zap className="w-5 h-5 text-red-600" /> Estado del Pentágono del Orden
+            <Zap className="w-5 h-5 text-[#0D9488]" /> Estado del Pentágono del Orden
           </h3>
           <div className="w-full h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -143,14 +143,14 @@ export const Dashboard360: React.FC<Dashboard360Props> = ({ client }) => {
         <div className="space-y-6">
           <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-gray-200/60 p-8 hover:shadow-lg transition-all duration-300">
             <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-600" /> Foco Semanal
+              <AlertTriangle className="w-5 h-5 text-[#0D9488]" /> Foco Semanal
             </h3>
-            <div className="bg-red-50/50 rounded-xl p-5 border border-red-100/50">
+            <div className="bg-[#F0FDFA]/70 rounded-xl p-5 border border-red-100/50">
               <h4 className="font-bold text-red-900 mb-2">{client.kpis.attentionRequiredArea}</h4>
-              <p className="text-sm text-red-800/80 leading-relaxed">
+              <p className="text-sm text-[#17324D]/80 leading-relaxed">
                 {client.kpis.attentionRequiredText}
               </p>
-              <button className="mt-4 text-red-700 text-sm font-bold flex items-center gap-1 hover:text-red-800 transition-colors">
+              <button className="mt-4 text-[#0F766E] text-sm font-bold flex items-center gap-1 hover:text-[#17324D] transition-colors">
                 Ver detalle del área <ChevronRight className="w-4 h-4" />
               </button>
             </div>

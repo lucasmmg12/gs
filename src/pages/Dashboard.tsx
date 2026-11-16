@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Building2, Calendar, FileText, Activity, ChevronRight } from 'lucide-react';
+import {
+  Building2,
+  Calendar,
+  FileText,
+  Activity,
+  ChevronRight,
+  Plus,
+  Sparkles,
+  BookOpen,
+  ArrowUpRight,
+  KeyRound,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { askGrowyContextual } from '../components/StepAssistantBanner';
 
 export default function Dashboard() {
   const [clientsCount, setClientsCount] = useState(0);
@@ -10,19 +22,21 @@ export default function Dashboard() {
   const [clients, setClients] = useState<any[]>([]);
 
   const fetchDashboardStats = async () => {
-    // 1. Fetch orgs
-    const { data: orgs } = await supabase.from('organizations').select('*');
+    const { data: orgs } = await supabase.from('organizations').select('*').order('name');
     if (orgs) {
       setClientsCount(orgs.length);
       setClients(orgs);
     }
 
-    // 2. Fetch meetings
-    const { count: mtgCount } = await supabase.from('meetings').select('*', { count: 'exact', head: true });
+    const { count: mtgCount } = await supabase
+      .from('meetings')
+      .select('*', { count: 'exact', head: true });
     setMeetingsCount(mtgCount || 0);
 
-    // 3. Fetch minutes
-    const { count: minCount } = await supabase.from('minutes').select('*', { count: 'exact', head: true }).eq('status', 'draft');
+    const { count: minCount } = await supabase
+      .from('minutes')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'draft');
     setMinutesCount(minCount || 0);
   };
 
@@ -31,142 +45,195 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <span className="h-2 w-2 rounded-full bg-[#6B1D2F] animate-pulse" />
-          <span className="font-display text-xs font-bold uppercase tracking-widest text-[#6B1D2F]">
-            SISTEMA CENTRAL DE CONTROL · METODOLOGÍA GS
-          </span>
+    <div className="space-y-7 max-w-7xl mx-auto pb-12">
+      {/* Figma Hero Header Bento */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0F2438] via-[#17324D] to-[#115E59] text-white p-7 sm:p-9 shadow-[0_18px_40px_-14px_rgba(23,50,77,0.3)]">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-[#2DD4BF]/15 blur-3xl" />
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[11px] font-medium text-[#5EEAD4]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#2DD4BF] animate-pulse" />
+              Centro de Control Estratégico · Estudio GS
+            </span>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">
+              Panel Ejecutivo de Consultoría
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Supervise el avance del Diagnóstico 360°, la evolución matemática del Pentágono (IME/IRE) y la publicación auditada en el Portal de cada empresa cliente.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <Link
+              to="/clients"
+              className="btn-nordic-teal px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Gestionar Cartera
+            </Link>
+            <Link
+              to="/knowledge"
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-semibold flex items-center gap-2 transition-colors"
+            >
+              <BookOpen className="h-4 w-4 text-[#5EEAD4]" />
+              Manual & PPTX
+            </Link>
+            <button
+              type="button"
+              onClick={() =>
+                askGrowyContextual(
+                  'Dame un panorama general de cómo gestionar mi cartera de clientes hoy desde el Panel Ejecutivo.'
+                )
+              }
+              className="px-4 py-2.5 rounded-xl bg-white text-[#17324D] hover:bg-slate-100 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+            >
+              <Sparkles className="h-4 w-4 text-[#0D9488]" />
+              Consultar a Growy
+            </button>
+          </div>
         </div>
-        <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-          Dashboard General · <span className="text-[#6B1D2F]">Consultora GS</span>
-        </h1>
-        <p className="mt-1 text-sm text-slate-500 font-sans">
-          Supervisión de madurez estratégica (IME), Master Plan, minutas y auditorías de salud organizacionales.
-        </p>
       </div>
 
-      {/* Top Metric Cards */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Card 1: Clientes */}
-        <div className="overflow-hidden rounded-2xl bg-white p-6 shadow-xs border border-slate-200 relative">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-slate-100 text-slate-800 rounded-xl border border-slate-200">
-              <Building2 className="h-5 w-5" />
-            </div>
+      {/* 4 Bento Metric Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="figma-card figma-card-hover p-5 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
             <div>
-              <p className="font-display text-xs font-semibold text-slate-500 uppercase tracking-wider">Clientes en Cartera</p>
-              <p className="font-display text-3xl font-bold text-slate-900 mt-1">{clientsCount || 3}</p>
-            </div>
-          </div>
-          <p className="text-xs text-slate-500 mt-4 font-medium flex items-center gap-1.5 border-t border-slate-100 pt-3">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-            Empresas bajo metodología GS
-          </p>
-        </div>
-
-        {/* Card 2: IME Promedio */}
-        <div className="overflow-hidden rounded-2xl bg-white p-6 shadow-xs border border-[#E6C5CD] relative">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-[#F9EFF2] text-[#6B1D2F] rounded-xl border border-[#E6C5CD]">
-              <Activity className="h-5 w-5 stroke-[2.5]" />
-            </div>
-            <div>
-              <p className="font-display text-xs font-semibold text-[#6B1D2F] uppercase tracking-wider">IME Promedio</p>
-              <p className="font-display text-3xl font-bold text-[#6B1D2F] mt-1">
-                5.5 <span className="font-sans text-xs font-bold text-slate-400">/ 10</span>
+              <p className="text-xs font-medium text-slate-500">Empresas Activas</p>
+              <p className="font-display text-3xl font-bold text-[#17324D] mt-1.5" data-numeric="true">
+                {clientsCount || 3}
               </p>
             </div>
+            <div className="h-10 w-10 rounded-xl bg-[#EDF3F8] text-[#17324D] flex items-center justify-center">
+              <Building2 className="h-5 w-5" />
+            </div>
           </div>
-          <p className="text-xs text-[#6B1D2F] mt-4 font-semibold flex items-center gap-1.5 border-t border-[#F9EFF2] pt-3">
-            ▲ +0.8 de incremento trimestral
-          </p>
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span className="text-slate-500">Aislamiento multi-tenant</span>
+            <span className="font-semibold text-[#0D9488]">100% Activo</span>
+          </div>
         </div>
 
-        {/* Card 3: Sesiones */}
-        <div className="overflow-hidden rounded-2xl bg-white p-6 shadow-xs border border-slate-200 relative">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-slate-100 text-slate-800 rounded-xl border border-slate-200">
+        <div className="figma-card figma-card-hover p-5 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-medium text-slate-500">Madurez Promedio (IME)</p>
+              <p className="font-display text-3xl font-bold text-[#0D9488] mt-1.5" data-numeric="true">
+                5.8 <span className="text-sm font-medium text-slate-400">/ 10</span>
+              </p>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-[#F0FDFA] text-[#0D9488] flex items-center justify-center">
+              <Activity className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span className="text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">
+              +0.8 pts trimestral
+            </span>
+            <span className="text-slate-400">Meta trienal: 8.0</span>
+          </div>
+        </div>
+
+        <div className="figma-card figma-card-hover p-5 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-medium text-slate-500">Sesiones Grabadas</p>
+              <p className="font-display text-3xl font-bold text-[#17324D] mt-1.5" data-numeric="true">
+                {meetingsCount || 8}
+              </p>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-[#EDF3F8] text-[#17324D] flex items-center justify-center">
               <Calendar className="h-5 w-5" />
             </div>
-            <div>
-              <p className="font-display text-xs font-semibold text-slate-500 uppercase tracking-wider">Sesiones Auditadas</p>
-              <p className="font-display text-3xl font-bold text-slate-900 mt-1">{meetingsCount || 8}</p>
-            </div>
           </div>
-          <p className="text-xs text-slate-500 mt-4 font-medium flex items-center gap-1.5 border-t border-slate-100 pt-3">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-            Reuniones con audio & transcripción
-          </p>
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span className="text-slate-500">Audio → 100 preguntas</span>
+            <span className="font-semibold text-[#17324D]">IA Auditada</span>
+          </div>
         </div>
 
-        {/* Card 4: Minutas Pendientes */}
-        <div className="overflow-hidden rounded-2xl bg-white p-6 shadow-xs border border-slate-200 relative">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-slate-100 text-slate-800 rounded-xl border border-slate-200">
+        <div className="figma-card figma-card-hover p-5 flex flex-col justify-between">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-medium text-slate-500">Minutas en Revisión</p>
+              <p className="font-display text-3xl font-bold text-[#17324D] mt-1.5" data-numeric="true">
+                {minutesCount || 1}
+              </p>
+            </div>
+            <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <FileText className="h-5 w-5" />
             </div>
-            <div>
-              <p className="font-display text-xs font-semibold text-slate-500 uppercase tracking-wider">Minutas Pendientes</p>
-              <p className="font-display text-3xl font-bold text-slate-900 mt-1">{minutesCount || 1}</p>
-            </div>
           </div>
-          <p className="text-xs text-amber-700 mt-4 font-semibold flex items-center gap-1.5 border-t border-slate-100 pt-3">
-            ● Esperando revisión del consultor
-          </p>
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span className="text-amber-700 font-medium bg-amber-50 px-2 py-0.5 rounded-full">
+              Filtro humano GS
+            </span>
+            <span className="text-slate-400">Previo a Portal</span>
+          </div>
         </div>
       </div>
 
-      {/* Quick Access to Clients Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-2 w-2 rounded-full bg-[#E6C5CD]" />
-            <h2 className="font-display text-sm font-bold tracking-wider text-white">
-              Estado de Clientes y Madurez
+      {/* Portfolio Bento Table */}
+      <div className="figma-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+          <div>
+            <h2 className="font-display text-base font-bold text-[#17324D]">
+              Expedientes Corporativos en Seguimiento
             </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Seleccione una organización para abrir su ciclo Etapas 0 a 4 o previsualizar su Portal Ejecutivo.
+            </p>
           </div>
-          <Link 
-            to="/clients" 
-            className="font-display text-xs font-semibold text-[#E6C5CD] hover:text-white flex items-center gap-1 transition-colors"
+          <Link
+            to="/clients"
+            className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] flex items-center gap-1"
           >
-            Ver todos los clientes <ChevronRight className="h-4 w-4" />
+            Directorio completo <ArrowUpRight className="h-3.5 w-3.5" />
           </Link>
         </div>
 
         <div className="divide-y divide-slate-100">
-          {clients.map(client => (
-            <Link
+          {clients.map((client) => (
+            <div
               key={client.id}
-              to={`/clients/${client.id}`}
-              className="p-5 flex items-center justify-between hover:bg-slate-50/80 transition-colors group block"
+              className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/70 transition-colors group"
             >
-              <div className="flex items-center gap-4">
-                <div className="h-11 w-11 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold shadow-xs group-hover:bg-[#6B1D2F] group-hover:text-white transition-colors">
-                  <Building2 className="h-5 w-5" />
+              <Link to={`/clients/${client.id}`} className="flex items-center gap-4 min-w-0 flex-1">
+                <div className="h-10 w-10 rounded-xl bg-[#EDF3F8] text-[#17324D] flex items-center justify-center font-display font-bold text-sm shrink-0 group-hover:bg-[#17324D] group-hover:text-white transition-colors">
+                  {client.name?.substring(0, 2).toUpperCase() || 'GS'}
                 </div>
-                <div>
-                  <p className="font-display text-base font-bold text-slate-900 group-hover:text-[#6B1D2F] tracking-wide transition-colors">
+                <div className="min-w-0">
+                  <p className="font-display text-sm font-bold text-slate-900 group-hover:text-[#17324D] truncate">
                     {client.name}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {client.industry || 'PyME'} · <span className="text-slate-900 font-semibold">Diagnóstico 360 Activo</span>
+                  <p className="text-xs text-slate-500 truncate mt-0.5">
+                    {client.industry || 'Organización PyME'} ·{' '}
+                    <span className="text-[#0D9488] font-medium">Expediente 360° Activo</span>
                   </p>
                 </div>
+              </Link>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] font-mono font-medium text-slate-600">
+                  <KeyRound className="h-3 w-3 text-[#0D9488]" />
+                  {client.portal_access_code || 'GS-DEMO-2026'}
+                </span>
+
+                <Link
+                  to={`/portal/${client.id}`}
+                  className="px-3 py-1.5 rounded-lg bg-[#F0FDFA] hover:bg-teal-100/70 text-[#0F766E] border border-teal-200/80 text-xs font-semibold transition-colors"
+                >
+                  Portal Cliente
+                </Link>
+
+                <Link
+                  to={`/clients/${client.id}`}
+                  className="p-2 rounded-lg text-slate-400 hover:text-[#17324D] hover:bg-slate-100 transition-all"
+                >
+                  <ChevronRight className="h-4.5 w-4.5" />
+                </Link>
               </div>
-              <div className="flex items-center gap-6">
-                <div className="text-right hidden sm:block">
-                  <span className="font-display text-sm font-bold text-[#6B1D2F]">
-                    IME: 5.5 / 10
-                  </span>
-                  <p className="text-[11px] text-slate-500 font-medium">Master Plan: 42% avance</p>
-                </div>
-                <div className="p-1.5 rounded-md text-slate-400 group-hover:text-[#6B1D2F] group-hover:translate-x-0.5 transition-all">
-                  <ChevronRight className="h-5 w-5" />
-                </div>
-              </div>
-            </Link>
+            </div>
           ))}
         </div>
       </div>

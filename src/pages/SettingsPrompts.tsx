@@ -86,7 +86,7 @@ export const SettingsPrompts: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-[#F9EFF2] text-[#6B1D2F] text-[10px] font-bold uppercase tracking-wider border border-[#E6C5CD]">
+            <span className="px-2.5 py-0.5 rounded-full bg-[#EDF3F8] text-[#17324D] text-[10px] font-bold uppercase tracking-wider border border-[#CBD5E1]">
               Exclusivo Consultores Estudio GS
             </span>
             <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold uppercase tracking-wider">
@@ -94,7 +94,7 @@ export const SettingsPrompts: React.FC = () => {
             </span>
           </div>
           <h1 className="font-display text-2xl font-bold text-slate-900 flex items-center gap-2.5">
-            <Sliders className="w-6 h-6 text-[#6B1D2F]" />
+            <Sliders className="w-6 h-6 text-[#17324D]" />
             Centro de Prompts IA & Estándares Documentales GS
           </h1>
           <p className="text-xs text-slate-600 max-w-3xl">
@@ -116,13 +116,13 @@ export const SettingsPrompts: React.FC = () => {
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-sm font-bold text-slate-900 flex items-center gap-2 uppercase tracking-wide">
-              <Cpu className="w-4 h-4 text-[#6B1D2F]" />
+              <Cpu className="w-4 h-4 text-[#17324D]" />
               Motor de Inteligencia Artificial y Política de Consumo
             </h2>
             <button
               type="button"
               onClick={handleSaveAISettingsOnly}
-              className="px-3.5 py-1.5 bg-slate-900 hover:bg-black text-white rounded-lg text-[11px] font-bold uppercase tracking-wider"
+              className="px-3.5 py-1.5 bg-slate-900 hover:bg-[#17324D] text-white rounded-lg text-[11px] font-bold uppercase tracking-wider"
             >
               Guardar Motor
             </button>
@@ -134,7 +134,7 @@ export const SettingsPrompts: React.FC = () => {
               onClick={() => setAiSettings((s) => ({ ...s, preferredProvider: 'openai' }))}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 aiSettings.preferredProvider === 'openai'
-                  ? 'border-[#6B1D2F] bg-[#F9EFF2]/40'
+                  ? 'border-[#17324D] bg-[#EDF3F8]/40'
                   : 'border-slate-200 hover:border-slate-300 bg-white'
               }`}
             >
@@ -156,7 +156,7 @@ export const SettingsPrompts: React.FC = () => {
               onClick={() => setAiSettings((s) => ({ ...s, preferredProvider: 'anthropic' }))}
               className={`p-4 rounded-xl border-2 text-left transition-all ${
                 aiSettings.preferredProvider === 'anthropic'
-                  ? 'border-[#6B1D2F] bg-[#F9EFF2]/40'
+                  ? 'border-[#17324D] bg-[#EDF3F8]/40'
                   : 'border-slate-200 hover:border-slate-300 bg-white'
               }`}
             >
@@ -214,7 +214,7 @@ export const SettingsPrompts: React.FC = () => {
         {/* Compliance & Guardrails Card */}
         <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-3">
           <div className="space-y-2.5">
-            <div className="flex items-center gap-2 text-red-400 text-[11px] font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-[#5EEAD4] text-[11px] font-bold uppercase tracking-wider">
               <ShieldCheck className="w-4 h-4" />
               Reglas de Oro Operativas GS
             </div>
@@ -262,14 +262,14 @@ export const SettingsPrompts: React.FC = () => {
                 onClick={() => setSelectedKey(key)}
                 className={`w-full text-left p-4 rounded-xl border transition-all ${
                   active
-                    ? 'bg-white border-2 border-[#6B1D2F] shadow-sm'
+                    ? 'bg-white border-2 border-[#17324D] shadow-sm'
                     : 'bg-white border-slate-200 hover:border-slate-300'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span
                     className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                      active ? 'bg-[#6B1D2F] text-white' : 'bg-slate-100 text-slate-600'
+                      active ? 'bg-[#17324D] text-white' : 'bg-slate-100 text-slate-600'
                     }`}
                   >
                     {item.stageBadge}
@@ -287,11 +287,11 @@ export const SettingsPrompts: React.FC = () => {
         <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4 flex flex-col">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B1D2F]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#17324D]">
                 {currentPrompt.stageBadge} · Clave BD: {currentPrompt.prompt_key}
               </span>
               <h3 className="font-display text-lg font-bold text-slate-900 flex items-center gap-2 mt-0.5">
-                <Sparkles className="w-4 h-4 text-[#6B1D2F]" />
+                <Sparkles className="w-4 h-4 text-[#17324D]" />
                 {currentPrompt.title}
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">{currentPrompt.description}</p>
@@ -311,7 +311,7 @@ export const SettingsPrompts: React.FC = () => {
                 type="button"
                 disabled={saving}
                 onClick={handleSaveCurrentPrompt}
-                className="px-4 py-2 rounded-xl bg-[#6B1D2F] hover:bg-[#521523] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm disabled:opacity-60"
+                className="px-4 py-2 rounded-xl bg-[#17324D] hover:bg-[#521523] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm disabled:opacity-60"
               >
                 <Save className="w-3.5 h-3.5" />
                 {saving ? 'Guardando...' : 'Guardar Prompt'}
@@ -335,7 +335,7 @@ export const SettingsPrompts: React.FC = () => {
                   [selectedKey]: { ...currentPrompt, prompt_text: e.target.value },
                 }))
               }
-              className="w-full flex-1 rounded-xl border border-slate-300 focus:border-[#6B1D2F] focus:ring-1 focus:ring-[#6B1D2F] p-4 font-mono text-xs text-slate-800 leading-relaxed bg-slate-50/60"
+              className="w-full flex-1 rounded-xl border border-slate-300 focus:border-[#17324D] focus:ring-1 focus:ring-[#17324D] p-4 font-mono text-xs text-slate-800 leading-relaxed bg-slate-50/60"
             />
           </div>
         </div>

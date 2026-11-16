@@ -13,23 +13,23 @@ export const TopBar: React.FC = () => {
           <input 
             type="text" 
             placeholder="Buscar..." 
-            className="pl-11 pr-4 py-2.5 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 w-72 bg-gray-50/50 transition-all duration-300 hover:bg-white hover:border-gray-300 hover:shadow-sm"
+            className="pl-11 pr-4 py-2.5 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-[#0D9488] w-72 bg-gray-50/50 transition-all duration-300 hover:bg-white hover:border-gray-300 hover:shadow-sm"
           />
-          <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2 transition-colors duration-300 group-hover:text-red-500" />
+          <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 transform -translate-y-1/2 transition-colors duration-300 group-hover:text-[#14B8A6]" />
         </div>
         
-        <button className="text-gray-400 hover:text-red-600 relative transition-colors duration-300 hover:scale-110 transform">
+        <button className="text-gray-400 hover:text-[#0D9488] relative transition-colors duration-300 hover:scale-110 transform">
           <Bell className="w-6 h-6" />
-          <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-600 rounded-full border-2 border-white animate-pulse"></span>
+          <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[#0D9488] rounded-full border-2 border-white animate-pulse"></span>
         </button>
         
         <div className="flex items-center gap-4 border-l border-gray-200/60 pl-8">
           <div className="flex flex-col items-end">
             <span className="text-sm font-bold text-gray-900">Tutor Principal</span>
-            <span className="text-xs font-medium text-red-600">Admin</span>
+            <span className="text-xs font-medium text-[#0D9488]">Admin</span>
           </div>
           <div className="p-1 rounded-full bg-gradient-to-tr from-red-100 to-white border border-red-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-            <UserCircle className="w-9 h-9 text-red-800/80" />
+            <UserCircle className="w-9 h-9 text-[#17324D]/80" />
           </div>
         </div>
       </div>

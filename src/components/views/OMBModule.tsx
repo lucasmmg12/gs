@@ -9,6 +9,8 @@ import type { ApprovalStatus, AuditConsultants } from '../QualityApprovalBadge';
 import type { Client } from '../../data/mockData';
 import { supabase } from '../../lib/supabase';
 import { DEFAULT_OMV_TARGETS, type OMVTargetRow } from '../../data/gsAxisMetadata';
+import { loadOrgWorkspaceFromDb, saveOrgWorkspaceToDb } from '../../lib/gsCloudSync';
+import { StepAssistantBanner } from '../StepAssistantBanner';
 
 export type ClientStage = 'relevamiento' | 'kickoff_omv' | 'diagnostic_in_progress' | 'diagnostic_closed' | 'master_plan_active';
 
@@ -111,6 +113,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
   const [isEditingText, setIsEditingText] = useState(false);
   const [currentText, setCurrentText] = useState(activeRev.declarationText);
   const [activeSubTab, setActiveSubTab] = useState<'declaration' | 'targets' | 'partners' | 'audio'>('declaration');
+  const [dbSyncStatus, setDbSyncStatus] = useState<'synced' | 'saving'>('synced');
 
   const targetsKey = `gs_omv_targets_${client.id}`;
   const [omvTargets, setOmvTargets] = useState<OMVTargetRow[]>(() => {
@@ -121,12 +124,72 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
     return DEFAULT_OMV_TARGETS;
   });
 
+  // Load OMV revisions and 8 CVA Target KPIs directly from Supabase PostgreSQL
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const [{ data: dbRevs }, cloudWs] = await Promise.all([
+          (supabase as any)
+            .from('client_omb_revisions')
+            .select('*')
+            .eq('organization_id', client.id)
+            .order('created_at', { ascending: true }),
+          loadOrgWorkspaceFromDb(client.id),
+        ]);
+
+        if (!active) return;
+
+        if (dbRevs && dbRevs.length > 0) {
+          const mapped: OMBRevision[] = dbRevs.map((r: any) => ({
+            id: r.id,
+            revisionCode: r.revision_code || 'Rev A',
+            title: r.title || 'Visión Trienal OMV',
+            date: new Date(r.created_at || Date.now()).toLocaleDateString('es-AR'),
+            status: (r.status as any) || 'en_revision',
+            isBaselineRev0: Boolean(r.is_baseline_rev0),
+            declarationText: r.declaration_text || defaultPresentTenseOMB,
+            audioPodcastUrl: r.audio_podcast_url || '',
+            partnerInputs: Array.isArray(r.partner_inputs) ? r.partner_inputs : [],
+          }));
+          setRevisions(mapped);
+          localStorage.setItem(storageKey, JSON.stringify(mapped));
+        }
+
+        if (cloudWs?.omvTargets && cloudWs.omvTargets.length > 0) {
+          setOmvTargets(cloudWs.omvTargets);
+          localStorage.setItem(targetsKey, JSON.stringify(cloudWs.omvTargets));
+        }
+      } catch (e) {
+        console.warn('OMV DB hydration notice:', e);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [client.id]);
+
   const handleTargetUpdate = (id: string, field: 'currentValue' | 'target3Years', val: string) => {
     const next = omvTargets.map((row) => (row.id === id ? { ...row, [field]: val } : row));
     setOmvTargets(next);
+    setDbSyncStatus('saving');
     try {
       localStorage.setItem(targetsKey, JSON.stringify(next));
     } catch { /* ignore */ }
+
+    saveOrgWorkspaceToDb(client.id, { omvTargets: next }).then(() => setDbSyncStatus('synced'));
+    (supabase as any)
+      .from('omv_modules')
+      .upsert(
+        {
+          organization_id: client.id,
+          vision_3_years: activeRev?.declarationText || defaultPresentTenseOMB,
+          kpi_targets: next.map((t) => ({ kpi: t.indicator, baseline: t.currentValue, target: t.target3Years })),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'organization_id' }
+      )
+      .then(() => {});
   };
 
   // Multi-partner new input form
@@ -145,32 +208,41 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
     }
   }, [selectedRevIndex, revisions]);
 
-  // Persist locally and in Supabase
-  const persistRevisions = async (updated: OMBRevision[]) => {
+  // Persist locally and in Supabase (always using the freshly updated revision object!)
+  const persistRevisions = async (updated: OMBRevision[], targetIdx: number = selectedRevIndex) => {
     setRevisions(updated);
+    setDbSyncStatus('saving');
     try {
       localStorage.setItem(storageKey, JSON.stringify(updated));
     } catch (err) {
       console.warn('LocalStorage error:', err);
     }
 
+    const revToSave = updated[targetIdx] || updated[updated.length - 1] || updated[0];
     try {
-      if (activeRev) {
+      if (revToSave) {
         await ((supabase as any).from('client_omb_revisions')).upsert({
-          id: activeRev.id.includes('rev-') ? undefined : activeRev.id,
+          id: revToSave.id.includes('rev-') ? undefined : revToSave.id,
           organization_id: client.id,
-          revision_code: activeRev.revisionCode,
-          title: activeRev.title,
-          declaration_text: activeRev.declarationText,
-          partner_inputs: activeRev.partnerInputs,
-          audio_podcast_url: activeRev.audioPodcastUrl,
-          is_baseline_rev0: activeRev.isBaselineRev0,
-          status: activeRev.status,
+          revision_code: revToSave.revisionCode,
+          title: revToSave.title,
+          declaration_text: revToSave.declarationText,
+          partner_inputs: revToSave.partnerInputs,
+          audio_podcast_url: revToSave.audioPodcastUrl,
+          is_baseline_rev0: revToSave.isBaselineRev0,
+          status: revToSave.status,
           updated_at: new Date().toISOString()
+        });
+        await saveOrgWorkspaceToDb(client.id, {
+          omvDeclarationText: revToSave.declarationText,
+          omvRevisionCode: revToSave.revisionCode,
+          omvTargets,
         });
       }
     } catch (dbErr) {
       console.warn('DB sync error (handled gracefully):', dbErr);
+    } finally {
+      setDbSyncStatus('synced');
     }
   };
 
@@ -191,7 +263,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
     };
 
     const next = [...revisions, newRev];
-    persistRevisions(next);
+    persistRevisions(next, next.length - 1);
     setSelectedRevIndex(next.length - 1);
   };
 
@@ -301,6 +373,15 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300 pb-12">
+      <StepAssistantBanner
+        roleBadge="Consultor GS · Etapa 1"
+        stepTitle="Kickoff, OMV en Tiempo Presente y 8 Valores TARGET CVA"
+        whatToDo="1) Registre la visión de cada socio en 'Visiones de Socios' y unifíquelas con IA. 2) Complete los 'Valores TARGET a 3 Años (8 KPIs CVA)'. 3) Cuando quede consensuada, pulse 'Fijar como Rev 0'."
+        autoAssistNote="Cada revisión, meta CVA y podcast se respalda automáticamente en Supabase y alimenta el Informe Word 360° y el Portal del Cliente."
+        growyPrompt={`Ayudame a redactar y validar el OMV en tiempo presente y los 8 Valores TARGET CVA de ${client.name}.`}
+        dbSyncStatus={dbSyncStatus}
+      />
+
       {/* Semáforo de Aprobación */}
       <QualityApprovalBadge
         moduleName="Minuta de Sesión"
@@ -328,7 +409,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
                 onClick={() => onStageChange(s.id)}
                 className={`p-4 rounded-xl border-2 text-left transition-all ${
                   isCurrent
-                    ? 'bg-black text-white border-black shadow-md border-l-4 border-l-red-600'
+                    ? 'bg-[#17324D] text-white border-[#17324D] shadow-md border-l-4 border-l-[#0D9488]'
                     : isPassed
                       ? 'bg-zinc-50 border-zinc-300 text-zinc-900'
                       : 'bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400'
@@ -336,7 +417,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className={`font-display text-[11px] font-bold uppercase tracking-wider ${
-                    isCurrent ? 'text-red-400' : isPassed ? 'text-emerald-700' : 'text-zinc-400'
+                    isCurrent ? 'text-[#5EEAD4]' : isPassed ? 'text-emerald-700' : 'text-zinc-400'
                   }`}>
                     Etapa {s.step}
                   </span>
@@ -359,7 +440,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-display text-[10px] font-black uppercase tracking-widest text-white bg-red-600 px-2.5 py-0.5 rounded-full">
+              <span className="font-display text-[10px] font-black uppercase tracking-widest text-white bg-[#0D9488] px-2.5 py-0.5 rounded-full">
                 Marco CVA • OMV Oficial GS
               </span>
               <span className="text-xs font-bold text-zinc-500">
@@ -387,7 +468,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
             <button
               type="button"
               onClick={handleCreateRevision}
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-display text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all hover:scale-105"
+              className="px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white font-display text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all hover:scale-105"
             >
               <Plus className="w-4 h-4" />
               Nueva Revisión (Rev {String.fromCharCode(65 + revisions.length)})
@@ -407,7 +488,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
               onClick={() => setSelectedRevIndex(idx)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all shrink-0 border ${
                 idx === selectedRevIndex
-                  ? 'bg-zinc-950 text-white border-zinc-950 shadow-xs'
+                  ? 'bg-[#17324D] text-white border-zinc-950 shadow-xs'
                   : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-700 border-zinc-200'
               }`}
             >
@@ -429,7 +510,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
           onClick={() => setActiveSubTab('declaration')}
           className={`px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wider border-b-2 flex items-center gap-2 transition-colors ${
             activeSubTab === 'declaration'
-              ? 'border-red-600 text-red-600'
+              ? 'border-[#0D9488] text-[#0D9488]'
               : 'border-transparent text-zinc-500 hover:text-zinc-800'
           }`}
         >
@@ -442,7 +523,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
           onClick={() => setActiveSubTab('targets')}
           className={`px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wider border-b-2 flex items-center gap-2 transition-colors ${
             activeSubTab === 'targets'
-              ? 'border-red-600 text-red-600'
+              ? 'border-[#0D9488] text-[#0D9488]'
               : 'border-transparent text-zinc-500 hover:text-zinc-800'
           }`}
         >
@@ -455,7 +536,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
           onClick={() => setActiveSubTab('partners')}
           className={`px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wider border-b-2 flex items-center gap-2 transition-colors ${
             activeSubTab === 'partners'
-              ? 'border-red-600 text-red-600'
+              ? 'border-[#0D9488] text-[#0D9488]'
               : 'border-transparent text-zinc-500 hover:text-zinc-800'
           }`}
         >
@@ -468,7 +549,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
           onClick={() => setActiveSubTab('audio')}
           className={`px-4 py-2.5 font-display text-xs font-bold uppercase tracking-wider border-b-2 flex items-center gap-2 transition-colors ${
             activeSubTab === 'audio'
-              ? 'border-red-600 text-red-600'
+              ? 'border-[#0D9488] text-[#0D9488]'
               : 'border-transparent text-zinc-500 hover:text-zinc-800'
           }`}
         >
@@ -497,7 +578,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
           <div className="overflow-x-auto rounded-xl border border-zinc-200">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-zinc-950 text-white uppercase font-display text-[11px] tracking-wider">
+                <tr className="bg-[#17324D] text-white uppercase font-display text-[11px] tracking-wider">
                   <th className="p-3 w-[42%]">Dimensión / Indicador CVA</th>
                   <th className="p-3 w-[29%]">Situación Actual (Línea Base)</th>
                   <th className="p-3 w-[29%]">Valor TARGET a 3 Años</th>
@@ -516,7 +597,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
                         value={row.currentValue}
                         onChange={(e) => handleTargetUpdate(row.id, 'currentValue', e.target.value)}
                         placeholder="Ej: USD 1.2M / año..."
-                        className="w-full px-3 py-1.5 rounded-lg border border-zinc-300 bg-white text-xs text-zinc-800 focus:border-red-600 focus:outline-none"
+                        className="w-full px-3 py-1.5 rounded-lg border border-zinc-300 bg-white text-xs text-zinc-800 focus:border-[#0D9488] focus:outline-none"
                       />
                     </td>
                     <td className="p-2.5">
@@ -525,7 +606,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
                         value={row.target3Years}
                         onChange={(e) => handleTargetUpdate(row.id, 'target3Years', e.target.value)}
                         placeholder="Ej: USD 2.5M / año..."
-                        className="w-full px-3 py-1.5 rounded-lg border border-red-200 bg-red-50/40 font-semibold text-xs text-zinc-900 focus:border-red-600 focus:outline-none"
+                        className="w-full px-3 py-1.5 rounded-lg border border-teal-200/80 bg-[#F0FDFA]/50 font-semibold text-xs text-zinc-900 focus:border-[#0D9488] focus:outline-none"
                       />
                     </td>
                   </tr>
@@ -540,8 +621,8 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
       {activeSubTab === 'declaration' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Mini Reproductor de Podcast */}
-          <div className="bg-gradient-to-b from-black via-zinc-950 to-red-950 text-white p-6 rounded-2xl shadow-obsidian border-2 border-red-900/50 space-y-5 lg:col-span-1">
-            <div className="flex items-center gap-2 text-red-500">
+          <div className="bg-gradient-to-b from-[#0F2438] via-[#17324D] to-[#115E59] text-white p-6 rounded-2xl shadow-obsidian border-2 border-teal-400/25 space-y-5 lg:col-span-1">
+            <div className="flex items-center gap-2 text-[#14B8A6]">
               <Volume2 className="w-5 h-5" />
               <span className="font-display text-xs font-bold uppercase tracking-wider">
                 Podcast Asociado • {activeRev.revisionCode}
@@ -559,21 +640,21 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
 
             <div className="bg-white/5 p-4 rounded-xl border border-white/10 space-y-3 backdrop-blur-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold text-red-400">03:45 / 08:20</span>
-                <span className="font-display text-[10px] font-bold bg-red-600/30 text-red-300 px-2 py-0.5 rounded uppercase tracking-wider border border-red-500/40">
+                <span className="text-xs font-mono font-bold text-[#5EEAD4]">03:45 / 08:20</span>
+                <span className="font-display text-[10px] font-bold bg-[#0D9488]/25 text-[#5EEAD4] px-2 py-0.5 rounded uppercase tracking-wider border border-teal-400/35">
                   Voz GS IA
                 </span>
               </div>
 
               <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden cursor-pointer">
-                <div className="bg-red-600 h-full rounded-full w-2/5 shadow-[0_0_10px_rgba(220,38,38,0.8)]" />
+                <div className="bg-[#0D9488] h-full rounded-full w-2/5 shadow-[0_0_10px_rgba(13,148,136,0.45)]" />
               </div>
 
               <div className="flex items-center justify-center gap-4 pt-2">
                 <button
                   type="button"
                   onClick={togglePlayAudio}
-                  className="w-12 h-12 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-crimson transition-transform hover:scale-110"
+                  className="w-12 h-12 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-full flex items-center justify-center shadow-crimson transition-transform hover:scale-110"
                 >
                   {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
                 </button>
@@ -601,7 +682,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
                 onClick={() => alert(`Descargando podcast de ${activeRev.revisionCode}`)}
                 className="w-full py-2 bg-transparent hover:bg-white/5 text-zinc-400 hover:text-white rounded-xl text-[11px] font-bold font-display uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors"
               >
-                <Download className="w-3.5 h-3.5 text-red-400" />
+                <Download className="w-3.5 h-3.5 text-[#5EEAD4]" />
                 Descargar Archivo MP3
               </button>
             </div>
@@ -631,16 +712,16 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
                   }}
                   className="px-3.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 rounded-lg text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 transition-colors border border-zinc-300"
                 >
-                  {isEditingText ? <Save className="w-3.5 h-3.5 text-red-600" /> : <Edit3 className="w-3.5 h-3.5 text-red-600" />}
+                  {isEditingText ? <Save className="w-3.5 h-3.5 text-[#0D9488]" /> : <Edit3 className="w-3.5 h-3.5 text-[#0D9488]" />}
                   {isEditingText ? 'Guardar Cambios' : 'Editar Texto'}
                 </button>
 
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="px-3.5 py-1.5 bg-black hover:bg-zinc-800 text-white rounded-lg text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 transition-colors"
+                  className="px-3.5 py-1.5 bg-[#17324D] hover:bg-[#0F2438] text-white rounded-lg text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 transition-colors"
                 >
-                  <Download className="w-3.5 h-3.5 text-red-400" />
+                  <Download className="w-3.5 h-3.5 text-[#5EEAD4]" />
                   Exportar PDF
                 </button>
               </div>
@@ -651,7 +732,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
                 rows={10}
                 value={currentText}
                 onChange={e => setCurrentText(e.target.value)}
-                className="w-full text-xs font-sans rounded-xl border-2 border-zinc-300 focus:border-red-600 focus:ring-red-600 p-4 leading-relaxed bg-white"
+                className="w-full text-xs font-sans rounded-xl border-2 border-zinc-300 focus:border-[#0D9488] focus:ring-[#0D9488] p-4 leading-relaxed bg-white"
               />
             ) : (
               <div className="bg-zinc-50 p-6 rounded-xl border border-zinc-200 text-xs text-zinc-800 leading-relaxed space-y-3 font-serif">
@@ -661,8 +742,8 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
               </div>
             )}
 
-            <div className="bg-zinc-950 border border-zinc-800 p-4 rounded-xl flex items-start gap-3 text-xs text-zinc-300">
-              <Sparkles className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+            <div className="bg-[#17324D] border border-zinc-800 p-4 rounded-xl flex items-start gap-3 text-xs text-zinc-300">
+              <Sparkles className="w-4 h-4 text-[#14B8A6] shrink-0 mt-0.5" />
               <p className="font-medium">
                 <strong className="text-white font-display uppercase tracking-wide">Criterio Metodológico GS:</strong> A medida que el diagnóstico destapa problemas y se analiza el FODA, la visión se madura. Al llegar al Master Plan se valida como <strong>Revisión 0</strong>.
               </p>
@@ -687,7 +768,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
               <button
                 type="button"
                 onClick={handleSynthesizeWithGrowy}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-display text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all"
+                className="px-4 py-2 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl font-display text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all"
               >
                 <Sparkles className="w-4 h-4" />
                 Unificar Visiones con Growy IA
@@ -726,7 +807,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <p className="text-xs text-zinc-700 italic border-l-2 border-red-500 pl-3">
+                    <p className="text-xs text-zinc-700 italic border-l-2 border-[#0D9488] pl-3">
                       "{partner.visionText}"
                     </p>
                   </div>
@@ -770,7 +851,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
                 <button
                   type="button"
                   onClick={handleAddPartnerInput}
-                  className="px-4 py-2 bg-zinc-900 hover:bg-black text-white font-display text-xs font-bold uppercase rounded-lg tracking-wider"
+                  className="px-4 py-2 bg-[#17324D] hover:bg-[#17324D] text-white font-display text-xs font-bold uppercase rounded-lg tracking-wider"
                 >
                   Agregar Visión del Socio
                 </button>
@@ -792,13 +873,13 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
             </p>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center gap-6 p-6 rounded-2xl bg-zinc-900 text-white">
-            <div className="w-20 h-20 rounded-2xl bg-red-600/20 border border-red-500/40 flex items-center justify-center shrink-0">
-              <Volume2 className="w-10 h-10 text-red-500" />
+          <div className="flex flex-col md:flex-row items-center gap-6 p-6 rounded-2xl bg-[#17324D] text-white">
+            <div className="w-20 h-20 rounded-2xl bg-[#0D9488]/20 border border-teal-400/35 flex items-center justify-center shrink-0">
+              <Volume2 className="w-10 h-10 text-[#14B8A6]" />
             </div>
 
             <div className="space-y-1 flex-1">
-              <span className="text-[10px] font-mono text-red-400 uppercase tracking-widest font-bold">
+              <span className="text-[10px] font-mono text-[#5EEAD4] uppercase tracking-widest font-bold">
                 Audio MP3 Asociado
               </span>
               <h4 className="font-display text-lg font-bold uppercase">
@@ -813,7 +894,7 @@ La empresa factura más de $2.5M USD anuales con un margen neto superior al 18%,
               <button
                 type="button"
                 onClick={togglePlayAudio}
-                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-display text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shadow-crimson"
+                className="px-5 py-2.5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white font-display text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all shadow-crimson"
               >
                 {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                 {isPlaying ? 'Pausar' : 'Reproducir'}

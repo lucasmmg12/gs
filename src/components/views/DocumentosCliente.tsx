@@ -188,7 +188,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'pdf': return <FileText className="w-5 h-5 text-red-500" />;
+      case 'pdf': return <FileText className="w-5 h-5 text-[#14B8A6]" />;
       case 'excel': return <File className="w-5 h-5 text-emerald-600" />;
       case 'word': return <FileText className="w-5 h-5 text-blue-500" />;
       case 'image': return <ImageIcon className="w-5 h-5 text-purple-500" />;
@@ -312,7 +312,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-display text-[10px] font-black uppercase tracking-widest text-red-600 bg-red-50 border border-red-200 px-2.5 py-0.5 rounded-full">
+            <span className="font-display text-[10px] font-black uppercase tracking-widest text-[#0D9488] bg-[#F0FDFA] border border-teal-200/80 px-2.5 py-0.5 rounded-full">
               Cerebro RAG & Documentación
             </span>
             <span className="text-xs font-bold text-zinc-500 flex items-center gap-1">
@@ -320,7 +320,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
             </span>
           </div>
           <h2 className="text-2xl font-black text-zinc-950 uppercase tracking-tight flex items-center gap-2 mt-1">
-            <Folder className="w-6 h-6 text-red-600" />
+            <Folder className="w-6 h-6 text-[#0D9488]" />
             Gestor Documental y Base de Conocimiento
           </h2>
           <p className="text-zinc-600 text-xs mt-1">
@@ -331,7 +331,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
         <button 
           type="button"
           onClick={() => setShowUploadModal(true)}
-          className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-display text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-red-600/20 shrink-0"
+          className="flex items-center justify-center gap-2 bg-[#0D9488] hover:bg-[#0F766E] text-white px-5 py-2.5 rounded-xl font-display text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-red-600/20 shrink-0"
         >
           <UploadCloud className="w-4 h-4" /> Subir Documento
         </button>
@@ -340,7 +340,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
       {/* RAG Context Banner */}
       <div className="bg-gradient-to-r from-zinc-900 to-slate-900 text-white p-4 rounded-2xl border-2 border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-red-600/20 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[#0D9488]/20 border border-teal-400/35 flex items-center justify-center text-[#5EEAD4] shrink-0">
             <Brain className="w-5 h-5" />
           </div>
           <div>
@@ -373,7 +373,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Buscar por nombre o contenido..." 
-              className="w-full bg-zinc-50 border border-zinc-300 text-xs rounded-xl pl-10 pr-4 py-2.5 focus:border-red-600 focus:outline-none transition-all"
+              className="w-full bg-zinc-50 border border-zinc-300 text-xs rounded-xl pl-10 pr-4 py-2.5 focus:border-[#0D9488] focus:outline-none transition-all"
             />
           </div>
 
@@ -382,7 +382,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
             <select
               value={selectedScopeFilter}
               onChange={e => setSelectedScopeFilter(e.target.value)}
-              className="bg-zinc-50 border border-zinc-300 text-xs rounded-xl px-3 py-2.5 font-medium text-zinc-700 focus:border-red-600 focus:outline-none"
+              className="bg-zinc-50 border border-zinc-300 text-xs rounded-xl px-3 py-2.5 font-medium text-zinc-700 focus:border-[#0D9488] focus:outline-none"
             >
               <option value="all">Todos los Ámbitos</option>
               <option value="global">Ámbito Global (Toda la Empresa)</option>
@@ -425,7 +425,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                           {getIcon(doc.type)}
                         </div>
                         <div>
-                          <span className="font-bold text-zinc-950 block hover:text-red-600 cursor-pointer">
+                          <span className="font-bold text-zinc-950 block hover:text-[#0D9488] cursor-pointer">
                             {doc.name}
                           </span>
                           {doc.description && (
@@ -443,7 +443,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                           Global (Empresa)
                         </span>
                       ) : (
-                        <span className="bg-red-50 text-red-800 border border-red-200 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                        <span className="bg-[#F0FDFA] text-[#17324D] border border-teal-200/80 px-2 py-0.5 rounded-full text-[10px] font-bold">
                           {doc.areaName || doc.areaId}
                         </span>
                       )}
@@ -473,7 +473,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-colors ${
                             doc.visibleToClient !== false
                               ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                              : 'bg-red-50 text-red-800 border-red-300 hover:bg-red-100'
+                              : 'bg-[#F0FDFA] text-[#17324D] border-teal-300 hover:bg-[#EDF3F8]'
                           }`}
                           title="Clic para permitir u ocultar este documento en el Portal del Cliente"
                         >
@@ -484,7 +484,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                             </>
                           ) : (
                             <>
-                              <EyeOff className="w-3 h-3 text-red-600" />
+                              <EyeOff className="w-3 h-3 text-[#0D9488]" />
                               Uso Interno GS (Oculto)
                             </>
                           )}
@@ -503,7 +503,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                           download={doc.name}
                           target="_blank"
                           rel="noreferrer"
-                          className="p-1.5 text-zinc-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          className="p-1.5 text-zinc-500 hover:text-[#0D9488] hover:bg-[#F0FDFA] rounded-lg transition-colors"
                           title="Descargar archivo"
                         >
                           <Download className="w-4 h-4" />
@@ -530,11 +530,11 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
 
       {/* Modal de Subida de Documentos */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-[#17324D]/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 border-2 border-zinc-900 shadow-xl space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
               <h3 className="font-display text-base font-black uppercase text-zinc-950 flex items-center gap-2">
-                <UploadCloud className="w-5 h-5 text-red-600" />
+                <UploadCloud className="w-5 h-5 text-[#0D9488]" />
                 Subir Documento de Soporte
               </h3>
               <button 
@@ -571,7 +571,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                     onClick={() => setUploadScope('area')}
                     className={`p-2.5 rounded-xl border text-center font-bold uppercase text-[11px] transition-all ${
                       uploadScope === 'area'
-                        ? 'bg-zinc-950 text-white border-zinc-950'
+                        ? 'bg-[#17324D] text-white border-zinc-950'
                         : 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100'
                     }`}
                   >
@@ -582,7 +582,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                     onClick={() => setUploadScope('global')}
                     className={`p-2.5 rounded-xl border text-center font-bold uppercase text-[11px] transition-all ${
                       uploadScope === 'global'
-                        ? 'bg-zinc-950 text-white border-zinc-950'
+                        ? 'bg-[#17324D] text-white border-zinc-950'
                         : 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:bg-zinc-100'
                     }`}
                   >
@@ -600,7 +600,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                   <select
                     value={uploadAreaId}
                     onChange={e => setUploadAreaId(e.target.value)}
-                    className="w-full p-2.5 border border-zinc-300 rounded-xl text-xs bg-white focus:border-red-600 focus:outline-none"
+                    className="w-full p-2.5 border border-zinc-300 rounded-xl text-xs bg-white focus:border-[#0D9488] focus:outline-none"
                   >
                     {DIAGNOSTIC_AREAS.map(a => (
                       <option key={a.id} value={a.id}>
@@ -621,12 +621,12 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                   value={uploadDescription}
                   onChange={e => setUploadDescription(e.target.value)}
                   placeholder="Ej. Planilla de costos con desglose de mano de obra y materias primas para auditoría..."
-                  className="w-full p-2.5 border border-zinc-300 rounded-xl text-xs focus:border-red-600 focus:outline-none"
+                  className="w-full p-2.5 border border-zinc-300 rounded-xl text-xs focus:border-[#0D9488] focus:outline-none"
                 />
               </div>
 
-              <div className="bg-red-50 p-3 rounded-xl border border-red-200 text-red-900 text-[11px] font-medium flex items-start gap-2">
-                <Brain className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+              <div className="bg-[#F0FDFA] p-3 rounded-xl border border-teal-200/80 text-red-900 text-[11px] font-medium flex items-start gap-2">
+                <Brain className="w-4 h-4 text-[#0D9488] shrink-0 mt-0.5" />
                 <span>
                   Al confirmar la subida, el archivo se aislará con el ID de <strong>{client.name}</strong> y quedará disponible para el análisis semántico de Growy.
                 </span>
@@ -643,7 +643,7 @@ export const DocumentosCliente: React.FC<DocumentosClienteProps> = ({ client, is
                 <button
                   type="submit"
                   disabled={isUploading}
-                  className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-display font-bold uppercase text-xs shadow-sm flex items-center gap-1.5"
+                  className="px-5 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white font-display font-bold uppercase text-xs shadow-sm flex items-center gap-1.5"
                 >
                   {isUploading ? 'Procesando e Indexando...' : 'Confirmar Subida'}
                 </button>

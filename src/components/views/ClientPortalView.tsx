@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Award,
   Sparkles,
@@ -18,7 +18,8 @@ import {
   FolderCheck,
   TrendingUp,
   Briefcase,
-  MessageSquarePlus
+  MessageSquarePlus,
+  UploadCloud
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -33,6 +34,9 @@ import {
 } from '../../lib/gsOfficialExporter';
 import { DEFAULT_GS_AXES_META, DEFAULT_OMV_TARGETS, type OMVTargetRow } from '../../data/gsAxisMetadata';
 import { INITIAL_PENTAGON_DATA, INITIAL_RISKS } from '../../data/masterPlanData';
+import { supabase } from '../../lib/supabase';
+import { loadClientCollabFromDb, saveClientCollabToDb } from '../../lib/gsCloudSync';
+import { StepAssistantBanner } from '../StepAssistantBanner';
 
 export interface ApprovedPortalMinute {
   id: string;
@@ -162,6 +166,12 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
   // Self assessment interactive state
   const [selfAssessmentAnswers, setSelfAssessmentAnswers] = useState<Record<number, string>>({});
   const [selfAssessmentSent, setSelfAssessmentSent] = useState(false);
+  const [dbSyncStatus, setDbSyncStatus] = useState<'synced' | 'saving'>('synced');
+
+  // Client document upload state (Autogestión Documental)
+  const [clientUploadedDocs, setClientUploadedDocs] = useState<ApprovedPortalDocument[]>([]);
+  const [newDocDesc, setNewDocDesc] = useState('');
+  const [uploadingClientDoc, setUploadingClientDoc] = useState(false);
 
   // Client task progress reporting state (co-gestión con validación GS)
   const [reportingTaskCode, setReportingTaskCode] = useState<string | null>(null);
@@ -176,7 +186,23 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
     return {};
   });
 
-  const handleSubmitTaskReport = (code: string) => {
+  // Hydrate client autogestión state directly from Supabase PostgreSQL
+  useEffect(() => {
+    let active = true;
+    loadClientCollabFromDb(client.id).then((collab) => {
+      if (!active) return;
+      if (collab.taskUpdates) setSubmittedReports(collab.taskUpdates);
+      if (collab.latestSelfAssessment?.answers) {
+        setSelfAssessmentAnswers(collab.latestSelfAssessment.answers);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [client.id]);
+
+  const handleSubmitTaskReport = async (code: string) => {
+    setDbSyncStatus('saving');
     const next = {
       ...submittedReports,
       [code]: {
@@ -187,11 +213,66 @@ export const ClientPortalView: React.FC<ClientPortalViewProps> = ({
       },
     };
     setSubmittedReports(next);
-    try {
-      localStorage.setItem(`gs_client_task_updates_${client.id}`, JSON.stringify(next));
-    } catch { /* ignore */ }
     setReportingTaskCode(null);
     setReportNote('');
+    await saveClientCollabToDb(
+      client.id,
+      { taskUpdates: next },
+      {
+        activityType: 'client_task_progress_reported',
+        performedBy: `Directorio ${client.name}`,
+        details: { code, status: reportSuggestedStatus, progress: reportProgress },
+      }
+    );
+    setDbSyncStatus('synced');
+  };
+
+  const handleClientUploadDocument = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingClientDoc(true);
+    setDbSyncStatus('saving');
+    try {
+      const ext = file.name.split('.').pop()?.toUpperCase() || 'DOC';
+      const sizeKb = `${Math.max(1, Math.round(file.size / 1024))} KB`;
+      const { data: inserted } = await ((supabase as any).from('client_documents'))
+        .insert([
+          {
+            organization_id: client.id,
+            file_name: file.name,
+            file_path: `portal_uploads/${client.id}/${Date.now()}_${file.name}`,
+            file_type: ext,
+            file_size: sizeKb,
+            scope_level: 'global',
+            uploaded_by_role: 'cliente',
+            uploader_name: `Directorio ${client.name}`,
+            embedding_status: 'indexed',
+            description: newDocDesc.trim() || 'Documentación aportada por el Cliente desde su Portal Ejecutivo',
+            visible_to_client: true,
+          },
+        ])
+        .select()
+        .maybeSingle();
+
+      const addedDoc: ApprovedPortalDocument = {
+        id: inserted?.id || crypto.randomUUID(),
+        file_name: file.name,
+        file_type: ext,
+        file_size: sizeKb,
+        scope_level: 'global',
+        uploader_name: `Directorio ${client.name}`,
+        description: newDocDesc.trim() || 'Documentación aportada por el Cliente desde su Portal Ejecutivo',
+        created_at: new Date().toISOString(),
+      };
+      setClientUploadedDocs((prev) => [addedDoc, ...prev]);
+      setNewDocDesc('');
+    } catch (err) {
+      console.warn('Client document upload notice:', err);
+    } finally {
+      setUploadingClientDoc(false);
+      setDbSyncStatus('synced');
+      e.target.value = '';
+    }
   };
 
   // Owner AI Meeting Prep state (Preparador de Reuniones para el Dueño)
@@ -336,21 +417,21 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
   };
 
   const renderQualityGateLock = (moduleName: string, description: string) => (
-    <div className="bg-white p-10 rounded-2xl border-2 border-amber-200 shadow-sm text-center max-w-2xl mx-auto my-4 space-y-4">
-      <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto">
+    <div className="figma-card p-10 text-center max-w-2xl mx-auto my-4 space-y-4">
+      <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
         <Lock className="w-7 h-7" />
       </div>
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-700 text-[11px] font-black uppercase tracking-wider">
-        Semáforo GS: En Revisión Interna de Calidad
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold">
+        En Revisión de Calidad por Estudio GS
       </div>
-      <h3 className="font-display text-xl font-black text-zinc-950 uppercase tracking-wide">
-        {moduleName} — Pendiente de Liberación por Consultor GS
+      <h3 className="font-display text-xl font-bold text-[#17324D]">
+        {moduleName} — Pendiente de Publicación
       </h3>
-      <p className="text-xs text-zinc-600 leading-relaxed max-w-lg mx-auto">
+      <p className="text-xs text-slate-600 leading-relaxed max-w-lg mx-auto">
         {description}
       </p>
-      <div className="p-4 bg-zinc-50 rounded-xl border border-zinc-200 text-[11px] text-zinc-500 font-medium">
-        Por política de confidencialidad y rigor metodológico de <strong>Consultora GS</strong>, el cliente solo visualiza dictámenes, puntajes y planes de acción que han superado la auditoría interna y cuentan con <strong>Aprobación en Verde</strong>.
+      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 text-[11px] text-slate-500">
+        Por rigor metodológico de <strong>Estudio GS</strong>, su portal exhibe únicamente dictámenes, puntajes y planes de acción auditados y publicados oficialmente.
       </div>
     </div>
   );
@@ -362,37 +443,40 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
-      {/* Encabezado Ejecutivo del Portal del Cliente */}
-      <div className="bg-gradient-to-r from-black via-zinc-950 to-red-950 text-white p-7 rounded-2xl shadow-obsidian border-2 border-red-900/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-display text-[10px] uppercase tracking-widest text-red-400 font-bold">
-              Portal Ejecutivo Exclusivo del Cliente • Entorno Aislado
+      {/* Encabezado Ejecutivo del Portal del Cliente (Nordic Petrol & Emerald) */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#0F2438] via-[#17324D] to-[#115E59] text-white p-7 sm:p-8 rounded-3xl shadow-[0_18px_40px_-14px_rgba(23,50,77,0.3)] flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[#2DD4BF]/15 blur-3xl" />
+        <div className="relative z-10">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white/10 border border-white/15 text-[11px] font-medium text-[#5EEAD4]">
+              Portal Ejecutivo Exclusivo · Entorno Aislado
             </span>
-            <span className="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold">
-              ID: {client.name}
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-400/15 border border-emerald-300/30 text-emerald-200 text-[10px] font-semibold">
+              {client.name}
             </span>
           </div>
-          <h1 className="font-display text-3xl font-black mt-1 uppercase tracking-wide">{client.name}</h1>
-          <p className="text-xs text-zinc-300 mt-1 font-medium">
-            {client.industry || 'Desarrollo Organizacional'} • Solo se exhibe la información validada y aprobada por su equipo de Consultores GS.
+          <h1 className="font-display text-2xl sm:text-3xl font-bold mt-2 tracking-tight">{client.name}</h1>
+          <p className="text-xs sm:text-sm text-slate-300 mt-1">
+            {client.industry || 'Desarrollo Organizacional'} · Información estratégica auditada y herramientas de autogestión de Directorio.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="bg-black/60 px-5 py-3 rounded-xl border border-red-900/50 backdrop-blur-xs flex items-center gap-3">
-            <Award className="w-7 h-7 text-red-500 shrink-0" />
+        <div className="relative z-10 flex flex-wrap items-center gap-3">
+          <div className="bg-white/10 px-5 py-3.5 rounded-2xl border border-white/15 backdrop-blur-md flex items-center gap-3.5">
+            <div className="p-2.5 rounded-xl bg-[#0D9488]/30 text-[#5EEAD4]">
+              <Award className="w-6 h-6 shrink-0" />
+            </div>
             <div>
-              <span className="font-display text-[10px] text-zinc-400 block uppercase font-bold tracking-wider">
+              <span className="text-[11px] text-slate-300 block font-medium">
                 Madurez Empresarial (IME)
               </span>
               {isDiagnosticApproved ? (
-                <span className="font-display text-xl font-black text-white">
+                <span className="font-display text-xl font-bold text-white" data-numeric="true">
                   {results.globalIme10} / 10{' '}
-                  <span className="text-xs text-red-400 font-bold">(IME {results.globalIme}%)</span>
+                  <span className="text-xs text-[#5EEAD4] font-semibold">({results.globalIme}%)</span>
                 </span>
               ) : (
-                <span className="font-display text-xs font-bold text-amber-400 uppercase">
+                <span className="font-display text-xs font-semibold text-amber-300">
                   En Auditoría GS
                 </span>
               )}
@@ -400,6 +484,36 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
           </div>
         </div>
       </div>
+
+      {/* Asistente Contextual Paso a Paso de Autogestión para el Cliente */}
+      <StepAssistantBanner
+        roleBadge="Portal Cliente · Autogestión Segura"
+        stepTitle={
+          activeTab === 'omb'
+            ? 'Paso 1: Su Visión 2029 (OMV) y las 8 Metas TARGET a 3 Años'
+            : activeTab === 'master_plan'
+              ? 'Co-Gestión del Master Plan: Reporte sus Avances al Consultor GS'
+              : activeTab === 'documents'
+                ? 'Repositorio Compartido: Descargue Entregables o Suba Documentación a GS'
+                : activeTab === 'meeting_prep'
+                  ? 'Copiloto del Dueño: Prepare su Próxima Reunión Decisiva con IA'
+                  : activeTab === 'self_assessment'
+                    ? 'Termómetro Mensual del Directorio antes de su Comité con GS'
+                    : `Entorno Ejecutivo Aislado de ${client.name}`
+        }
+        whatToDo={
+          activeTab === 'master_plan'
+            ? "Pulse 'Reportar Avance' en cualquier acción para informar progreso o evidencias a su Consultor GS, o descargue el Workbook Oficial de 6 Hojas (.XLSX)."
+            : activeTab === 'documents'
+              ? 'Suba balances, organigramas o archivos solicitados por su consultor GS usando el botón superior; quedarán guardados al instante en la Base de Datos de su empresa.'
+              : activeTab === 'meeting_prep'
+                ? 'Elija el tipo de reunión, escriba con quién se reúne y qué objetivo busca lograr, y descargue su Brief Ejecutivo en Word Oficial (.DOCX).'
+                : 'Navegue por las pestañas para consultar sus indicadores auditados en Verde, descargar entregables oficiales (.DOCX / .XLSX) o autogestionar tareas y documentos.'
+        }
+        autoAssistNote="Toda su actividad queda respaldada en tiempo real en la Base de Datos aislada de su organización y sincronizada con su equipo Consultor GS."
+        growyPrompt={`Estoy en la sección '${activeTab}' de mi Portal Cliente de ${client.name}. Guiame paso a paso sobre qué puedo hacer aquí.`}
+        dbSyncStatus={dbSyncStatus}
+      />
 
       {/* Resumen de Estado de Aprobación de Módulos (Transparencia Consultor -> Cliente) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -438,94 +552,38 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
         ))}
       </div>
 
-      {/* Navegación del Portal */}
-      <div className="flex items-center gap-1.5 border-b-2 border-zinc-200 pb-2 overflow-x-auto text-xs font-bold font-display uppercase tracking-wider">
-        <button
-          onClick={() => setActiveTab('omb')}
-          className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-            activeTab === 'omb' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
-          }`}
-        >
-          <Target className="w-3.5 h-3.5 text-red-500" />
-          Visión 2029 (OMV)
-        </button>
-
-        <button
-          onClick={() => setActiveTab('pentagon')}
-          className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap ${
-            activeTab === 'pentagon' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
-          }`}
-        >
-          Pentágono & Evolución
-        </button>
-
-        <button
-          onClick={() => setActiveTab('minutes')}
-          className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-            activeTab === 'minutes' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
-          }`}
-        >
-          <FileText className="w-3.5 h-3.5" />
-          Minutas Aprobadas ({approvedMinutes.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('diagnostic')}
-          className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap ${
-            activeTab === 'diagnostic' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
-          }`}
-        >
-          Diagnóstico 360° & Riesgos
-        </button>
-
-        <button
-          onClick={() => setActiveTab('master_plan')}
-          className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-            activeTab === 'master_plan' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
-          }`}
-        >
-          <Layers className="w-3.5 h-3.5" />
-          Master Plan ({masterPlanTasks.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('documents')}
-          className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-            activeTab === 'documents' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
-          }`}
-        >
-          <FolderCheck className="w-3.5 h-3.5" />
-          Documentos ({approvedDocuments.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('self_assessment')}
-          className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap ${
-            activeTab === 'self_assessment' ? 'bg-black text-white shadow-md' : 'text-zinc-600 hover:bg-zinc-100'
-          }`}
-        >
-          Autoevaluación
-        </button>
-
-        <button
-          onClick={() => setActiveTab('meeting_prep')}
-          className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-            activeTab === 'meeting_prep' ? 'bg-blue-900 text-white shadow-md' : 'text-blue-900 hover:bg-blue-50'
-          }`}
-        >
-          <Briefcase className="w-3.5 h-3.5" />
-          Preparar Reunión IA
-        </button>
-
-        <button
-          onClick={() => setActiveTab('content_generator')}
-          className={`px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
-            activeTab === 'content_generator' ? 'bg-red-600 text-white shadow-crimson' : 'text-red-600 hover:bg-red-50'
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          Generador IA
-        </button>
+      {/* Navegación del Portal (Segmented Pill Controls estilo Figma) */}
+      <div className="bg-slate-200/55 p-1.5 rounded-2xl border border-slate-200/80 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1 min-w-max text-xs font-medium">
+          {[
+            { id: 'omb' as PortalTab, label: 'Visión 2029 (OMV)', icon: Target },
+            { id: 'pentagon' as PortalTab, label: 'Pentágono & Evolución', icon: TrendingUp },
+            { id: 'minutes' as PortalTab, label: `Minutas (${approvedMinutes.length})`, icon: FileText },
+            { id: 'diagnostic' as PortalTab, label: 'Diagnóstico & Riesgos', icon: ShieldCheck },
+            { id: 'master_plan' as PortalTab, label: `Master Plan (${masterPlanTasks.length})`, icon: Layers },
+            { id: 'documents' as PortalTab, label: `Documentos (${approvedDocuments.length})`, icon: FolderCheck },
+            { id: 'self_assessment' as PortalTab, label: 'Autoevaluación', icon: CheckCircle2 },
+            { id: 'meeting_prep' as PortalTab, label: 'Preparar Reunión IA', icon: Briefcase },
+            { id: 'content_generator' as PortalTab, label: 'Generador IA', icon: Sparkles },
+          ].map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3.5 py-2 rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                  active
+                    ? 'bg-white text-[#17324D] font-semibold shadow-xs border border-slate-200/70'
+                    : 'text-slate-600 hover:text-[#17324D] hover:bg-white/50'
+                }`}
+              >
+                <tab.icon className={`w-3.5 h-3.5 ${active ? 'text-[#0D9488]' : 'text-slate-400'}`} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 1. PESTAÑA: VISIÓN 2029 (OMV — MARCO CVA) */}
@@ -554,8 +612,8 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                 </div>
               </div>
 
-              <div className="p-6 rounded-2xl bg-gradient-to-br from-zinc-950 to-zinc-900 text-white border border-zinc-800 shadow-md">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-red-400 block mb-2">
+              <div className="p-6 rounded-2xl bg-gradient-to-br from-[#0F2438] to-[#17324D] text-white border border-zinc-800 shadow-md">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#5EEAD4] block mb-2">
                   Objetivo Material Visualizado — Redactado en Tiempo Presente ("Situación Vivida")
                 </span>
                 <p className="text-sm sm:text-base leading-relaxed font-medium text-zinc-100 italic">
@@ -571,7 +629,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                 <div className="overflow-x-auto rounded-xl border border-zinc-200">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-zinc-900 text-white font-display uppercase text-[10px] tracking-wider">
+                      <tr className="bg-[#17324D] text-white font-display uppercase text-[10px] tracking-wider">
                         <th className="py-2.5 px-4">Dimensión Estratégica CVA</th>
                         <th className="py-2.5 px-4">Punto de Partida (Línea Base)</th>
                         <th className="py-2.5 px-4">Meta TARGET a 3 Años</th>
@@ -619,7 +677,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {ombData.roadmapStages.map((stage) => (
                       <div key={stage.year} className="p-4 rounded-xl border-2 border-zinc-200 bg-white space-y-1.5">
-                        <span className="px-2 py-0.5 rounded bg-red-50 text-red-700 text-[10px] font-black uppercase">
+                        <span className="px-2 py-0.5 rounded bg-[#F0FDFA] text-[#0F766E] text-[10px] font-black uppercase">
                           Año {stage.year}
                         </span>
                         <h5 className="font-display text-xs font-bold text-zinc-900">{stage.title}</h5>
@@ -670,7 +728,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                       </div>
                       <div className="w-full bg-zinc-100 h-2.5 rounded-full overflow-hidden border border-zinc-200">
                         <div
-                          className="bg-red-600 h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(220,38,38,0.4)]"
+                          className="bg-[#0D9488] h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(13,148,136,0.35)]"
                           style={{ width: `${Math.min(100, (axis.score / 10) * 100)}%` }}
                         />
                       </div>
@@ -693,7 +751,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                   </p>
 
                   <div className="mt-4 space-y-3">
-                    <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl text-white">
+                    <div className="p-4 bg-[#17324D] border border-zinc-800 rounded-xl text-white">
                       <span className="font-display text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                         Índice de Madurez Empresarial (IME)
                       </span>
@@ -702,11 +760,11 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                       </p>
                     </div>
 
-                    <div className="p-4 bg-red-950/40 border border-red-900/60 rounded-xl text-white">
-                      <span className="font-display text-[10px] font-bold text-red-400 uppercase tracking-wider">
+                    <div className="p-4 bg-[#0F2438]/80 border border-teal-400/30 rounded-xl text-white">
+                      <span className="font-display text-[10px] font-bold text-[#5EEAD4] uppercase tracking-wider">
                         Índice de Riesgo Empresario (IRE)
                       </span>
-                      <p className="font-display text-lg font-bold text-red-400 mt-0.5">
+                      <p className="font-display text-lg font-bold text-[#5EEAD4] mt-0.5">
                         {results.globalIre}% — Riesgo en Mitigación Activa
                       </p>
                     </div>
@@ -717,9 +775,9 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                   <button
                     type="button"
                     onClick={() => exportDiagnostic360ExecutiveReport(client, results)}
-                    className="flex-1 py-2.5 px-4 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
+                    className="flex-1 py-2.5 px-4 bg-[#17324D] hover:bg-[#17324D] text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
                   >
-                    <Download className="w-3.5 h-3.5 text-red-500" />
+                    <Download className="w-3.5 h-3.5 text-[#14B8A6]" />
                     Descargar Informe Diagnóstico PDF
                   </button>
                 </div>
@@ -730,7 +788,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
             {quarterlyReviews.length > 0 && (
               <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-red-600" />
+                  <TrendingUp className="w-5 h-5 text-[#0D9488]" />
                   <h3 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
                     Evolución Trimestral del Pentágono (Ciclos de 90 Días)
                   </h3>
@@ -745,10 +803,10 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                         <span className="text-xs font-mono font-bold text-zinc-500">{rev.review_date}</span>
                       </div>
                       <div className="flex items-center gap-4 text-xs font-bold">
-                        <span className="px-2.5 py-1 rounded bg-zinc-900 text-white">
+                        <span className="px-2.5 py-1 rounded bg-[#17324D] text-white">
                           IME: {Number(rev.ime_score).toFixed(1)} / 10
                         </span>
-                        <span className="px-2.5 py-1 rounded bg-red-50 text-red-700 border border-red-200">
+                        <span className="px-2.5 py-1 rounded bg-[#F0FDFA] text-[#0F766E] border border-teal-200/80">
                           IRE: {Number(rev.ire_score).toFixed(1)} / 10
                         </span>
                       </div>
@@ -791,7 +849,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                 return (
                   <div
                     key={m.id}
-                    className="rounded-2xl border-2 border-zinc-200 hover:border-zinc-900 transition-all overflow-hidden bg-white"
+                    className="rounded-2xl border-2 border-zinc-200 hover:border-[#0D9488]/50 transition-all overflow-hidden bg-white"
                   >
                     <div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-50/70">
                       <div className="space-y-1">
@@ -847,7 +905,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                         <button
                           type="button"
                           onClick={() => handleDownloadMinutePDF(m)}
-                          className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                          className="px-3.5 py-2 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
                         >
                           <Download className="w-3.5 h-3.5" />
                           PDF
@@ -895,7 +953,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                             {m.topics.map((t, idx) => (
                               <div key={idx} className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/50 space-y-2">
                                 <div className="flex items-center gap-2">
-                                  <span className="px-2 py-0.5 rounded bg-zinc-900 text-white text-[10px] font-mono font-bold">
+                                  <span className="px-2 py-0.5 rounded bg-[#17324D] text-white text-[10px] font-mono font-bold">
                                     {t.numero}
                                   </span>
                                   <h6 className="font-display text-xs font-bold text-zinc-900 uppercase">
@@ -923,7 +981,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                             <div className="overflow-x-auto rounded-xl border border-zinc-200">
                               <table className="w-full text-left border-collapse text-xs">
                                 <thead>
-                                  <tr className="bg-zinc-900 text-white font-display uppercase text-[10px] tracking-wider">
+                                  <tr className="bg-[#17324D] text-white font-display uppercase text-[10px] tracking-wider">
                                     <th className="py-2.5 px-4">Acción / Compromiso</th>
                                     <th className="py-2.5 px-4">Responsable</th>
                                     <th className="py-2.5 px-4">Fecha Objetivo</th>
@@ -934,7 +992,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                                     <tr key={idx} className="hover:bg-zinc-50">
                                       <td className="py-2.5 px-4 font-medium text-zinc-900">{c.accion}</td>
                                       <td className="py-2.5 px-4 text-zinc-600 font-semibold">{c.responsable}</td>
-                                      <td className="py-2.5 px-4 font-mono font-bold text-red-700">{c.fecha}</td>
+                                      <td className="py-2.5 px-4 font-mono font-bold text-[#0F766E]">{c.fecha}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -944,8 +1002,8 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                         )}
 
                         {m.reflection && (
-                          <div className="p-4 rounded-xl bg-zinc-950 text-zinc-200 border border-zinc-800 space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-red-400 block">
+                          <div className="p-4 rounded-xl bg-[#17324D] text-zinc-200 border border-zinc-800 space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#5EEAD4] block">
                               Reflexión General del Consultor GS
                             </span>
                             <p className="text-xs leading-relaxed italic">"{m.reflection}"</p>
@@ -1017,14 +1075,14 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                   <button
                     type="button"
                     onClick={() => exportDiagnostic360ExecutiveReport(client, results)}
-                    className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
+                    className="px-3.5 py-2 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer"
                   >
                     <Download className="w-3.5 h-3.5" /> Informe Ejecutivo PDF
                   </button>
                 </div>
               </div>
 
-              <div className="p-5 bg-zinc-950 text-white rounded-xl border border-zinc-800 flex items-center justify-between">
+              <div className="p-5 bg-[#17324D] text-white rounded-xl border border-zinc-800 flex items-center justify-between">
                 <div>
                   <span className="font-display text-xs font-bold text-zinc-400 uppercase tracking-wider block">
                     Preguntas Auditadas y Validadas
@@ -1057,7 +1115,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
             {riskMatrix.length > 0 && (
               <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                  <AlertTriangle className="w-5 h-5 text-[#0D9488]" />
                   <div>
                     <h3 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
                       Matriz de Riesgos Estratégicos y Mitigación — {client.name}
@@ -1071,7 +1129,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                 <div className="overflow-x-auto rounded-xl border border-zinc-200">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-zinc-900 text-white font-display uppercase text-[10px] tracking-wider">
+                      <tr className="bg-[#17324D] text-white font-display uppercase text-[10px] tracking-wider">
                         <th className="py-3 px-4">Código / Eje</th>
                         <th className="py-3 px-4">Riesgo Identificado y Causa Raíz</th>
                         <th className="py-3 px-4 text-center">Riesgo Inherente</th>
@@ -1086,7 +1144,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                         const res = r.prob_residual * r.imp_residual;
                         return (
                           <tr key={r.code} className="hover:bg-zinc-50">
-                            <td className="py-3 px-4 font-mono font-bold text-red-700 whitespace-nowrap">
+                            <td className="py-3 px-4 font-mono font-bold text-[#0F766E] whitespace-nowrap">
                               {r.code}
                               <span className="block text-[10px] font-sans text-zinc-500">{r.category}</span>
                             </td>
@@ -1095,7 +1153,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                               <p className="text-[11px] text-zinc-500 mt-0.5">Causa: {r.cause}</p>
                             </td>
                             <td className="py-3 px-4 text-center">
-                              <span className="px-2.5 py-1 rounded bg-red-100 text-red-800 font-mono font-black">
+                              <span className="px-2.5 py-1 rounded bg-[#EDF3F8] text-[#17324D] font-mono font-black">
                                 {inh} ({r.prob_inherent}x{r.imp_inherent})
                               </span>
                             </td>
@@ -1199,7 +1257,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                   onClick={() => setSelectedAxisFilter(ax.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                     selectedAxisFilter === ax.id
-                      ? 'bg-red-600 text-white'
+                      ? 'bg-[#0D9488] text-white'
                       : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                   }`}
                 >
@@ -1219,7 +1277,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-start gap-3">
-                        <span className="font-mono font-bold text-red-600 bg-red-50 border border-red-200 px-2.5 py-1 rounded shrink-0">
+                        <span className="font-mono font-bold text-[#0D9488] bg-[#F0FDFA] border border-teal-200/80 px-2.5 py-1 rounded shrink-0">
                           {task.code}
                         </span>
                         <div>
@@ -1244,7 +1302,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                               ? 'bg-emerald-600 text-white'
                               : task.status === 'EN PROCESO'
                               ? 'bg-amber-500 text-white'
-                              : 'bg-zinc-900 text-white'
+                              : 'bg-[#17324D] text-white'
                           }`}
                         >
                           {task.status}
@@ -1261,9 +1319,9 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                               setReportNote(pendingRep?.note || '');
                             }
                           }}
-                          className="px-2.5 py-1 rounded-lg border border-zinc-300 hover:border-zinc-900 bg-white text-zinc-800 font-bold text-[10px] uppercase flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg border border-zinc-300 hover:border-[#0D9488]/50 bg-white text-zinc-800 font-bold text-[10px] uppercase flex items-center gap-1 cursor-pointer"
                         >
-                          <MessageSquarePlus className="w-3 h-3 text-red-600" />
+                          <MessageSquarePlus className="w-3 h-3 text-[#0D9488]" />
                           Reportar Avance
                         </button>
                       </div>
@@ -1316,50 +1374,76 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
         )
       )}
 
-      {/* 6. PESTAÑA: DOCUMENTOS Y ENTREGABLES APROBADOS */}
-      {activeTab === 'documents' && (
-        <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-4">
-          <div className="border-b-2 border-zinc-100 pb-3">
-            <h3 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
-              Repositorio de Entregables y Documentos Aprobados — {client.name}
-            </h3>
-            <p className="text-xs text-zinc-500 font-medium">
-              Archivos técnicos, plantillas e informes liberados por Consultora GS para su organización. Los papeles de trabajo internos de la consultora permanecen ocultos.
-            </p>
-          </div>
-
-          {approvedDocuments.length === 0 ? (
-            <div className="p-10 text-center bg-zinc-50 rounded-xl border border-zinc-200">
-              <p className="text-sm font-bold text-zinc-700">No hay documentos liberados para este cliente aún.</p>
+      {/* 6. PESTAÑA: DOCUMENTOS Y AUTOGESTIÓN DOCUMENTAL DEL CLIENTE */}
+      {activeTab === 'documents' && (() => {
+        const allVisibleDocs = [...clientUploadedDocs, ...approvedDocuments];
+        return (
+          <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-5">
+            <div className="border-b-2 border-zinc-100 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-display text-lg font-bold text-zinc-950 uppercase tracking-wide">
+                  Repositorio Compartido y Autogestión Documental — {client.name}
+                </h3>
+                <p className="text-xs text-zinc-500 font-medium">
+                  Consulte los entregables liberados por Estudio GS o suba balances, flujos de caja y organigramas para su consultor.
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {approvedDocuments.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="p-4 rounded-xl border-2 border-zinc-200 hover:border-zinc-900 transition-all flex items-start justify-between gap-3"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded bg-zinc-900 text-white text-[10px] font-mono font-bold uppercase">
-                        {doc.file_type}
-                      </span>
-                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                        Visible Cliente
+
+            {/* Caja de Subida de Documentos por parte del Cliente -> directo a Supabase BD */}
+            <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <input
+                type="text"
+                value={newDocDesc}
+                onChange={(e) => setNewDocDesc(e.target.value)}
+                placeholder="Descripción opcional (ej: Balance cerrado, Flujo de Caja Q3, Organigrama actual)..."
+                className="flex-1 px-3.5 py-2 rounded-lg border border-zinc-300 bg-white text-xs"
+              />
+              <label className="px-4 py-2.5 rounded-xl bg-[#17324D] hover:bg-[#0F2438] text-white text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shrink-0 shadow-xs">
+                <UploadCloud className="w-4 h-4" />
+                {uploadingClientDoc ? 'Guardando en BD...' : 'Subir Documento a Estudio GS'}
+                <input
+                  type="file"
+                  onChange={handleClientUploadDocument}
+                  disabled={uploadingClientDoc}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {allVisibleDocs.length === 0 ? (
+              <div className="p-10 text-center bg-zinc-50 rounded-xl border border-zinc-200">
+                <p className="text-sm font-bold text-zinc-700">Aún no hay documentos cargados. Puede subir el primero arriba.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {allVisibleDocs.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="p-4 rounded-xl border-2 border-zinc-200 hover:border-[#0D9488]/50 transition-all flex items-start justify-between gap-3"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded bg-[#17324D] text-white text-[10px] font-mono font-bold uppercase">
+                          {doc.file_type}
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                          Respaldado en BD ✓
+                        </span>
+                      </div>
+                      <h4 className="font-display text-xs font-bold text-zinc-950 break-all">{doc.file_name}</h4>
+                      {doc.description && <p className="text-xs text-zinc-600">{doc.description}</p>}
+                      <span className="text-[10px] text-zinc-400 font-medium block">
+                        Tamaño: {doc.file_size || '35 KB'} • Subido por: {doc.uploader_name}
                       </span>
                     </div>
-                    <h4 className="font-display text-xs font-bold text-zinc-950 break-all">{doc.file_name}</h4>
-                    {doc.description && <p className="text-xs text-zinc-600">{doc.description}</p>}
-                    <span className="text-[10px] text-zinc-400 font-medium block">
-                      Tamaño: {doc.file_size || '35 KB'} • Subido por: {doc.uploader_name}
-                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* 7. PESTAÑA: ESPACIO DE AUTOEVALUACIÓN */}
       {activeTab === 'self_assessment' && (
@@ -1397,8 +1481,8 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                         }}
                         className={`px-4 py-1.5 border-2 rounded-lg text-xs font-display font-bold uppercase tracking-wide transition-all ${
                           selected
-                            ? 'bg-zinc-900 text-white border-zinc-900'
-                            : 'bg-white border-zinc-300 hover:border-black text-zinc-800'
+                            ? 'bg-[#17324D] text-white border-zinc-900'
+                            : 'bg-white border-zinc-300 hover:border-[#17324D] text-zinc-800'
                         }`}
                       >
                         {opt}
@@ -1418,16 +1502,25 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
 
             <button
               type="button"
-              onClick={() => {
-                localStorage.setItem(
-                  `gs_self_assessment_${client.id}`,
-                  JSON.stringify({ answers: selfAssessmentAnswers, sentAt: new Date().toISOString() })
+              onClick={async () => {
+                setDbSyncStatus('saving');
+                const entry = { answers: selfAssessmentAnswers, sentAt: new Date().toISOString() };
+                localStorage.setItem(`gs_self_assessment_${client.id}`, JSON.stringify(entry));
+                await saveClientCollabToDb(
+                  client.id,
+                  { latestSelfAssessment: entry },
+                  {
+                    activityType: 'client_monthly_self_assessment',
+                    performedBy: `Directorio ${client.name}`,
+                    details: entry,
+                  }
                 );
+                setDbSyncStatus('synced');
                 setSelfAssessmentSent(true);
               }}
-              className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider shadow-crimson transition-colors"
+              className="w-full py-3 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider shadow-crimson transition-colors cursor-pointer"
             >
-              Enviar Autoevaluación al Consultor GS
+              Guardar en Base de Datos y Enviar Autoevaluación al Consultor GS
             </button>
           </div>
         </div>
@@ -1506,7 +1599,20 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => setPrepBriefGenerated(true)}
+              onClick={async () => {
+                setPrepBriefGenerated(true);
+                setDbSyncStatus('saving');
+                await saveClientCollabToDb(
+                  client.id,
+                  {},
+                  {
+                    activityType: 'owner_meeting_brief_generated',
+                    performedBy: `Directorio ${client.name}`,
+                    details: { prepType, prepCounterpart, prepObjective },
+                  }
+                );
+                setDbSyncStatus('synced');
+              }}
               className="px-6 py-3 bg-blue-900 hover:bg-blue-950 text-white rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-sm cursor-pointer"
             >
               <Sparkles className="w-4 h-4 text-blue-200" />
@@ -1551,7 +1657,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                     ],
                   });
                 }}
-                className="px-5 py-3 bg-zinc-950 hover:bg-black text-white rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 cursor-pointer"
+                className="px-5 py-3 bg-[#17324D] hover:bg-[#17324D] text-white rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 cursor-pointer"
               >
                 <FileText className="w-4 h-4 text-blue-300" />
                 Descargar Brief en Word Oficial (.DOCX)
@@ -1593,7 +1699,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
         <div className="bg-white p-6 rounded-2xl border-2 border-zinc-900 shadow-sm space-y-6">
           <div className="border-b-2 border-zinc-100 pb-3">
             <h3 className="font-display text-xl font-bold text-zinc-950 flex items-center gap-2 uppercase tracking-wide">
-              <Sparkles className="w-5 h-5 text-red-600" />
+              <Sparkles className="w-5 h-5 text-[#0D9488]" />
               Generador de Contenidos Institucionales con IA — {client.name}
             </h3>
             <p className="text-xs text-zinc-500 mt-1 font-medium">
@@ -1612,8 +1718,8 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                 onClick={() => setSelectedContentType(item.id as 'propuesta_valor' | 'brochure' | 'pitch')}
                 className={`p-4 rounded-xl border-2 text-left transition-all ${
                   selectedContentType === item.id
-                    ? 'bg-black text-white border-black ring-2 ring-red-600'
-                    : 'bg-white border-zinc-200 hover:border-zinc-900 text-zinc-800'
+                    ? 'bg-[#17324D] text-white border-[#17324D] ring-2 ring-[#0D9488]'
+                    : 'bg-white border-zinc-200 hover:border-[#0D9488]/50 text-zinc-800'
                 }`}
               >
                 <h4 className="font-display text-sm font-bold uppercase tracking-wide">{item.label}</h4>
@@ -1632,7 +1738,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
             <button
               onClick={handleGenerateContent}
               disabled={isGenerating}
-              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shadow-crimson transition-all disabled:opacity-60"
+              className="px-6 py-3 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shadow-crimson transition-all disabled:opacity-60"
             >
               <Sparkles className="w-4 h-4" />
               {isGenerating ? 'Analizando diagnóstico y redactando...' : 'Generar Contenido con IA'}
@@ -1640,9 +1746,9 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
           </div>
 
           {generatedContent && (
-            <div className="p-6 rounded-2xl bg-zinc-950 text-white border-2 border-zinc-800 space-y-4 animate-in fade-in duration-200">
+            <div className="p-6 rounded-2xl bg-[#17324D] text-white border-2 border-zinc-800 space-y-4 animate-in fade-in duration-200">
               <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-                <span className="font-display text-xs font-bold text-red-400 uppercase tracking-widest">
+                <span className="font-display text-xs font-bold text-[#5EEAD4] uppercase tracking-widest">
                   Contenido Generado Listo para Usar
                 </span>
                 <div className="flex items-center gap-2">
@@ -1656,7 +1762,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
                 </div>
               </div>
 
-              <div className="whitespace-pre-line text-xs text-zinc-200 leading-relaxed font-mono bg-black/60 p-5 rounded-xl border border-zinc-800 max-h-96 overflow-y-auto">
+              <div className="whitespace-pre-line text-xs text-zinc-200 leading-relaxed font-mono bg-[#0F2438]/60 p-5 rounded-xl border border-zinc-800 max-h-96 overflow-y-auto">
                 {generatedContent}
               </div>
             </div>

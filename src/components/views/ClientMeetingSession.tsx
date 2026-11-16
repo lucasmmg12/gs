@@ -175,10 +175,10 @@ export default function ClientMeetingSession({
       animationRef.current = requestAnimationFrame(draw);
       analyser.getByteTimeDomainData(dataArray);
 
-      canvasCtx.fillStyle = '#09090b';
+      canvasCtx.fillStyle = '#0F2438';
       canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
       canvasCtx.lineWidth = 2.5;
-      canvasCtx.strokeStyle = '#dc2626';
+      canvasCtx.strokeStyle = '#14B8A6';
       canvasCtx.beginPath();
 
       const sliceWidth = (canvas.width * 1.0) / bufferLength;
@@ -690,7 +690,7 @@ export default function ClientMeetingSession({
             </button>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-display text-[10px] font-black uppercase tracking-widest text-white bg-[#6B1D2F] px-2.5 py-0.5 rounded-full">
+                <span className="font-display text-[10px] font-black uppercase tracking-widest text-white bg-[#17324D] px-2.5 py-0.5 rounded-full">
                   Modo Simplificado Automático
                 </span>
                 <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full flex items-center gap-1">
@@ -715,7 +715,7 @@ export default function ClientMeetingSession({
               type="text"
               value={meetingTitle}
               onChange={e => setMeetingTitle(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 focus:border-[#6B1D2F] focus:outline-none text-xs font-semibold text-zinc-900"
+              className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 focus:border-[#17324D] focus:outline-none text-xs font-semibold text-zinc-900"
             />
           </div>
         </div>
@@ -743,13 +743,13 @@ export default function ClientMeetingSession({
           </div>
 
           {/* Waveform + Big Recorder Controls */}
-          <div className="bg-zinc-950 rounded-2xl p-6 text-white border-2 border-zinc-900 space-y-5">
+          <div className="bg-[#17324D] rounded-2xl p-6 text-white border-2 border-zinc-900 space-y-5">
             <div className="flex items-center justify-between text-xs font-mono">
               <div className="flex items-center gap-2">
                 <span
                   className={`h-3 w-3 rounded-full ${
                     isRecording
-                      ? 'bg-red-600 animate-ping'
+                      ? 'bg-[#0D9488] animate-ping'
                       : isStartingMic
                         ? 'bg-amber-400 animate-pulse'
                         : 'bg-emerald-500'
@@ -773,7 +773,7 @@ export default function ClientMeetingSession({
               ref={canvasRef}
               width={700}
               height={70}
-              className="w-full h-16 rounded-xl bg-zinc-900 border border-zinc-800"
+              className="w-full h-16 rounded-xl bg-[#17324D] border border-zinc-800"
             />
 
             {/* Primary Recording & Upload Buttons */}
@@ -784,7 +784,7 @@ export default function ClientMeetingSession({
                     type="button"
                     onClick={startRecording}
                     disabled={isStartingMic || isTranscribingUpload}
-                    className="px-7 py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-display text-sm font-black uppercase tracking-wider flex items-center gap-2.5 shadow-lg hover:scale-105 transition-all cursor-pointer"
+                    className="px-7 py-4 rounded-2xl bg-[#0D9488] hover:bg-[#0F766E] text-white font-display text-sm font-black uppercase tracking-wider flex items-center gap-2.5 shadow-lg hover:scale-105 transition-all cursor-pointer"
                   >
                     {isStartingMic ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -808,9 +808,9 @@ export default function ClientMeetingSession({
                     className="px-6 py-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 font-display text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer"
                   >
                     {isTranscribingUpload ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-red-400" />
+                      <Loader2 className="w-4 h-4 animate-spin text-[#5EEAD4]" />
                     ) : (
-                      <Upload className="w-4 h-4 text-red-400" />
+                      <Upload className="w-4 h-4 text-[#5EEAD4]" />
                     )}
                     {isTranscribingUpload
                       ? 'Transcribiendo Audio...'
@@ -840,7 +840,7 @@ export default function ClientMeetingSession({
           <div className="space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <label className="font-display text-xs font-black uppercase tracking-wider text-zinc-900 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#6B1D2F]" />
+                <FileText className="w-4 h-4 text-[#17324D]" />
                 Transcripción del Audio (En vivo / Editable)
                 {streamStatus === 'streaming' && (
                   <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
@@ -856,7 +856,7 @@ export default function ClientMeetingSession({
                     const sample = generateSampleClientTranscript(client.name);
                     setLiveTranscript(sample);
                   }}
-                  className="text-xs font-bold text-[#6B1D2F] hover:underline flex items-center gap-1 bg-[#F9EFF2] px-3 py-1 rounded-lg border border-[#E6C5CD]"
+                  className="text-xs font-bold text-[#17324D] hover:underline flex items-center gap-1 bg-[#EDF3F8] px-3 py-1 rounded-lg border border-[#CBD5E1]"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   Cargar Transcripción de Ejemplo Completa
@@ -869,7 +869,7 @@ export default function ClientMeetingSession({
               onChange={e => setLiveTranscript(e.target.value)}
               rows={7}
               placeholder="Aquí aparecerá automáticamente todo lo que se hable en el micrófono o en el archivo de audio subido. También puedes pegar o escribir la transcripción directamente aquí..."
-              className="w-full p-4 rounded-xl border-2 border-zinc-200 focus:border-[#6B1D2F] focus:outline-none font-mono text-xs text-zinc-800 leading-relaxed bg-zinc-50"
+              className="w-full p-4 rounded-xl border-2 border-zinc-200 focus:border-[#17324D] focus:outline-none font-mono text-xs text-zinc-800 leading-relaxed bg-zinc-50"
             />
           </div>
 
@@ -884,7 +884,7 @@ export default function ClientMeetingSession({
               disabled={!liveTranscript.trim() && !isRecording}
               className={`px-7 py-3.5 rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-md transition-all ${
                 liveTranscript.trim()
-                  ? 'bg-[#6B1D2F] hover:bg-[#541524] text-white hover:scale-105 cursor-pointer'
+                  ? 'bg-[#17324D] hover:bg-[#0F2438] text-white hover:scale-105 cursor-pointer'
                   : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'
               }`}
             >
@@ -903,11 +903,11 @@ export default function ClientMeetingSession({
   if (step === 'processing') {
     return (
       <div className="max-w-xl mx-auto py-20 text-center space-y-6 animate-in fade-in duration-300">
-        <div className="w-20 h-20 mx-auto rounded-2xl bg-zinc-950 border-2 border-[#6B1D2F] flex items-center justify-center shadow-lg">
-          <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
+        <div className="w-20 h-20 mx-auto rounded-2xl bg-[#17324D] border-2 border-[#17324D] flex items-center justify-center shadow-lg">
+          <Loader2 className="w-10 h-10 text-[#14B8A6] animate-spin" />
         </div>
         <div className="space-y-2">
-          <span className="font-display text-[11px] font-bold uppercase tracking-widest text-[#6B1D2F] bg-[#F9EFF2] px-3 py-1 rounded-full">
+          <span className="font-display text-[11px] font-bold uppercase tracking-widest text-[#17324D] bg-[#EDF3F8] px-3 py-1 rounded-full">
             Motor IA GPT-5.5 + GPT-4o-Transcribe Activo
           </span>
           <h2 className="font-display text-2xl font-black uppercase tracking-tight text-zinc-950 mt-2">
@@ -939,11 +939,11 @@ export default function ClientMeetingSession({
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 Respondido y Guardado Automáticamente
               </span>
-              <span className="text-xs font-mono font-bold text-[#6B1D2F] bg-[#F9EFF2] px-2.5 py-0.5 rounded-full border border-[#E6C5CD]">
+              <span className="text-xs font-mono font-bold text-[#17324D] bg-[#EDF3F8] px-2.5 py-0.5 rounded-full border border-[#CBD5E1]">
                 {autoSuggestions.length} de 100 preguntas respondidas en este audio
               </span>
               <span className="text-[11px] font-mono font-bold text-zinc-700 bg-zinc-100 px-2.5 py-0.5 rounded-full border border-zinc-300 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-[#6B1D2F]" />
+                <Sparkles className="w-3 h-3 text-[#17324D]" />
                 Motor: {analysisResult?.aiModelUsed || 'gpt-5.5'}
               </span>
             </div>
@@ -961,7 +961,7 @@ export default function ClientMeetingSession({
               onClick={() => setStep('capture')}
               className="px-3.5 py-2.5 rounded-xl border border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-800 font-display text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-[#6B1D2F]" />
+              <RotateCcw className="w-3.5 h-3.5 text-[#17324D]" />
               Nuevo Audio / Editar Transcripción
             </button>
 
@@ -1002,7 +1002,7 @@ export default function ClientMeetingSession({
             <button
               type="button"
               onClick={handleExportCompletePDF}
-              className="px-5 py-2.5 rounded-xl bg-[#6B1D2F] hover:bg-[#541524] text-white font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all hover:scale-105 cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-[#17324D] hover:bg-[#0F2438] text-white font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-sm transition-all hover:scale-105 cursor-pointer"
             >
               <Download className="w-4 h-4" />
               Informe + Minuta (PDF)
@@ -1011,7 +1011,7 @@ export default function ClientMeetingSession({
             <button
               type="button"
               onClick={onBack}
-              className="px-4 py-2.5 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white font-display text-xs font-bold uppercase tracking-wider"
+              className="px-4 py-2.5 rounded-xl bg-[#17324D] hover:bg-[#0F2438] text-white font-display text-xs font-bold uppercase tracking-wider"
             >
               Finalizar y Volver
             </button>
@@ -1021,7 +1021,7 @@ export default function ClientMeetingSession({
         {/* Audio Player if recorded or uploaded */}
         {uploadedAudioUrl && (
           <div className="bg-zinc-50 px-4 py-2.5 rounded-xl border border-zinc-200 flex items-center gap-3">
-            <Volume2 className="w-4 h-4 text-[#6B1D2F] shrink-0" />
+            <Volume2 className="w-4 h-4 text-[#17324D] shrink-0" />
             <span className="text-xs font-bold text-zinc-700 shrink-0">
               {uploadedAudioName || 'Audio de la Sesión:'}
             </span>
@@ -1036,11 +1036,11 @@ export default function ClientMeetingSession({
             onClick={() => setActiveResultTab('report_minute')}
             className={`px-4 py-2.5 rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${
               activeResultTab === 'report_minute'
-                ? 'bg-zinc-950 text-white shadow-xs'
+                ? 'bg-[#17324D] text-white shadow-xs'
                 : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
             }`}
           >
-            <FileCheck2 className="w-4 h-4 text-red-500" />
+            <FileCheck2 className="w-4 h-4 text-[#14B8A6]" />
             1. Informe Ejecutivo y Minuta de Sesión
           </button>
 
@@ -1049,7 +1049,7 @@ export default function ClientMeetingSession({
             onClick={() => setActiveResultTab('questions_100')}
             className={`px-4 py-2.5 rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${
               activeResultTab === 'questions_100'
-                ? 'bg-zinc-950 text-white shadow-xs'
+                ? 'bg-[#17324D] text-white shadow-xs'
                 : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
             }`}
           >
@@ -1062,7 +1062,7 @@ export default function ClientMeetingSession({
             onClick={() => setActiveResultTab('transcript')}
             className={`px-4 py-2.5 rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${
               activeResultTab === 'transcript'
-                ? 'bg-zinc-950 text-white shadow-xs'
+                ? 'bg-[#17324D] text-white shadow-xs'
                 : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
             }`}
           >
@@ -1080,7 +1080,7 @@ export default function ClientMeetingSession({
           {/* Header of the Official Minute */}
           <div className="border-b-2 border-zinc-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#6B1D2F] block">
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#17324D] block">
                 Informe & Minuta Oficial • Metodología Consultora GS
               </span>
               <h2 className="font-display text-2xl font-black uppercase text-zinc-950 mt-0.5">
@@ -1095,7 +1095,7 @@ export default function ClientMeetingSession({
               {analysisResult?.areasImpacted?.map(a => (
                 <span
                   key={a.areaId}
-                  className="px-2.5 py-1 rounded-lg bg-[#F9EFF2] border border-[#E6C5CD] text-[#6B1D2F] text-[11px] font-bold"
+                  className="px-2.5 py-1 rounded-lg bg-[#EDF3F8] border border-[#CBD5E1] text-[#17324D] text-[11px] font-bold"
                 >
                   {a.areaName}: {a.count} resp.
                 </span>
@@ -1107,7 +1107,7 @@ export default function ClientMeetingSession({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-3">
               <h3 className="font-display text-sm font-black uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#6B1D2F]" />
+                <FileText className="w-4 h-4 text-[#17324D]" />
                 1. Resumen Ejecutivo del Informe
               </h3>
               <p className="bg-zinc-50 p-4 rounded-xl border border-zinc-200 text-xs sm:text-sm text-zinc-800 leading-relaxed">
@@ -1150,7 +1150,7 @@ export default function ClientMeetingSession({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {minuteDraft.topicsDiscussed.map((topic, idx) => (
                 <div key={idx} className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 space-y-2">
-                  <h4 className="font-display text-xs font-black uppercase text-[#6B1D2F]">
+                  <h4 className="font-display text-xs font-black uppercase text-[#17324D]">
                     {topic.title}
                   </h4>
                   <ul className="space-y-1.5 text-xs text-zinc-700 list-disc list-inside">
@@ -1172,7 +1172,7 @@ export default function ClientMeetingSession({
             </h3>
             <div className="overflow-x-auto border border-zinc-200 rounded-xl">
               <table className="w-full text-left text-xs">
-                <thead className="bg-zinc-900 text-white uppercase text-[10px]">
+                <thead className="bg-[#17324D] text-white uppercase text-[10px]">
                   <tr>
                     <th className="p-3 font-bold">Responsable</th>
                     <th className="p-3 font-bold">Compromiso / Acción Derivada del Diagnóstico</th>
@@ -1199,8 +1199,8 @@ export default function ClientMeetingSession({
           </div>
 
           {/* 5. Reflexión Metodológica */}
-          <div className="bg-[#F9EFF2] border border-[#E6C5CD] p-4 rounded-xl">
-            <span className="font-display text-[10px] font-black uppercase tracking-wider text-[#6B1D2F] block mb-1">
+          <div className="bg-[#EDF3F8] border border-[#CBD5E1] p-4 rounded-xl">
+            <span className="font-display text-[10px] font-black uppercase tracking-wider text-[#17324D] block mb-1">
               Síntesis Metodológica GS
             </span>
             <p className="text-xs text-zinc-900 font-medium leading-relaxed">
@@ -1231,7 +1231,7 @@ export default function ClientMeetingSession({
                 onClick={() => setQuestionsFilter('answered')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   questionsFilter === 'answered'
-                    ? 'bg-[#6B1D2F] text-white'
+                    ? 'bg-[#17324D] text-white'
                     : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                 }`}
               >
@@ -1242,7 +1242,7 @@ export default function ClientMeetingSession({
                 onClick={() => setQuestionsFilter('all_100')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   questionsFilter === 'all_100'
-                    ? 'bg-zinc-900 text-white'
+                    ? 'bg-[#17324D] text-white'
                     : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                 }`}
               >
@@ -1265,10 +1265,10 @@ export default function ClientMeetingSession({
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-zinc-900 text-white">
+                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#17324D] text-white">
                           {sug.questionCode}
                         </span>
-                        <span className="text-xs font-bold text-[#6B1D2F] uppercase">
+                        <span className="text-xs font-bold text-[#17324D] uppercase">
                           {sug.areaName}
                         </span>
                         <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
@@ -1285,7 +1285,7 @@ export default function ClientMeetingSession({
                               e.target.value as ResponseOptionValue
                             )
                           }
-                          className="px-2.5 py-1 rounded-lg border border-zinc-300 bg-white text-xs font-bold text-zinc-900 focus:border-[#6B1D2F] focus:outline-none"
+                          className="px-2.5 py-1 rounded-lg border border-zinc-300 bg-white text-xs font-bold text-zinc-900 focus:border-[#17324D] focus:outline-none"
                         >
                           {(qObj?.options || []).map(opt => (
                             <option key={opt.value} value={opt.value}>
@@ -1366,7 +1366,7 @@ export default function ClientMeetingSession({
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="font-mono font-bold text-[11px] px-1.5 py-0.5 rounded bg-zinc-900 text-white">
+                            <span className="font-mono font-bold text-[11px] px-1.5 py-0.5 rounded bg-[#17324D] text-white">
                               {q.code}
                             </span>
                             {matched ? (
@@ -1400,7 +1400,7 @@ export default function ClientMeetingSession({
       {/* TAB 3: TRANSCRIPCIÓN COMPLETA                                                */}
       {/* ============================================================================ */}
       {activeResultTab === 'transcript' && (
-        <div className="bg-zinc-950 text-white p-6 rounded-2xl border-2 border-zinc-900 space-y-4">
+        <div className="bg-[#17324D] text-white p-6 rounded-2xl border-2 border-zinc-900 space-y-4">
           <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
             <div>
               <h3 className="font-display text-sm font-black uppercase tracking-wider">
@@ -1421,7 +1421,7 @@ export default function ClientMeetingSession({
               <Copy className="w-3.5 h-3.5" /> Copiar Transcripción
             </button>
           </div>
-          <div className="p-4 bg-zinc-900 rounded-xl font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">
+          <div className="p-4 bg-[#17324D] rounded-xl font-mono text-xs text-zinc-200 whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto">
             {liveTranscript}
           </div>
         </div>

@@ -112,7 +112,7 @@ export const DataEntryMock: React.FC<DataEntryMockProps> = ({ clients, setClient
     <div className="p-8 space-y-8 animate-in fade-in duration-500 max-w-5xl mx-auto">
       <div>
         <h2 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-          <Database className="w-8 h-8 text-red-600" />
+          <Database className="w-8 h-8 text-[#0D9488]" />
           Módulo de Ingreso de Datos (Admin)
         </h2>
         <p className="text-gray-500 mt-2">
@@ -170,7 +170,7 @@ export const DataEntryMock: React.FC<DataEntryMockProps> = ({ clients, setClient
             <div className="pt-4">
               <button 
                 type="submit"
-                className="w-full bg-gray-900 text-white font-bold py-3 rounded-lg shadow-md hover:bg-black hover:shadow-xl transition-all"
+                className="w-full bg-gray-900 text-white font-bold py-3 rounded-lg shadow-md hover:bg-[#17324D] hover:shadow-xl transition-all"
               >
                 Registrar Cliente en la Plataforma
               </button>
@@ -201,7 +201,7 @@ export const DataEntryMock: React.FC<DataEntryMockProps> = ({ clients, setClient
               <select 
                 value={selectedClientId}
                 onChange={e => setSelectedClientId(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all font-medium text-gray-700"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-[#0D9488] transition-all font-medium text-gray-700"
               >
                 <option value="">-- Selecciona una empresa --</option>
                 {clients.map(c => (
@@ -211,21 +211,21 @@ export const DataEntryMock: React.FC<DataEntryMockProps> = ({ clients, setClient
             </div>
 
             <div 
-              className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${selectedClientId ? 'border-red-300 bg-red-50 cursor-pointer hover:bg-red-100' : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'}`}
+              className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${selectedClientId ? 'border-teal-300 bg-[#F0FDFA] cursor-pointer hover:bg-[#EDF3F8]' : 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'}`}
               onClick={selectedClientId && !isUploading ? handleUploadAudio : undefined}
             >
               {isUploading ? (
                 <div className="flex flex-col items-center">
                   <div className="w-12 h-12 relative mb-4">
-                    <div className="absolute inset-0 border-4 border-red-200 rounded-full"></div>
-                    <div className="absolute inset-0 border-4 border-red-600 rounded-full border-t-transparent animate-spin"></div>
+                    <div className="absolute inset-0 border-4 border-teal-200/80 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-[#0D9488] rounded-full border-t-transparent animate-spin"></div>
                   </div>
-                  <p className="font-bold text-red-600">IA Procesando Audio...</p>
-                  <p className="text-xs text-red-400 mt-1">Transcribiendo y extrayendo insights.</p>
+                  <p className="font-bold text-[#0D9488]">IA Procesando Audio...</p>
+                  <p className="text-xs text-[#5EEAD4] mt-1">Transcribiendo y extrayendo insights.</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm text-red-500 mb-4">
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm text-[#14B8A6] mb-4">
                     <UploadCloud className="w-8 h-8" />
                   </div>
                   <p className="font-bold text-gray-800">Haz clic para "Subir Audio"</p>
@@ -242,7 +242,7 @@ export const DataEntryMock: React.FC<DataEntryMockProps> = ({ clients, setClient
               </div>
               <h3 className="text-2xl font-bold text-gray-900">¡Análisis Completado!</h3>
               <p className="text-gray-500 mt-2">La IA detectó una anomalía y generó una nueva intervención automáticamente.</p>
-              <p className="text-sm font-bold text-red-600 mt-4">Ve al Plan de Acción del cliente para verla.</p>
+              <p className="text-sm font-bold text-[#0D9488] mt-4">Ve al Plan de Acción del cliente para verla.</p>
             </div>
           )}
         </div>

@@ -1,7 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Activity, ShieldCheck, Building2, KeyRound, Lock, Users, ArrowRight } from 'lucide-react';
+import { loadPublicOrgsDirectoryFromDb } from '../lib/gsCloudSync';
+import {
+  ShieldCheck,
+  Building2,
+  KeyRound,
+  Lock,
+  Users,
+  ArrowRight,
+  Layers,
+  Sparkles,
+  CheckCircle2,
+  Database,
+} from 'lucide-react';
 
 interface OrgOption {
   id: string;
@@ -13,33 +25,45 @@ interface OrgOption {
 export default function Login() {
   const navigate = useNavigate();
   const [loginMode, setLoginMode] = useState<'consultant' | 'client'>('consultant');
-  const [clientAuthMethod, setClientAuthMethod] = useState<'credentials' | 'code'>('credentials');
+  const [clientAuthMethod, setClientAuthMethod] = useState<'credentials' | 'code'>('code');
 
-  // Email + Password state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Direct Portal Access Code state for Clients
   const [orgs, setOrgs] = useState<OrgOption[]>([
-    { id: '532a0405-02c2-4e45-8f77-c24bf13ea9de', name: 'EJEMPLO SAS', industry: 'Desarrollo e Ingeniería', portal_access_code: 'GS-DEMO-2026' }
+    {
+      id: '532a0405-02c2-4e45-8f77-c24bf13ea9de',
+      name: 'EJEMPLO SAS',
+      industry: 'Desarrollo e Ingeniería',
+      portal_access_code: 'GS-DEMO-2026',
+    },
   ]);
   const [selectedOrgId, setSelectedOrgId] = useState('532a0405-02c2-4e45-8f77-c24bf13ea9de');
   const [accessCode, setAccessCode] = useState('');
 
   useEffect(() => {
-    supabase
-      .from('organizations')
-      .select('id, name, industry, portal_access_code')
-      .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setOrgs(data);
-          const ejemplo = data.find(o => o.name.toUpperCase().includes('EJEMPLO'));
-          if (ejemplo) setSelectedOrgId(ejemplo.id);
-        }
-      });
+    (async () => {
+      const { data } = await supabase
+        .from('organizations')
+        .select('id, name, industry, portal_access_code')
+        .order('created_at', { ascending: true });
+
+      if (data && data.length > 0) {
+        setOrgs(data);
+        const ejemplo = data.find((o) => o.name.toUpperCase().includes('EJEMPLO'));
+        if (ejemplo) setSelectedOrgId(ejemplo.id);
+        return;
+      }
+
+      const directory = await loadPublicOrgsDirectoryFromDb();
+      if (directory.length > 0) {
+        setOrgs(directory);
+        const ejemplo = directory.find((o) => o.name.toUpperCase().includes('EJEMPLO'));
+        if (ejemplo) setSelectedOrgId(ejemplo.id);
+      }
+    })();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -48,17 +72,16 @@ export default function Login() {
     setError(null);
 
     if (loginMode === 'client' && clientAuthMethod === 'code') {
-      const targetOrg = orgs.find(o => o.id === selectedOrgId);
+      const targetOrg = orgs.find((o) => o.id === selectedOrgId);
       const expectedCode = (targetOrg?.portal_access_code || 'GS-DEMO-2026').trim().toUpperCase();
       const entered = accessCode.trim().toUpperCase();
 
       if (!entered || entered !== expectedCode) {
-        setError('Código de acceso corporativo inválido para la empresa seleccionada.');
+        setError('Código corporativo inválido para la organización seleccionada.');
         setLoading(false);
         return;
       }
 
-      // Isolate session strictly to this single client organization
       sessionStorage.clear();
       sessionStorage.setItem(`gs_portal_verified_${selectedOrgId}`, 'true');
       sessionStorage.setItem('gs_active_client_org', selectedOrgId);
@@ -73,248 +96,288 @@ export default function Login() {
     });
 
     if (signInError) {
-      setError(signInError.message === 'Invalid login credentials'
-        ? 'Credenciales incorrectas. Verifique su correo y contraseña.'
-        : signInError.message);
+      setError(
+        signInError.message === 'Invalid login credentials'
+          ? 'Credenciales incorrectas. Verifique su correo y contraseña.'
+          : signInError.message
+      );
     }
     setLoading(false);
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-zinc-950 p-4">
-      <div className="w-full max-w-lg space-y-6 rounded-2xl bg-white p-8 sm:p-10 shadow-obsidian border-2 border-zinc-900">
-        {/* Header Institucional */}
-        <div className="flex flex-col items-center justify-center text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-white shadow-crimson border-2 border-red-600">
-            <Activity className="h-7 w-7 text-red-500" />
+    <div className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-12 bg-[#F8FAFC]">
+      {/* Left Showcase Panel (Nordic Petrol & Emerald Architecture) */}
+      <div className="hidden lg:flex lg:col-span-6 xl:col-span-7 relative overflow-hidden bg-gradient-to-br from-[#0F2438] via-[#17324D] to-[#134E4A] text-white p-12 xl:p-16 flex-col justify-between">
+        {/* Ambient Decorative Glows */}
+        <div className="pointer-events-none absolute -top-24 -right-24 h-96 w-96 rounded-full bg-[#0D9488]/25 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-12 h-80 w-80 rounded-full bg-sky-400/10 blur-3xl" />
+
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 shadow-sm">
+            <Layers className="h-5 w-5 text-[#2DD4BF]" />
           </div>
-          <h2 className="mt-4 text-3xl font-black font-display uppercase tracking-wide text-zinc-950">
-            Estudio GS <span className="text-red-600">Consultora</span>
-          </h2>
-          <p className="mt-1 text-xs text-zinc-500 font-medium">
-            Plataforma de Diagnóstico 360°, Gobernanza y Tutoría Estratégica
-          </p>
-        </div>
-
-        {/* Selector de Perfil de Usuario (2 Roles: Equipo Consultor GS vs Clientes) */}
-        <div className="grid grid-cols-2 gap-2 p-1.5 bg-zinc-100 rounded-xl border border-zinc-200">
-          <button
-            type="button"
-            onClick={() => {
-              setLoginMode('consultant');
-              setError(null);
-            }}
-            className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-              loginMode === 'consultant'
-                ? 'bg-zinc-900 text-white shadow-sm'
-                : 'text-zinc-600 hover:text-zinc-900'
-            }`}
-          >
-            <ShieldCheck className={`h-4 w-4 ${loginMode === 'consultant' ? 'text-red-500' : 'text-zinc-400'}`} />
-            Equipo Consultor GS
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setLoginMode('client');
-              setError(null);
-            }}
-            className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-              loginMode === 'client'
-                ? 'bg-red-600 text-white shadow-sm'
-                : 'text-zinc-600 hover:text-zinc-900'
-            }`}
-          >
-            <Building2 className={`h-4 w-4 ${loginMode === 'client' ? 'text-white' : 'text-zinc-400'}`} />
-            Portal de Clientes
-          </button>
-        </div>
-
-        {/* Explicación contextual de aislamiento según el rol */}
-        <div className={`rounded-xl p-3.5 border text-xs ${
-          loginMode === 'consultant'
-            ? 'bg-zinc-50 border-zinc-200 text-zinc-700'
-            : 'bg-red-50/60 border-red-200 text-zinc-800'
-        }`}>
-          {loginMode === 'consultant' ? (
-            <div className="flex items-start gap-2.5">
-              <Users className="h-4 w-4 text-zinc-900 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-zinc-900">Back-Office de Consultores GS</p>
-                <p className="text-[11px] text-zinc-500 mt-0.5">
-                  Gestión multicartera de clientes, grabación de sesiones en vivo, checkout IA y control de calidad (Semáforo Rojo/Verde) para aprobar qué visualiza cada cliente.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-start gap-2.5">
-              <Lock className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold text-red-950">Entorno Privado y Aislado por Cliente</p>
-                <p className="text-[11px] text-red-800/80 mt-0.5">
-                  Acceso exclusivo para Directorio y Socios. Cada empresa visualiza únicamente su propia información y los entregables aprobados por el equipo de Consultora GS.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sub-selector para Clientes: Usuario/Contraseña vs Código de Acceso */}
-        {loginMode === 'client' && (
-          <div className="flex items-center justify-center gap-2 text-[11px] font-bold">
-            <button
-              type="button"
-              onClick={() => { setClientAuthMethod('credentials'); setError(null); }}
-              className={`px-3 py-1.5 rounded-lg border transition-all ${
-                clientAuthMethod === 'credentials'
-                  ? 'bg-zinc-900 text-white border-zinc-900'
-                  : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50'
-              }`}
-            >
-              Ingresar con Correo Corporativo
-            </button>
-            <button
-              type="button"
-              onClick={() => { setClientAuthMethod('code'); setError(null); }}
-              className={`px-3 py-1.5 rounded-lg border transition-all flex items-center gap-1.5 ${
-                clientAuthMethod === 'code'
-                  ? 'bg-zinc-900 text-white border-zinc-900'
-                  : 'bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50'
-              }`}
-            >
-              <KeyRound className="h-3.5 w-3.5" />
-              Ingresar con Código de Portal
-            </button>
-          </div>
-        )}
-
-        <form className="space-y-4" onSubmit={handleLogin}>
-          {loginMode === 'client' && clientAuthMethod === 'code' ? (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold font-display uppercase tracking-wider text-zinc-700 mb-1">
-                  Organización / Empresa Cliente
-                </label>
-                <select
-                  value={selectedOrgId}
-                  onChange={(e) => setSelectedOrgId(e.target.value)}
-                  className="block w-full rounded-xl border-2 border-zinc-300 py-2.5 px-3.5 text-zinc-900 focus:border-red-600 focus:ring-red-600 sm:text-sm font-bold bg-white"
-                >
-                  {orgs.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {org.name} — {org.industry}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold font-display uppercase tracking-wider text-zinc-700 mb-1">
-                  Código Privado de Acceso GS
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={accessCode}
-                  onChange={(e) => setAccessCode(e.target.value)}
-                  placeholder="Ej: GS-DEMO-2026"
-                  className="block w-full rounded-xl border-2 border-zinc-300 py-2.5 px-3.5 text-zinc-900 placeholder:text-zinc-400 focus:border-red-600 focus:ring-red-600 sm:text-sm font-mono font-bold tracking-widest uppercase"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold font-display uppercase tracking-wider text-zinc-700 mb-1" htmlFor="email-address">
-                  Correo Electrónico {loginMode === 'consultant' ? 'Consultor GS' : 'Corporativo Cliente'}
-                </label>
-                <input
-                  id="email-address"
-                  name="email"
-                  type="email"
-                  required
-                  className="block w-full rounded-xl border-2 border-zinc-300 py-2.5 px-3.5 text-zinc-900 placeholder:text-zinc-400 focus:border-red-600 focus:ring-red-600 sm:text-sm font-medium"
-                  placeholder={loginMode === 'consultant' ? 'admin@gs.com' : 'cliente@ejemplosas.com'}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold font-display uppercase tracking-wider text-zinc-700 mb-1" htmlFor="password">
-                  Contraseña
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  className="block w-full rounded-xl border-2 border-zinc-300 py-2.5 px-3.5 text-zinc-900 placeholder:text-zinc-400 focus:border-red-600 focus:ring-red-600 sm:text-sm font-medium"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-800 font-bold">
-              {error}
-            </div>
-          )}
-
           <div>
+            <span className="font-display text-base font-bold tracking-tight block">
+              Estudio GS · <span className="text-[#2DD4BF]">Grow Labs</span>
+            </span>
+            <span className="text-[11px] text-slate-300 tracking-wide">
+              Corporate Strategy & AI Governance Suite
+            </span>
+          </div>
+        </div>
+
+        <div className="relative z-10 max-w-xl space-y-8">
+          <div className="space-y-4">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-medium text-[#5EEAD4]">
+              <Sparkles className="w-3.5 h-3.5" /> Arquitectura Dual Multi-Tenant v3.0
+            </span>
+            <h1 className="font-display text-4xl xl:text-[42px] font-bold leading-[1.15] tracking-tight text-white">
+              Profesionalización empresarial con precisión matemática e IA auditada.
+            </h1>
+            <p className="text-sm xl:text-base text-slate-300 leading-relaxed">
+              Un entorno unificado donde el equipo consultor lidera el Diagnóstico 360° y el Master Plan, mientras cada Directorio cliente gestiona sus avances con privacidad absoluta.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 rounded-2xl bg-white/7 backdrop-blur-md border border-white/12 space-y-1.5">
+              <div className="flex items-center gap-2 text-[#5EEAD4] text-xs font-semibold">
+                <CheckCircle2 className="w-4 h-4" /> Entregables Oficiales
+              </div>
+              <p className="text-xs text-slate-200 leading-relaxed">
+                Exportación directa de Master Plan en Excel de 6 hojas con fórmulas vivas y documentos Word nativos.
+              </p>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/7 backdrop-blur-md border border-white/12 space-y-1.5">
+              <div className="flex items-center gap-2 text-[#5EEAD4] text-xs font-semibold">
+                <Database className="w-4 h-4" /> Persistencia en Vivo
+              </div>
+              <p className="text-xs text-slate-200 leading-relaxed">
+                Sincronización continua en PostgreSQL con aislamiento estricto por empresa y Semáforo de Calidad.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative z-10 flex items-center justify-between text-xs text-slate-400 border-t border-white/10 pt-6">
+          <span>Grow Labs · Ingeniería de Software & IA</span>
+          <span>Estética Nórdica Ejecutiva · Seguridad RLS</span>
+        </div>
+      </div>
+
+      {/* Right Minimalist Figma Studio Login */}
+      <div className="lg:col-span-6 xl:col-span-5 flex items-center justify-center p-6 sm:p-10">
+        <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/90 p-8 sm:p-10 shadow-[0_20px_50px_-15px_rgba(23,50,77,0.08)] space-y-7">
+          {/* Mobile Header */}
+          <div className="space-y-1.5 text-center lg:text-left">
+            <div className="lg:hidden inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#17324D] to-[#0D9488] text-white mb-2">
+              <Layers className="h-5 w-5" />
+            </div>
+            <h2 className="font-display text-2xl font-bold tracking-tight text-[#17324D]">
+              Bienvenido a Estudio GS
+            </h2>
+            <p className="text-xs text-slate-500">
+              Seleccione su perfil de acceso para ingresar a su espacio de trabajo.
+            </p>
+          </div>
+
+          {/* Apple/Linear Segmented Control */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/70">
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode('consultant');
+                setError(null);
+              }}
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                loginMode === 'consultant'
+                  ? 'bg-white text-[#17324D] shadow-xs border border-slate-200/60'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <ShieldCheck
+                className={`h-4 w-4 ${loginMode === 'consultant' ? 'text-[#0D9488]' : 'text-slate-400'}`}
+              />
+              Consultor GS
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode('client');
+                setError(null);
+              }}
+              className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                loginMode === 'client'
+                  ? 'bg-white text-[#0F766E] shadow-xs border border-teal-200/70'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Building2
+                className={`h-4 w-4 ${loginMode === 'client' ? 'text-[#0D9488]' : 'text-slate-400'}`}
+              />
+              Portal Clientes
+            </button>
+          </div>
+
+          {/* Contextual Info Pill */}
+          <div
+            className={`rounded-2xl p-3.5 border text-xs leading-relaxed ${
+              loginMode === 'consultant'
+                ? 'bg-[#EDF3F8]/70 border-slate-200 text-slate-700'
+                : 'bg-[#F0FDFA] border-teal-200/80 text-slate-700'
+            }`}
+          >
+            {loginMode === 'consultant' ? (
+              <div className="flex items-start gap-2.5">
+                <Users className="h-4 w-4 text-[#17324D] shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-[#17324D]">Back-Office de Consultoría</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Gestión integral de cartera (Etapas 0 a 4), sesiones con IA y control de publicación.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2.5">
+                <Lock className="h-4 w-4 text-[#0D9488] shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-[#0F766E]">Portal Ejecutivo Aislado</p>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Acceso exclusivo de Directorio para consultar indicadores aprobados y autogestionar avances.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Client Auth Sub-selector */}
+          {loginMode === 'client' && (
+            <div className="flex items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  setClientAuthMethod('code');
+                  setError(null);
+                }}
+                className={`flex-1 py-2 px-3 rounded-xl border font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  clientAuthMethod === 'code'
+                    ? 'bg-[#17324D] text-white border-[#17324D]'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                Código de Portal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setClientAuthMethod('credentials');
+                  setError(null);
+                }}
+                className={`flex-1 py-2 px-3 rounded-xl border font-medium transition-all cursor-pointer ${
+                  clientAuthMethod === 'credentials'
+                    ? 'bg-[#17324D] text-white border-[#17324D]'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                Correo Corporativo
+              </button>
+            </div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleLogin}>
+            {loginMode === 'client' && clientAuthMethod === 'code' ? (
+              <div className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Organización Cliente
+                  </label>
+                  <select
+                    value={selectedOrgId}
+                    onChange={(e) => setSelectedOrgId(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-sm font-medium text-slate-900 focus:bg-white focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 focus:outline-none transition-all"
+                  >
+                    {orgs.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name} {o.industry ? `— ${o.industry}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Código Corporativo de Acceso
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={accessCode}
+                    onChange={(e) => setAccessCode(e.target.value)}
+                    placeholder="Ej: GS-DEMO-2026"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-sm font-mono font-semibold uppercase tracking-widest text-slate-900 focus:bg-white focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 focus:outline-none transition-all"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1.5">
+                    Solicite su clave privada a su consultor líder (Demo: <code className="font-mono text-slate-600">GS-DEMO-2026</code>).
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Correo Electrónico
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder={
+                      loginMode === 'consultant' ? 'consultor@estudiogs.com' : 'directorio@empresa.com'
+                    }
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 focus:outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Contraseña
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 focus:outline-none transition-all"
+                  />
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 px-3.5 py-2.5 text-xs font-medium text-rose-700">
+                {error}
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
-              className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold font-display uppercase tracking-wider text-white shadow-crimson disabled:opacity-70 transition-all hover:scale-[1.01] border ${
-                loginMode === 'consultant'
-                  ? 'bg-zinc-900 hover:bg-black border-zinc-800'
-                  : 'bg-red-600 hover:bg-red-700 border-red-500'
+              className={`w-full py-3 px-4 rounded-xl text-xs font-semibold tracking-wide flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 ${
+                loginMode === 'consultant' ? 'btn-nordic-primary' : 'btn-nordic-teal'
               }`}
             >
               {loading
-                ? 'Verificando credenciales...'
+                ? 'Verificando acceso...'
                 : loginMode === 'consultant'
-                ? 'Ingresar al Back-Office Consultor GS'
-                : 'Ingresar al Portal Ejecutivo del Cliente'}
+                  ? 'Ingresar al Back-Office GS'
+                  : 'Acceder a Mi Portal Ejecutivo'}
               <ArrowRight className="h-4 w-4" />
             </button>
-          </div>
-
-          {/* Botones de Demostración Rápida para ambos roles */}
-          <div className="pt-4 border-t-2 border-zinc-100 flex flex-col gap-2">
-            <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider text-center">
-              Accesos Rápidos de Demostración (Q/A):
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginMode('consultant');
-                  setEmail('admin@gs.com');
-                  setPassword('admin123456');
-                  setError(null);
-                }}
-                className="text-[11px] font-bold font-display uppercase tracking-wider text-zinc-900 hover:text-red-600 bg-zinc-100 hover:bg-zinc-200 px-3 py-2.5 rounded-xl border border-zinc-300 transition-colors text-center"
-              >
-                1. Consultor GS (admin@gs.com)
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginMode('client');
-                  setClientAuthMethod('credentials');
-                  setEmail('cliente@ejemplosas.com');
-                  setPassword('cliente123456');
-                  setError(null);
-                }}
-                className="text-[11px] font-bold font-display uppercase tracking-wider text-red-700 hover:text-white bg-red-50 hover:bg-red-600 px-3 py-2.5 rounded-xl border border-red-200 transition-colors text-center"
-              >
-                2. Cliente (EJEMPLO SAS)
-              </button>
-            </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

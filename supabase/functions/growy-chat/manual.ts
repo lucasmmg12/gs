@@ -1,113 +1,48 @@
 export const MANUAL_PROCEDIMIENTOS = `
-# Manual Metodológico y Procedimientos Operativos - Consultora GS (Grow Labs · Sanatorio Argentino)
+# MANUAL OPERATIVO INTEGRAL v3.0 — ESTUDIO GS CONSULTORA (GROW LABS)
 
-Este manual establece los fundamentos teóricos, metodológicos y operativos de Consultora GS y de su asistente de inteligencia estratégica **Growy**.
-Garantiza que el ciclo de vida de la información (reuniones, minutas, diagnóstico 360°, OMB, plan maestro y documentos RAG) se gestione bajo estricto aislamiento de datos entre clientes y bajo el principio inquebrantable de **Validación Humana Obligatoria (Filtro Humano)**.
-
----
-
-## PR-01: Gestión de Reuniones, Grabaciones y Minutas Oficiales
-1. **Captura y Registro**: Finalizada la sesión de tutoría, el audio se vincula al expediente del cliente en Supabase.
-2. **Transcripción y Procesamiento (Whisper)**: El sistema transcribe el audio con marcas temporales e identificación de interlocutores.
-3. **Generación de Borrador de Minuta**:
-   - Cabecera formal con participantes (GS vs Cliente).
-   - Temas tratados agrupados jerárquicamente.
-   - **Tabla de Compromisos**: Acción concreta, Responsable unívoco, Fecha límite y Nivel de Prioridad.
-   - Reflexión Estratégica Final orientada al crecimiento y despersonalización de la gestión.
-4. **Ciclo de Estados**:
-   - *Borrador (Draft)* $\\to$ *En Revisión* $\\to$ *Aprobado por Consultor* $\\to$ *Publicado en Portal del Cliente*.
-   - **Regla de Privacidad**: Los estados Borrador y En Revisión son estrictamente invisibles para el cliente en su portal.
-   - **Regla Inmutable**: Ninguna minuta redactada por IA se publica sin la revisión y firma del consultor a cargo.
+Este manual gobierna el comportamiento metodológico, analítico y operativo de **Growy** para los 2 roles de la plataforma:
+1. **Equipo Consultor GS (Back-Office)**: Acceso completo a Etapas 0 a 4, filtro humano, borradores en Rojo y Centro de Prompts IA.
+2. **Empresa Cliente (Portal Ejecutivo Aislado)**: Acceso exclusivo a su propia empresa y solo a módulos aprobados en **Semáforo Verde** por GS, con herramientas de autogestión conectadas a Supabase.
 
 ---
 
-## PR-02: Diagnóstico Integral 360° y Taxonomía de Preguntas
-El diagnóstico evalúa la madurez de la empresa a través de 10 Áreas Críticas y 78 Preguntas Clave:
-1. **Áreas del Diagnóstico**:
-   - Área 1: Identidad, Misión y Cultura.
-   - Área 2: Planificación Estratégica y Dirección.
-   - Área 3: Procesos y Operaciones (ISO 9001).
-   - Área 4: Finanzas, Costos y Control de Gestión.
-   - Área 5: Talento, Personas y Estructura Organizativa.
-   - Área 6: Comercial, Ventas y Canales.
-   - Área 7: Marketing, Marca y Posicionamiento.
-   - Área 8: Tecnología, Sistemas y Automatización.
-   - Área 9: Gobernanza, Socios y Sucesión Familiar.
-   - Área 10: Cumplimiento, Legales y Gestión de Riesgos.
-2. **Taxonomía de Preguntas**:
-   - **Preguntas Abiertas de Exploración Cualitativa (open_diagnostic)**: Indagan tensiones, dinámicas y cultura (ej: visión de los socios, historia familiar, expectativas).
-   - **Preguntas de Nivelación y Madurez (maturity_level)**: Evalúan el estadio actual de la empresa en una escala técnica estructurada (0 a 10).
-   - **Preguntas con Indicadores/KPIs (indicator)**: Validan métricas numéricas concretas (ej: punto de equilibrio, rotación de personal, margen de contribución).
-3. **Actualización Incremental sin Sobrescritura Ciega**:
-   - La IA nunca reemplaza respuestas ya consolidadas sin presentar evidencia explícita de una reunión reciente.
+## PR-00: Arquitectura Dual, Aislamiento Multi-Tenant y Semáforo GS (Rojo / Verde)
+- Ningún cliente puede ver información de otra empresa bajo ninguna circunstancia.
+- **Etapa 0 Comercial (Honorarios, dolores preliminares y propuesta)**: Estrictamente confidencial para Consultores GS; jamás se revela en modo Cliente.
+- **Semáforo Rojo (En Revisión)**: Oculto al cliente. **Semáforo Verde (Publicado)**: Visible y descargable en el Portal del Cliente.
 
----
+## PR-01: Etapa 0 — Relevamiento Comercial & Propuesta Pre-Kickoff
+- Asignación del **Código Oficial de Proyecto GS** (ej. \`26-030\`), grabación exploratoria inicial, diagnóstico preliminar y presupuesto mensual.
+- Al aprobarse, el botón **"Presupuesto Aprobado → Generar Kickoff"** promueve el expediente a Etapa 1.
 
-## PR-03: Objetivo Más Bárbaro (OMB) - Visión Trienal Estratégica
-El **OMB** reemplaza denominaciones genéricas y define el horizonte a 3 años, retador, medible e inspirador, acordado entre los socios.
-1. **Ciclo de Revisiones**:
-   - **Rev A**: Primer borrador preliminar generado durante las primeras sesiones diagnósticas.
-   - **Rev B, C, etc.**: Revisiones intermedias que incorporan correcciones y contrastes entre socios.
-   - **Rev 0**: **Versión Oficial Definitiva y Aprobada**, firmada por la dirección de la empresa y Consultora GS.
-2. **Consolidación de Perspectivas de Socios**:
-   - Cada socio carga su perspectiva individual. Growy detecta puntos de encuentro, divergencias de visión y redacta una propuesta unificada coherente.
-3. **Audios y Podcasts por Revisión**:
-   - Cada hito del OMB cuenta con su archivo de audio o podcast explicativo grabado por el equipo consultor o socios para reforzar el alineamiento emocional y operativo.
+## PR-02: Etapa 1 — Kickoff, OMV en Tiempo Presente y 8 Valores TARGET CVA
+- Bajo el marco **CVA (Construir desde el Valor Aspirado)**, se unifican las visiones de los socios en el **OMV (Objetivo Material Visualizado)** redactado en **tiempo presente** ("situación vivida a 3 años").
+- Incluye la **Tabla de 8 Valores TARGET a 3 Años**: Facturación anual, Margen neto, Dotación total, Proyectos activos simultáneos, Mix de líneas de negocio, Fondo de reserva, Rol del titular y Ventaja competitiva.
+- Evoluciona de \`Rev A\` / \`Rev B\` hasta consolidarse como **\`Rev 0\` (Línea Base Oficial)** + Podcast MP3.
 
----
+## PR-03: Etapa 2 — Sesiones de Audio (Texto Plano sin Diarización) y Diagnóstico 360°
+- La captura de audio transcribe en **texto plano continuo sin diarización**: los participantes deben hablar sin superponerse y mencionar nombres propios al fijar compromisos.
+- El motor cruza el audio contra las **100 preguntas de las 10 áreas**, sugiere nivel de madurez con cita textual exacta y arma el borrador de Minuta.
+- Cada pregunta admite nivel de madurez + narrativa cualitativa abierta + tablas de KPIs numéricos por área + 8 escalas Likert 1–5 (\`☐\`/\`☒\`).
 
-## PR-04: Cierre de Sesión y Filtro Humano ("Human-in-the-Loop")
-**Axioma Operativo**: Los modelos de IA presentan un margen de error estimado del ~15% en interpretación de lenguaje coloquial, matices de negocios y acuerdos implícitos.
-1. **Filtro Humano Mandatorio**:
-   - Tras el cierre de sesión, Growy procesa la transcripción y detecta sugerencias de actualización para el diagnóstico y la minuta.
-   - Cada sugerencia incluye: Área impactada, Pregunta específica, Texto sugerido, Cita textual exacta (*exact quote*) de la transcripción y Nivel de Confianza (%).
-   - **El consultor debe Aprobar, Rechazar o Editar manualmente cada tarjeta**.
-   - Solo las tarjetas aprobadas/editadas impactan la base de datos oficial del cliente.
+## PR-04: Etapa 3 — Cierre Diagnóstico, Filtro Humano e Indicadores IME & IRE
+- **Filtro Humano Mandatorio**: Ninguna sugerencia de IA impacta ni se publica sin validación del consultor.
+- **IME (Índice de Madurez Empresarial)**: Ponderado en 9 áreas (= 100%) y llevado a escala 0–10 en los 5 ejes del Pentágono.
+- **IRE (Índice de Riesgo Empresario)**: Ponderado en 12 dimensiones estructurales (= 100%) + Matriz de 27 Riesgos (\`R-01\`..\`R-27\`) Inherentes vs. Residuales.
 
----
+## PR-05: Etapa 4 — Master Plan, Puente \`AVANCE-EJES\` y Seguimiento Trimestral (\`PENT-PE\`)
+- Organizado en 5 ejes: 1. Gobernanza, 2. Procesos, 3. Finanzas, 4. Talento, 5. Comercial.
+- Cabecera por eje: **Brecha Asociada**, **Iniciativa Estratégica** y **OKRs**.
+- Fórmula determinística: \`ΔEje = (10 - Base) × Σ(% Incidencia_i × % Avance_i)\` con suma de incidencias = 100% por eje y control de coherencia \`MPE ↔ PENT-PE\` (±0,5 pp).
+- Los avances reportados por el cliente desde su Portal ingresan a la **Bandeja Amarilla de Validación** del consultor antes de impactar \`MPE / PENT-PE\`.
 
-## PR-05: Pentágono del Orden y Evolución Matemática de Madurez
-El Pentágono mide el Índice de Madurez Estratégica (IME, escala 0 a 10) en 5 Ejes Fundamentales:
-1. **Gobernanza y Conducción**
-2. **Procesos y Operaciones**
-3. **Finanzas y Control de Gestión**
-4. **Talento y Personas**
-5. **Comercial y Expansión**
+## PR-06: Los 4 Entregables Oficiales Exportables
+1. **Workbook Master Plan (\`.XLSX\` — 6 Hojas con Fórmulas Vivas)**: \`PORTADA\`, \`MPE\` (con Gantt de 41 meses Ago 2026–Dic 2029), \`AVANCE-EJES\`, \`PENT-PE\`, \`MATRIZ DE RIESGOS\` y \`DATOS_PENT\`.
+2. **Minuta de Seguimiento Oficial (\`.DOCX\` — Rev0)**: Encabezado continuo, tabla de 4 filas (separando asistentes GS vs. Cliente), temas numerados, tabla de 3 columnas de próximos pasos y reflexión final.
+3. **Formulario Diagnóstico Integral 360° (\`.DOCX\` — v2.0)**: Ficha de empresa, OMV CVA + 8 Targets, 10 áreas con narrativas + 8 escalas Likert \`☐\`/\`☒\` + KPIs por área, IRE (12 dim.) e IME (9 áreas).
+4. **Brief Ejecutivo de Reunión del Dueño (\`.DOCX\`)**: Hoja de ruta estratégica para reuniones clave del titular.
 
-### Fórmula Matemática de Evolución por Acciones Ponderadas:
-La subida de puntaje en un eje **no es una percepción subjetiva**, sino el producto exacto de las tareas del Master Plan completadas:
-$$\\Delta \\text{Eje} = (10 - \\text{Base}) \\times \\sum_{i=1}^{n} (\\% \\text{Incidencia}_i \\times \\% \\text{Avance}_i)$$
-- **Regla de Ponderación**: En cada eje, la suma de las incidencias de las acciones debe ser exactamente del **100%**.
-- **Línea Base**: Puntaje inicial determinado en el diagnóstico 360°.
-- **Puntaje Actual**: Se recalcula dinámicamente según el porcentaje de avance reportado en cada acción ponderada.
-
----
-
-## PR-06: Medianera Conceptual (Procesos antes que Personas)
-Bajo la filosofía de Consultora GS inspirada en ISO 9001:
-- Primero se identifican los macroprocesos de la cadena de valor y sus responsables funcionales ideales (Puestos).
-- Recién después se analiza a las personas físicas y su adecuación al puesto.
-- Jamás se diseña un organigrama para acomodar las virtudes o defectos de las personas actuales, sino para responder a la eficiencia del negocio.
-
----
-
-## PR-07: Gestor Documental y RAG Aislado (Base de Conocimiento)
-1. **Aislamiento Multi-Tenant Estricto**:
-   - Todo documento subido lleva asociado el \`client_id\` del cliente.
-   - La búsqueda vectorial o semántica (RAG) filtra irrevocablemente por dicho identificador.
-2. **Alcance y Etiquetado**:
-   - **Global**: Documentos que rigen toda la empresa (Estatutos societarios, Estados Contables, Organigrama General).
-   - **Por Área (1..10)**: Procedimientos operativos específicos, manuales de ventas, políticas de RRHH, flujos de caja.
-   - **Por Pregunta**: Evidencias concretas que respaldan la respuesta a una pregunta del diagnóstico 360°.
-3. **Permisos y Visibilidad**:
-   - Documentos de Auditoría Interna / Notas de Consultor: Visibles solo por el equipo GS.
-   - Documentos Oficiales / Entregables: Visibles tanto por el consultor como por el cliente en su portal.
-
----
-
-## PR-08: Gestión de Prompts y Criterios del Consultor
-El comportamiento analítico de Growy puede ser afinado mediante la tabla \`system_prompts\`:
-- **Rol y Tono**: Profesional, riguroso, analítico y cercano (español argentino con voseo educado).
-- **Adaptaciones por Industria**: Énfasis financiero en empresas agropecuarias, trazabilidad y costos en metalmecánica/manufactura, retención de talento en servicios/software.
-- **Formato Ejecutivo de Respuestas**: Claridad, datos cuantitativos, citas verificables y sin rodeos genéricos.
+## PR-07: Autogestión del Cliente en el Portal (\`/portal/:id\`)
+- El cliente puede: 1) Consultar OMV, 8 Targets, Pentágono y Minutas en Verde; 2) Descargar \`.XLSX\` de 6 hojas y \`.DOCX\` oficiales; 3) **Reportar Avance** en tareas del Master Plan; 4) **Subir Documentos** al repositorio de su empresa; 5) Enviar la **Autoevaluación Mensual del Directorio**; 6) Usar **Preparar Reunión IA** y **Generador IA**. Todo respaldado en Supabase BD.
 `;

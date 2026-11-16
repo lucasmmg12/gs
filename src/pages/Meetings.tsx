@@ -91,8 +91,8 @@ export default function Meetings() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="h-2 w-2 rounded-full bg-red-600" />
-            <span className="font-display text-xs font-bold uppercase tracking-widest text-red-600">Sesiones y Gobernanza</span>
+            <span className="h-2 w-2 rounded-full bg-[#0D9488]" />
+            <span className="font-display text-xs font-bold uppercase tracking-widest text-[#0D9488]">Sesiones y Gobernanza</span>
           </div>
           <h1 className="font-display text-3xl font-black uppercase tracking-tight text-zinc-950">
             Reuniones y Auditorías
@@ -103,7 +103,7 @@ export default function Meetings() {
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-3 font-display text-xs font-black uppercase tracking-wider text-white shadow-crimson hover:bg-red-700 transition-colors"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#0D9488] px-5 py-3 font-display text-xs font-black uppercase tracking-wider text-white shadow-crimson hover:bg-[#0F766E] transition-colors"
         >
           <Plus className="h-4 w-4 stroke-[3]" />
           Nueva Reunión
@@ -118,13 +118,13 @@ export default function Meetings() {
         ) : meetings.length > 0 ? (
           <ul role="list" className="divide-y divide-zinc-200">
             {meetings.map((meeting) => (
-              <li key={meeting.id} className="relative flex justify-between gap-x-6 px-6 py-5 hover:bg-red-50/40 transition-colors group">
+              <li key={meeting.id} className="relative flex justify-between gap-x-6 px-6 py-5 hover:bg-[#F0FDFA]/40 transition-colors group">
                 <div className="flex min-w-0 gap-x-4 items-center">
-                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-zinc-950 text-red-500 border border-zinc-800 shadow-xs group-hover:bg-red-600 group-hover:text-white transition-colors">
+                  <div className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-[#17324D] text-[#14B8A6] border border-zinc-800 shadow-xs group-hover:bg-[#0D9488] group-hover:text-white transition-colors">
                     <CalendarIcon className="h-6 w-6" />
                   </div>
                   <div className="min-w-0 flex-auto">
-                    <p className="font-display text-base font-bold text-zinc-950 group-hover:text-red-600 transition-colors uppercase tracking-wide">
+                    <p className="font-display text-base font-bold text-zinc-950 group-hover:text-[#0D9488] transition-colors uppercase tracking-wide">
                       <Link to={`/meetings/${meeting.id}`}>
                         <span className="absolute inset-x-0 -top-px bottom-0" />
                         {meeting.title}
@@ -134,14 +134,14 @@ export default function Meetings() {
                       <span className="font-bold text-zinc-800">{meeting.organizations?.name || 'Cliente'}</span>
                       <span className="h-1 w-1 rounded-full bg-zinc-300" />
                       <p className="flex items-center gap-1 font-medium">
-                        <Clock className="h-3 w-3 text-red-600" />
+                        <Clock className="h-3 w-3 text-[#0D9488]" />
                         {new Date(meeting.meeting_date).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-x-4">
-                  <span className="inline-flex items-center rounded-full bg-zinc-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-red-400 border border-red-600/40">
+                  <span className="inline-flex items-center rounded-full bg-[#17324D] px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[#5EEAD4] border border-[#0D9488]/40">
                     {meeting.status}
                   </span>
                 </div>
@@ -159,9 +159,9 @@ export default function Meetings() {
 
       {/* Modal Nueva Reunión */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F2438]/60 backdrop-blur-xs p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-obsidian border-2 border-zinc-900">
-            <div className="flex items-center justify-between pb-3 border-b-2 border-red-600">
+            <div className="flex items-center justify-between pb-3 border-b-2 border-[#0D9488]">
               <h3 className="font-display text-lg font-black uppercase tracking-wider text-zinc-950">
                 Registrar Nueva Sesión
               </h3>
@@ -175,7 +175,7 @@ export default function Meetings() {
 
             <form onSubmit={handleCreateMeeting} className="mt-4 space-y-4">
               {modalError && (
-                <div className="p-3 text-xs bg-red-50 text-red-700 rounded-lg border border-red-200 font-bold">
+                <div className="p-3 text-xs bg-[#F0FDFA] text-[#0F766E] rounded-lg border border-teal-200/80 font-bold">
                   {modalError}
                 </div>
               )}
@@ -186,7 +186,7 @@ export default function Meetings() {
                 </label>
                 <select
                   required
-                  className="w-full text-sm rounded-lg border border-zinc-300 px-3 py-2 focus:ring-2 focus:ring-red-600 focus:border-red-600"
+                  className="w-full text-sm rounded-lg border border-zinc-300 px-3 py-2 focus:ring-2 focus:ring-[#0D9488] focus:border-[#0D9488]"
                   value={selectedOrgId}
                   onChange={e => setSelectedOrgId(e.target.value)}
                 >
@@ -204,7 +204,7 @@ export default function Meetings() {
                   type="text"
                   required
                   placeholder="Ej: Acompañamiento Estratégico · Procesos y Medianera Conceptual"
-                  className="w-full text-sm rounded-lg border border-zinc-300 px-3 py-2 focus:ring-2 focus:ring-red-600 focus:border-red-600"
+                  className="w-full text-sm rounded-lg border border-zinc-300 px-3 py-2 focus:ring-2 focus:ring-[#0D9488] focus:border-[#0D9488]"
                   value={meetingTitle}
                   onChange={e => setMeetingTitle(e.target.value)}
                 />
@@ -217,7 +217,7 @@ export default function Meetings() {
                 <input
                   type="date"
                   required
-                  className="w-full text-sm rounded-lg border border-zinc-300 px-3 py-2 focus:ring-2 focus:ring-red-600 focus:border-red-600"
+                  className="w-full text-sm rounded-lg border border-zinc-300 px-3 py-2 focus:ring-2 focus:ring-[#0D9488] focus:border-[#0D9488]"
                   value={meetingDate}
                   onChange={e => setMeetingDate(e.target.value)}
                 />
@@ -234,7 +234,7 @@ export default function Meetings() {
                 <button
                   type="submit"
                   disabled={creating}
-                  className="px-5 py-2 font-display text-xs font-black uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-crimson disabled:opacity-70"
+                  className="px-5 py-2 font-display text-xs font-black uppercase tracking-wider text-white bg-[#0D9488] hover:bg-[#0F766E] rounded-lg transition-colors flex items-center gap-1.5 shadow-crimson disabled:opacity-70"
                 >
                   {creating ? (
                     <>

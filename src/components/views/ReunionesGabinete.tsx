@@ -47,16 +47,16 @@ export const ReunionesGabinete: React.FC<ReunionesGabineteProps> = ({ client }) 
     <div className="p-8 space-y-8 animate-in slide-in-from-bottom-8 duration-500">
       <div className="relative z-10">
         <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Procesamiento de Reuniones</h2>
-        <p className="text-gray-500 mt-1 font-medium">Analiza transcripciones y audios de <span className="text-red-600 font-bold">{client.name}</span> para generar minutas y tareas automáticamente.</p>
+        <p className="text-gray-500 mt-1 font-medium">Analiza transcripciones y audios de <span className="text-[#0D9488] font-bold">{client.name}</span> para generar minutas y tareas automáticamente.</p>
       </div>
 
       {step === 'input' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-gray-200/60 p-8 hover:shadow-lg transition-all duration-300">
             <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <FileAudio className="w-5 h-5 text-red-600" /> Subir Audio
+              <FileAudio className="w-5 h-5 text-[#0D9488]" /> Subir Audio
             </h3>
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-10 flex flex-col items-center justify-center text-center hover:border-red-400 hover:bg-red-50/50 transition-all cursor-pointer">
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-10 flex flex-col items-center justify-center text-center hover:border-red-400 hover:bg-[#F0FDFA]/50 transition-all cursor-pointer">
               <UploadCloud className="w-12 h-12 text-gray-400 mb-4" />
               <p className="text-gray-600 font-medium">Arrastra y suelta el archivo de audio aquí</p>
               <p className="text-sm text-gray-400 mt-2">MP3, WAV o M4A (Max. 50MB)</p>
@@ -68,13 +68,13 @@ export const ReunionesGabinete: React.FC<ReunionesGabineteProps> = ({ client }) 
 
           <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-gray-200/60 p-8 hover:shadow-lg transition-all duration-300 flex flex-col">
             <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-red-600" /> Pegar Transcripción
+              <FileText className="w-5 h-5 text-[#0D9488]" /> Pegar Transcripción
             </h3>
             <textarea 
               value={transcription}
               onChange={(e) => setTranscription(e.target.value)}
               placeholder="Pega aquí la transcripción cruda de la reunión..."
-              className="flex-1 w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 resize-none min-h-[200px]"
+              className="flex-1 w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-[#0D9488] resize-none min-h-[200px]"
             />
             <button 
               onClick={handleProcessIA}
@@ -89,7 +89,7 @@ export const ReunionesGabinete: React.FC<ReunionesGabineteProps> = ({ client }) 
 
       {step === 'processing' && (
         <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-gray-200/60 p-16 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in duration-500">
-          <Loader2 className="w-16 h-16 text-red-600 animate-spin mb-6" />
+          <Loader2 className="w-16 h-16 text-[#0D9488] animate-spin mb-6" />
           <h3 className="text-2xl font-bold text-gray-900 mb-2">Analizando la reunión de {client.name}</h3>
           <p className="text-gray-500 max-w-md">La Inteligencia Artificial está procesando el contexto, extrayendo los puntos clave y generando tareas accionables...</p>
         </div>
@@ -99,12 +99,12 @@ export const ReunionesGabinete: React.FC<ReunionesGabineteProps> = ({ client }) 
         <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-500">
           <div className="bg-gradient-to-r from-red-50 to-white rounded-2xl shadow-sm border border-red-100 p-8">
             <h3 className="text-xl font-bold text-red-900 mb-4 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-red-600" /> Fotografía de la Realidad Actual
+              <Zap className="w-5 h-5 text-[#0D9488]" /> Fotografía de la Realidad Actual
             </h3>
             <p className="text-gray-700 font-medium leading-relaxed bg-white/80 p-5 rounded-xl border border-red-50 shadow-sm">
               {generatedSummary}
             </p>
-            <p className="text-xs text-red-600 mt-4 font-semibold">* Este texto reemplazará el resumen ejecutivo actual del cliente, reflejando su realidad inmediata.</p>
+            <p className="text-xs text-[#0D9488] mt-4 font-semibold">* Este texto reemplazará el resumen ejecutivo actual del cliente, reflejando su realidad inmediata.</p>
           </div>
 
           <div className="bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-gray-200/60 p-8">
@@ -117,11 +117,11 @@ export const ReunionesGabinete: React.FC<ReunionesGabineteProps> = ({ client }) 
                   key={task.id}
                   onClick={() => toggleTask(task.id)}
                   className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
-                    task.selected ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    task.selected ? 'bg-[#F0FDFA] border-teal-200/80' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                   }`}
                 >
                   {task.selected ? (
-                    <CheckSquare className="w-6 h-6 text-red-600" />
+                    <CheckSquare className="w-6 h-6 text-[#0D9488]" />
                   ) : (
                     <Square className="w-6 h-6 text-gray-400" />
                   )}
@@ -141,7 +141,7 @@ export const ReunionesGabinete: React.FC<ReunionesGabineteProps> = ({ client }) 
               </button>
               <button 
                 onClick={handleSave}
-                className="bg-gray-900 hover:bg-black text-white px-8 py-2.5 rounded-xl font-bold shadow-lg shadow-gray-900/20 transition-all duration-300 flex items-center gap-2"
+                className="bg-gray-900 hover:bg-[#17324D] text-white px-8 py-2.5 rounded-xl font-bold shadow-lg shadow-gray-900/20 transition-all duration-300 flex items-center gap-2"
               >
                 <Save className="w-5 h-5" /> Guardar y Actualizar Cliente
               </button>

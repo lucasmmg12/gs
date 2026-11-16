@@ -134,7 +134,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ activeTab, selectedCli
               <div className="bg-gradient-to-tr from-red-600 to-red-400 p-2 rounded-full shadow-lg shadow-red-500/30">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-black rounded-full"></span>
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-[#17324D] rounded-full"></span>
             </div>
             <div>
               <h3 className="font-bold text-sm tracking-wide">Estudio GS AI</h3>
@@ -157,12 +157,12 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ activeTab, selectedCli
               className={`flex gap-3 ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
             >
               <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm
-                ${msg.sender === 'user' ? 'bg-gray-200' : 'bg-red-100 text-red-600'}`}>
+                ${msg.sender === 'user' ? 'bg-gray-200' : 'bg-[#EDF3F8] text-[#0D9488]'}`}>
                 {msg.sender === 'user' ? <User className="w-4 h-4 text-gray-600" /> : <Bot className="w-4 h-4" />}
               </div>
               <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed max-w-[80%] shadow-sm
                 ${msg.sender === 'user' 
-                  ? 'bg-black text-white rounded-tr-none' 
+                  ? 'bg-[#17324D] text-white rounded-tr-none' 
                   : 'bg-white border border-gray-100 text-gray-700 rounded-tl-none'}`}
               >
                 {msg.text}
@@ -171,7 +171,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ activeTab, selectedCli
           ))}
           {isTyping && (
             <div className="flex gap-3 flex-row items-center">
-              <div className="shrink-0 w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center shadow-sm">
+              <div className="shrink-0 w-8 h-8 rounded-full bg-[#EDF3F8] text-[#0D9488] flex items-center justify-center shadow-sm">
                 <Bot className="w-4 h-4" />
               </div>
               <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-tl-none shadow-sm flex gap-1">
@@ -198,7 +198,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ activeTab, selectedCli
             <button 
               onClick={handleSend}
               disabled={!inputValue.trim()}
-              className="absolute right-2 p-1.5 bg-red-600 text-white rounded-full hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
+              className="absolute right-2 p-1.5 bg-[#0D9488] text-white rounded-full hover:bg-[#0F766E] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               <Send className="w-4 h-4" />
             </button>
@@ -208,8 +208,8 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ activeTab, selectedCli
 
       {/* Floating Button Notification */}
       {!isOpen && showNotification && (
-        <div className="absolute bottom-20 right-0 bg-black text-white text-xs font-semibold px-4 py-2.5 rounded-2xl rounded-br-none shadow-xl mb-2 animate-bounce border border-gray-800 flex items-center gap-2 whitespace-nowrap">
-          <Sparkles className="w-3 h-3 text-red-400" /> ¡Tengo información sobre esto!
+        <div className="absolute bottom-20 right-0 bg-[#17324D] text-white text-xs font-semibold px-4 py-2.5 rounded-2xl rounded-br-none shadow-xl mb-2 animate-bounce border border-gray-800 flex items-center gap-2 whitespace-nowrap">
+          <Sparkles className="w-3 h-3 text-[#5EEAD4]" /> ¡Tengo información sobre esto!
         </div>
       )}
 
@@ -224,7 +224,7 @@ export const AIAssistant: React.FC<AIAssistantProps> = ({ activeTab, selectedCli
         {!isOpen && showNotification && (
           <span className="absolute top-0 right-0 flex h-4 w-4">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 border-2 border-white"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-[#F0FDFA]0 border-2 border-white"></span>
           </span>
         )}
       </button>

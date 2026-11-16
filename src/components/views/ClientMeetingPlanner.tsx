@@ -256,11 +256,11 @@ export default function ClientMeetingPlanner({
   return (
     <div className="bg-white rounded-2xl border-2 border-zinc-900 shadow-sm overflow-hidden animate-in fade-in duration-300">
       {/* Encabezado Principal del Planificador */}
-      <div className="bg-zinc-950 text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-zinc-900">
+      <div className="bg-[#17324D] text-white p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-zinc-900">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#6B1D2F] animate-ping" />
-            <span className="font-display text-xs font-bold uppercase tracking-widest text-[#E6C5CD]">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#17324D] animate-ping" />
+            <span className="font-display text-xs font-bold uppercase tracking-widest text-[#CBD5E1]">
               Planificación de Reunión • {client.name}
             </span>
           </div>
@@ -275,14 +275,14 @@ export default function ClientMeetingPlanner({
         <div className="flex items-center gap-2.5 self-start sm:self-center">
           <button
             onClick={onCancel}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 text-xs font-semibold transition-all shadow-xs"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#17324D] hover:bg-[#0F2438] text-zinc-200 hover:text-white border border-zinc-700 text-xs font-semibold transition-all shadow-xs"
             title="Volver a la lista de reuniones"
           >
             <ArrowLeft className="w-4 h-4" /> Volver a Reuniones
           </button>
           <button
             onClick={onCancel}
-            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 transition-colors"
+            className="p-2 rounded-xl bg-[#17324D] hover:bg-[#0F2438] text-zinc-400 hover:text-white border border-zinc-800 transition-colors"
             title="Cancelar planificación"
           >
             <X className="w-5 h-5" />
@@ -294,7 +294,7 @@ export default function ClientMeetingPlanner({
         {/* PASO 1: SELECCIÓN DEL TIPO DE REUNIÓN */}
         <div className="space-y-3">
           <label className="block text-xs font-bold font-display uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#6B1D2F] text-white text-[11px] font-black">1</span>
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#17324D] text-white text-[11px] font-black">1</span>
             Seleccione el Tipo de Reunión
           </label>
 
@@ -304,8 +304,8 @@ export default function ClientMeetingPlanner({
               onClick={() => handleTypeChange('kickoff')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all space-y-2 relative ${
                 meetingType === 'kickoff'
-                  ? 'border-[#6B1D2F] bg-[#F9EFF2]/60 shadow-sm ring-2 ring-[#6B1D2F]/20'
-                  : 'border-zinc-200 hover:border-zinc-900 bg-white'
+                  ? 'border-[#17324D] bg-[#EDF3F8]/60 shadow-sm ring-2 ring-[#17324D]/20'
+                  : 'border-zinc-200 hover:border-[#0D9488]/50 bg-white'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -318,7 +318,7 @@ export default function ClientMeetingPlanner({
                   </h3>
                 </div>
                 {meetingType === 'kickoff' && (
-                  <CheckCircle2 className="w-5 h-5 text-[#6B1D2F]" />
+                  <CheckCircle2 className="w-5 h-5 text-[#17324D]" />
                 )}
               </div>
               <p className="text-xs text-zinc-600 leading-relaxed">
@@ -334,13 +334,13 @@ export default function ClientMeetingPlanner({
               onClick={() => handleTypeChange('diagnostico')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all space-y-2 relative ${
                 meetingType === 'diagnostico'
-                  ? 'border-[#6B1D2F] bg-[#F9EFF2]/60 shadow-sm ring-2 ring-[#6B1D2F]/20'
-                  : 'border-zinc-200 hover:border-zinc-900 bg-white'
+                  ? 'border-[#17324D] bg-[#EDF3F8]/60 shadow-sm ring-2 ring-[#17324D]/20'
+                  : 'border-zinc-200 hover:border-[#0D9488]/50 bg-white'
               }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-[#F9EFF2] text-[#6B1D2F] flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-[#EDF3F8] text-[#17324D] flex items-center justify-center">
                     <Mic className="w-4 h-4" />
                   </div>
                   <h3 className="font-display text-sm font-black uppercase text-zinc-950">
@@ -348,13 +348,13 @@ export default function ClientMeetingPlanner({
                   </h3>
                 </div>
                 {meetingType === 'diagnostico' && (
-                  <CheckCircle2 className="w-5 h-5 text-[#6B1D2F]" />
+                  <CheckCircle2 className="w-5 h-5 text-[#17324D]" />
                 )}
               </div>
               <p className="text-xs text-zinc-600 leading-relaxed">
                 Relevamiento exhaustivo por <strong>temas y preguntas</strong>. Registra el avance en el perfil, cálculo de IME/IRE y Check out.
               </p>
-              <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#F9EFF2] text-[#6B1D2F] border border-[#E6C5CD]">
+              <span className="inline-block text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#EDF3F8] text-[#17324D] border border-[#CBD5E1]">
                 78 Preguntas • 10 Áreas
               </span>
             </div>
@@ -364,8 +364,8 @@ export default function ClientMeetingPlanner({
               onClick={() => handleTypeChange('seguimiento_trimestral')}
               className={`p-5 rounded-2xl border-2 cursor-pointer transition-all space-y-2 relative ${
                 meetingType === 'seguimiento_trimestral'
-                  ? 'border-[#6B1D2F] bg-[#F9EFF2]/60 shadow-sm ring-2 ring-[#6B1D2F]/20'
-                  : 'border-zinc-200 hover:border-zinc-900 bg-white'
+                  ? 'border-[#17324D] bg-[#EDF3F8]/60 shadow-sm ring-2 ring-[#17324D]/20'
+                  : 'border-zinc-200 hover:border-[#0D9488]/50 bg-white'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -378,7 +378,7 @@ export default function ClientMeetingPlanner({
                   </h3>
                 </div>
                 {meetingType === 'seguimiento_trimestral' && (
-                  <CheckCircle2 className="w-5 h-5 text-[#6B1D2F]" />
+                  <CheckCircle2 className="w-5 h-5 text-[#17324D]" />
                 )}
               </div>
               <p className="text-xs text-zinc-600 leading-relaxed">
@@ -394,7 +394,7 @@ export default function ClientMeetingPlanner({
         {/* PASO 2: DATOS BÁSICOS DE LA REUNIÓN */}
         <div className="space-y-4 pt-4 border-t border-zinc-200">
           <label className="block text-xs font-bold font-display uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-950 text-white text-[11px] font-black">2</span>
+            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#17324D] text-white text-[11px] font-black">2</span>
             Datos y Convocatoria de la Sesión
           </label>
 
@@ -407,7 +407,7 @@ export default function ClientMeetingPlanner({
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border-2 border-zinc-300 focus:border-red-600 focus:outline-none text-xs font-medium"
+                className="w-full px-3.5 py-2 rounded-xl border-2 border-zinc-300 focus:border-[#0D9488] focus:outline-none text-xs font-medium"
               />
             </div>
 
@@ -419,7 +419,7 @@ export default function ClientMeetingPlanner({
                 type="date"
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border-2 border-zinc-300 focus:border-red-600 focus:outline-none text-xs font-medium"
+                className="w-full px-3.5 py-2 rounded-xl border-2 border-zinc-300 focus:border-[#0D9488] focus:outline-none text-xs font-medium"
               />
             </div>
 
@@ -431,7 +431,7 @@ export default function ClientMeetingPlanner({
                 type="time"
                 value={time}
                 onChange={e => setTime(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border-2 border-zinc-300 focus:border-red-600 focus:outline-none text-xs font-medium"
+                className="w-full px-3.5 py-2 rounded-xl border-2 border-zinc-300 focus:border-[#0D9488] focus:outline-none text-xs font-medium"
               />
             </div>
 
@@ -444,7 +444,7 @@ export default function ClientMeetingPlanner({
                 value={attendees}
                 onChange={e => setAttendees(e.target.value)}
                 placeholder="Ej. Roberto Gómez (Director General), Laura Pérez (Gerente Finanzas), Consultor GS"
-                className="w-full px-3.5 py-2 rounded-xl border-2 border-zinc-300 focus:border-red-600 focus:outline-none text-xs font-medium"
+                className="w-full px-3.5 py-2 rounded-xl border-2 border-zinc-300 focus:border-[#0D9488] focus:outline-none text-xs font-medium"
               />
             </div>
           </div>
@@ -455,7 +455,7 @@ export default function ClientMeetingPlanner({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <label className="block text-xs font-bold font-display uppercase tracking-wider text-zinc-950 flex items-center gap-2">
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-[11px] font-black">3</span>
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#0D9488] text-white text-[11px] font-black">3</span>
                 Temario y Preguntas de la Reunión
               </label>
               <p className="text-xs text-zinc-500 mt-0.5">
@@ -466,8 +466,8 @@ export default function ClientMeetingPlanner({
             </div>
 
             {/* Contador en Vivo de Temas y Preguntas */}
-            <div className="flex items-center gap-2 bg-zinc-950 text-white px-3.5 py-1.5 rounded-xl text-xs font-mono">
-              <Sparkles className="w-3.5 h-3.5 text-red-500" />
+            <div className="flex items-center gap-2 bg-[#17324D] text-white px-3.5 py-1.5 rounded-xl text-xs font-mono">
+              <Sparkles className="w-3.5 h-3.5 text-[#14B8A6]" />
               <span>
                 <strong>{meetingType === 'diagnostico' ? selectedAreaIds.length : selectedTopicIds.length}</strong> temas • <strong>{finalSelectedQuestions.length}</strong> preguntas
               </span>
@@ -492,7 +492,7 @@ export default function ClientMeetingPlanner({
                     value={searchQuestion}
                     onChange={e => setSearchQuestion(e.target.value)}
                     placeholder="Filtrar por código o palabra..."
-                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-zinc-300 focus:border-red-600 focus:outline-none"
+                    className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-zinc-300 focus:border-[#0D9488] focus:outline-none"
                   />
                 </div>
               </div>
@@ -521,7 +521,7 @@ export default function ClientMeetingPlanner({
                       key={area.id}
                       className={`rounded-2xl border-2 transition-all overflow-hidden ${
                         isAreaSelected 
-                          ? 'border-red-600 bg-red-50/20 shadow-sm' 
+                          ? 'border-[#0D9488] bg-[#F0FDFA]/20 shadow-sm' 
                           : 'border-zinc-200 bg-white hover:border-zinc-300'
                       }`}
                     >
@@ -531,7 +531,7 @@ export default function ClientMeetingPlanner({
                           <button
                             type="button"
                             onClick={() => toggleArea(area.id)}
-                            className="text-red-600 hover:scale-110 transition-transform"
+                            className="text-[#0D9488] hover:scale-110 transition-transform"
                             title={isAreaSelected ? 'Quitar tema de la reunión' : 'Incluir tema en la reunión'}
                           >
                             {isAreaSelected ? (
@@ -559,7 +559,7 @@ export default function ClientMeetingPlanner({
                         <div className="flex items-center gap-3">
                           <span className={`text-xs font-mono font-bold px-2.5 py-1 rounded-lg ${
                             selectedInAreaCount > 0 
-                              ? 'bg-red-100 text-red-700' 
+                              ? 'bg-[#EDF3F8] text-[#0F766E]' 
                               : 'bg-zinc-100 text-zinc-500'
                           }`}>
                             {selectedInAreaCount} / {area.questions.length} preguntas
@@ -587,7 +587,7 @@ export default function ClientMeetingPlanner({
                               <button
                                 type="button"
                                 onClick={() => selectAllInArea(area)}
-                                className="text-[11px] font-bold text-red-600 hover:text-red-700 uppercase"
+                                className="text-[11px] font-bold text-[#0D9488] hover:text-[#0F766E] uppercase"
                               >
                                 Seleccionar Todas ({area.questions.length})
                               </button>
@@ -613,11 +613,11 @@ export default function ClientMeetingPlanner({
                                   onClick={() => toggleQuestion(q.id, area.id)}
                                   className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
                                     isQSelected
-                                      ? 'border-red-600 bg-white shadow-sm ring-1 ring-red-600/10'
+                                      ? 'border-[#0D9488] bg-white shadow-sm ring-1 ring-[#0D9488]/10'
                                       : 'border-zinc-200 bg-white hover:border-zinc-300'
                                   }`}
                                 >
-                                  <div className="mt-0.5 text-red-600">
+                                  <div className="mt-0.5 text-[#0D9488]">
                                     {isQSelected ? (
                                       <CheckSquare className="w-4 h-4 fill-red-600 text-white" />
                                     ) : (
@@ -695,10 +695,10 @@ export default function ClientMeetingPlanner({
                               }
                             }}
                             className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
-                              isQSelected ? 'border-red-600 bg-red-50/30' : 'border-zinc-200 bg-white'
+                              isQSelected ? 'border-[#0D9488] bg-[#F0FDFA]/30' : 'border-zinc-200 bg-white'
                             }`}
                           >
-                            <div className="mt-0.5 text-red-600">
+                            <div className="mt-0.5 text-[#0D9488]">
                               {isQSelected ? (
                                 <CheckSquare className="w-4 h-4 fill-red-600 text-white" />
                               ) : (
@@ -754,12 +754,12 @@ export default function ClientMeetingPlanner({
                               }
                             }}
                             className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-start gap-3 ${
-                              isQSelected ? 'border-[#6B1D2F] bg-[#F9EFF2]/60' : 'border-zinc-200 bg-white'
+                              isQSelected ? 'border-[#17324D] bg-[#EDF3F8]/60' : 'border-zinc-200 bg-white'
                             }`}
                           >
-                            <div className="mt-0.5 text-[#6B1D2F]">
+                            <div className="mt-0.5 text-[#17324D]">
                               {isQSelected ? (
-                                <CheckSquare className="w-4 h-4 fill-[#6B1D2F] text-white" />
+                                <CheckSquare className="w-4 h-4 fill-[#17324D] text-white" />
                               ) : (
                                 <Square className="w-4 h-4 text-zinc-300" />
                               )}
@@ -788,7 +788,7 @@ export default function ClientMeetingPlanner({
           <button
             type="button"
             onClick={onCancel}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl border-2 border-zinc-300 hover:border-zinc-900 text-xs font-display font-bold uppercase tracking-wider text-zinc-700 transition-colors"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl border-2 border-zinc-300 hover:border-[#0D9488]/50 text-xs font-display font-bold uppercase tracking-wider text-zinc-700 transition-colors"
           >
             Cancelar
           </button>
@@ -806,7 +806,7 @@ export default function ClientMeetingPlanner({
             <button
               type="button"
               onClick={handleStartNow}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#6B1D2F] hover:bg-[#541524] text-white text-xs font-display font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs hover:scale-105 transition-all"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-[#17324D] hover:bg-[#0F2438] text-white text-xs font-display font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-xs hover:scale-105 transition-all"
             >
               <Mic className="w-4 h-4" />
               Iniciar Reunión con Whisper en Vivo

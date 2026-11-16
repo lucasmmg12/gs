@@ -14,28 +14,28 @@ export const DiagnosticoDinamico: React.FC<DiagnosticoDinamicoProps> = ({ client
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Diagnóstico de la Realidad</h2>
-          <p className="text-gray-500 mt-1">Fotografía actual y viva de la situación operativa de <span className="font-semibold text-red-600">{client.name}</span>.</p>
+          <p className="text-gray-500 mt-1">Fotografía actual y viva de la situación operativa de <span className="font-semibold text-[#0D9488]">{client.name}</span>.</p>
         </div>
         <div className="flex gap-3">
           <button className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
             <Share2 className="w-4 h-4" /> Compartir
           </button>
-          <button className="flex items-center gap-2 bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
+          <button className="flex items-center gap-2 bg-[#17324D] hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
             <Download className="w-4 h-4" /> Exportar PDF
           </button>
         </div>
       </div>
 
       {showAlert && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3 relative animate-in slide-in-from-top-2">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+        <div className="bg-[#F0FDFA] border border-teal-200/80 rounded-lg p-4 flex items-start gap-3 relative animate-in slide-in-from-top-2">
+          <AlertCircle className="w-5 h-5 text-[#0D9488] flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="text-red-800 font-semibold text-sm">Actualización Automática IA</h4>
-            <p className="text-red-700 text-sm mt-1">El punto 20 (Estructura de Costos) fue actualizado recientemente basándose en la última Reunión de Gabinete.</p>
+            <h4 className="text-[#17324D] font-semibold text-sm">Actualización Automática IA</h4>
+            <p className="text-[#0F766E] text-sm mt-1">El punto 20 (Estructura de Costos) fue actualizado recientemente basándose en la última Reunión de Gabinete.</p>
           </div>
           <button 
             onClick={() => setShowAlert(false)}
-            className="absolute top-4 right-4 text-red-400 hover:text-red-600"
+            className="absolute top-4 right-4 text-[#5EEAD4] hover:text-[#0D9488]"
           >
             &times;
           </button>
@@ -54,14 +54,14 @@ export const DiagnosticoDinamico: React.FC<DiagnosticoDinamicoProps> = ({ client
             <p className="text-red-200 text-sm mb-4">Se requiere intervención inmediata de la consultora para desbloquear estos procesos críticos.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-black/20 p-4 rounded-xl border border-red-800/50 hover:bg-black/30 transition-colors cursor-pointer">
+              <div className="bg-[#17324D]/20 p-4 rounded-xl border border-red-800/50 hover:bg-[#17324D]/30 transition-colors cursor-pointer">
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-bold text-red-100 text-sm">Cobranza y Liquidez</h4>
-                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Crítico</span>
+                  <span className="bg-[#F0FDFA]0 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Crítico</span>
                 </div>
                 <p className="text-red-200 text-xs">El retraso en cuentas por cobrar ha superado los 45 días, afectando el flujo de caja operativo en un 18%.</p>
               </div>
-              <div className="bg-black/20 p-4 rounded-xl border border-red-800/50 hover:bg-black/30 transition-colors cursor-pointer">
+              <div className="bg-[#17324D]/20 p-4 rounded-xl border border-red-800/50 hover:bg-[#17324D]/30 transition-colors cursor-pointer">
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-bold text-red-100 text-sm">Clima Laboral en Operaciones</h4>
                   <span className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Alerta Media</span>
@@ -104,8 +104,8 @@ export const DiagnosticoDinamico: React.FC<DiagnosticoDinamicoProps> = ({ client
           <section className="space-y-4">
             <h1 className="text-2xl font-bold text-gray-900 font-sans border-b pb-2">20. Estructura de Costos</h1>
             
-            <div className="bg-red-50 border-l-4 border-red-600 p-4 -mx-4 rounded-r-lg relative transition-all hover:bg-red-100 group cursor-pointer">
-              <span className="absolute top-2 right-2 text-[10px] uppercase font-bold text-red-500 tracking-wider bg-red-100 px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="bg-[#F0FDFA] border-l-4 border-[#0D9488] p-4 -mx-4 rounded-r-lg relative transition-all hover:bg-[#EDF3F8] group cursor-pointer">
+              <span className="absolute top-2 right-2 text-[10px] uppercase font-bold text-[#14B8A6] tracking-wider bg-[#EDF3F8] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                 Editado por IA
               </span>
               <p className="text-red-900">

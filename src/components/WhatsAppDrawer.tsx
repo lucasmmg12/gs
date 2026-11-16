@@ -83,7 +83,7 @@ export const WhatsAppDrawer: React.FC<WhatsAppDrawerProps> = ({ isOpen, onClose,
       {/* Overlay */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 transition-opacity"
+          className="fixed inset-0 bg-[#17324D]/20 backdrop-blur-sm z-50 transition-opacity"
           onClick={onClose}
         ></div>
       )}

@@ -11,6 +11,12 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import type { Client } from '../../data/mockData';
+import {
+  loadStage0InternalFromDb,
+  saveStage0InternalToDb,
+  saveOrgWorkspaceToDb,
+} from '../../lib/gsCloudSync';
+import { StepAssistantBanner } from '../StepAssistantBanner';
 
 export interface CommercialProposalState {
   projectCode: string; // e.g. '26-030'
@@ -70,34 +76,73 @@ export const RelevamientoPropuestaModule: React.FC<RelevamientoPropuestaModulePr
   });
 
   const [savedNotice, setSavedNotice] = useState(false);
+  const [dbSyncStatus, setDbSyncStatus] = useState<'synced' | 'saving'>('synced');
 
+  // Hydrate Stage 0 directly from Supabase DB on mount
+  useEffect(() => {
+    let active = true;
+    loadStage0InternalFromDb(client.id).then((remote) => {
+      if (active && remote) {
+        setState(remote);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [client.id]);
+
+  // Debounced auto-save to Supabase DB whenever consultant edits any field
   useEffect(() => {
     localStorage.setItem(`gs_project_code_${client.id}`, state.projectCode || '00-000');
-  }, [client.id, state.projectCode]);
+    setDbSyncStatus('saving');
+    const timer = setTimeout(async () => {
+      await saveStage0InternalToDb(client.id, state);
+      await saveOrgWorkspaceToDb(client.id, { projectCode: state.projectCode || '00-000' });
+      setDbSyncStatus('synced');
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [client.id, state]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setDbSyncStatus('saving');
     const next = { ...state, updatedAt: new Date().toISOString() };
     setState(next);
-    localStorage.setItem(storageKey, JSON.stringify(next));
-    localStorage.setItem(`gs_project_code_${client.id}`, next.projectCode || '00-000');
+    await saveStage0InternalToDb(client.id, next);
+    await saveOrgWorkspaceToDb(client.id, { projectCode: next.projectCode || '00-000' });
+    setDbSyncStatus('synced');
     setSavedNotice(true);
     setTimeout(() => setSavedNotice(false), 3000);
   };
 
-  const handleGenerateKickoff = () => {
+  const handleGenerateKickoff = async () => {
+    setDbSyncStatus('saving');
     const next: CommercialProposalState = {
       ...state,
       proposalStatus: 'aprobada_kickoff',
       updatedAt: new Date().toISOString(),
     };
     setState(next);
-    localStorage.setItem(storageKey, JSON.stringify(next));
-    localStorage.setItem(`gs_project_code_${client.id}`, next.projectCode || '00-000');
+    await saveStage0InternalToDb(client.id, next);
+    await saveOrgWorkspaceToDb(client.id, {
+      projectCode: next.projectCode || '00-000',
+      clientStage: 'kickoff_omv',
+    });
+    setDbSyncStatus('synced');
     onApproveAndGenerateKickoff(next.projectCode || '00-000');
   };
 
   return (
     <div className="space-y-6">
+      <StepAssistantBanner
+        roleBadge="Consultor GS · Etapa 0"
+        stepTitle="Relevamiento Comercial & Propuesta Económica (Confidencial)"
+        whatToDo="Asigne el Código de Proyecto (ej. 26-030), grabe o resuma la primera entrevista y registre los honorarios. Al aprobarse el presupuesto, pulse 'Presupuesto Aprobado → Generar Kickoff'."
+        autoAssistNote="Todo lo escrito aquí se guarda automáticamente en Supabase bajo clave interna y jamás es visible en el Portal del Cliente."
+        growyPrompt={`Explicame cómo estructurar el Relevamiento Comercial (Etapa 0) para ${client.name} y qué pasa al generar el Kickoff.`}
+        dbSyncStatus={dbSyncStatus}
+        nextStepLabel="Ir a Kickoff & OMV"
+        onNextStep={handleGenerateKickoff}
+      />
       {/* Banner Etapa 0 Comercial Interna */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         <div className="space-y-1.5 max-w-3xl">
@@ -121,16 +166,16 @@ export const RelevamientoPropuestaModule: React.FC<RelevamientoPropuestaModulePr
           <button
             type="button"
             onClick={onStartRecording}
-            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-black text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-[#17324D] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm cursor-pointer"
           >
-            <Mic className="w-4 h-4 text-red-400" />
+            <Mic className="w-4 h-4 text-[#5EEAD4]" />
             Grabar Entrevista Inicial
           </button>
 
           <button
             type="button"
             onClick={handleGenerateKickoff}
-            className="px-5 py-2.5 rounded-xl bg-[#6B1D2F] hover:bg-[#531523] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-[#17324D] hover:bg-[#0F2438] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm cursor-pointer"
           >
             <CheckCircle2 className="w-4 h-4" />
             Presupuesto Aprobado → Generar Kickoff
@@ -152,7 +197,7 @@ export const RelevamientoPropuestaModule: React.FC<RelevamientoPropuestaModulePr
         {/* Columna Izquierda: Datos Comerciales y Código Documental GS */}
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
           <h3 className="font-display text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2 border-b border-slate-100 pb-2.5">
-            <Building2 className="w-4 h-4 text-[#6B1D2F]" />
+            <Building2 className="w-4 h-4 text-[#17324D]" />
             Codificación & Presupuesto GS
           </h3>
 
@@ -197,7 +242,7 @@ export const RelevamientoPropuestaModule: React.FC<RelevamientoPropuestaModulePr
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2">
                 <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1">
-                  <DollarSign className="w-3.5 h-3.5 text-[#6B1D2F]" /> Honorario Mensual
+                  <DollarSign className="w-3.5 h-3.5 text-[#17324D]" /> Honorario Mensual
                 </label>
                 <input
                   type="text"
@@ -244,7 +289,7 @@ export const RelevamientoPropuestaModule: React.FC<RelevamientoPropuestaModulePr
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
             <h3 className="font-display text-sm font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
-              <FileText className="w-4 h-4 text-[#6B1D2F]" />
+              <FileText className="w-4 h-4 text-[#17324D]" />
               Síntesis de Necesidad & Propuesta de Trabajo
             </h3>
             <div className="flex items-center gap-2">
@@ -254,7 +299,7 @@ export const RelevamientoPropuestaModule: React.FC<RelevamientoPropuestaModulePr
               <button
                 type="button"
                 onClick={handleSave}
-                className="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-black text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-[#17324D] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
               >
                 <Save className="w-3.5 h-3.5" />
                 Guardar Ficha Comercial
@@ -278,7 +323,7 @@ export const RelevamientoPropuestaModule: React.FC<RelevamientoPropuestaModulePr
 
             <div>
               <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#6B1D2F]" />
+                <Sparkles className="w-3.5 h-3.5 text-[#17324D]" />
                 2. Diagnóstico Preliminar Comercial (Para presentar junto al presupuesto)
               </label>
               <textarea

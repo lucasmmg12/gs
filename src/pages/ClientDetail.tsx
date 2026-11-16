@@ -13,6 +13,13 @@ import { MASTER_PLAN_AXES, INITIAL_MASTER_PLAN_TASKS, INITIAL_PENTAGON_DATA, INI
 import { DEFAULT_GS_AXES_META, type GSAxisStrategicMeta } from '../data/gsAxisMetadata';
 import { exportOfficialMasterPlanWorkbook } from '../lib/gsOfficialExporter';
 import { RelevamientoPropuestaModule } from '../components/views/RelevamientoPropuestaModule';
+import {
+  loadOrgWorkspaceFromDb,
+  saveOrgWorkspaceToDb,
+  loadClientCollabFromDb,
+  saveClientCollabToDb,
+} from '../lib/gsCloudSync';
+import { StepAssistantBanner } from '../components/StepAssistantBanner';
 import { calculateDiagnosticScores } from '../lib/diagnosticEngine';
 import type { FullDiagnosticResults } from '../lib/diagnosticEngine';
 import { DynamicDiagnosticForm } from '../components/views/DynamicDiagnosticForm';
@@ -55,7 +62,7 @@ function CircularImeMeter({ score = 7.8, maxScore = 10 }: { score: number; maxSc
             cx={size / 2}
             cy={size / 2}
             r={radius}
-            stroke="#6B1D2F"
+            stroke="#0D9488"
             strokeWidth={strokeWidth}
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
@@ -65,14 +72,14 @@ function CircularImeMeter({ score = 7.8, maxScore = 10 }: { score: number; maxSc
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-xs font-bold text-slate-900 leading-none font-display">{score}</span>
+          <span className="text-xs font-bold text-[#17324D] leading-none font-display">{score}</span>
           <span className="text-[8px] text-slate-400 font-medium">/{maxScore}</span>
         </div>
       </div>
       <div className="flex flex-col">
-        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Madurez IME</span>
-        <span className="text-xs font-bold text-slate-900">Score {score} / 10</span>
-        <span className="text-[10px] text-slate-400">Meta trienal: 8.0</span>
+        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Madurez IME</span>
+        <span className="text-xs font-bold text-[#17324D]">Score {score} / 10</span>
+        <span className="text-[10px] text-[#0D9488] font-medium">Meta trienal: 8.0</span>
       </div>
     </div>
   );
@@ -82,14 +89,14 @@ function CircularImeMeter({ score = 7.8, maxScore = 10 }: { score: number; maxSc
 function RiskIndexMeter({ riskPercentage = 22 }: { riskPercentage: number }) {
   return (
     <div className="flex items-center gap-3 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs">
-      <div className="w-11 h-11 rounded-xl bg-[#F9EFF2] border border-[#E6C5CD] flex flex-col items-center justify-center shrink-0">
-        <span className="text-xs font-bold font-display text-[#6B1D2F] leading-none">{riskPercentage}%</span>
-        <span className="text-[7px] font-bold text-[#6B1D2F] uppercase mt-0.5">IRE</span>
+      <div className="w-11 h-11 rounded-xl bg-[#EDF3F8] border border-slate-200 flex flex-col items-center justify-center shrink-0">
+        <span className="text-xs font-bold font-display text-[#17324D] leading-none">{riskPercentage}%</span>
+        <span className="text-[7px] font-bold text-[#0D9488] uppercase mt-0.5">IRE</span>
       </div>
       <div className="flex flex-col">
-        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Índice Riesgo</span>
-        <span className="text-xs font-bold text-slate-900">{riskPercentage < 30 ? 'Bajo / Moderado' : 'Crítico'}</span>
-        <span className="text-[10px] text-slate-400">Matriz Contingencias</span>
+        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Índice Riesgo</span>
+        <span className="text-xs font-bold text-[#17324D]">{riskPercentage < 30 ? 'Bajo / Moderado' : 'En Mitigación'}</span>
+        <span className="text-[10px] text-slate-400">Matriz 12 Dim.</span>
       </div>
     </div>
   );
@@ -129,7 +136,10 @@ export default function ClientDetail() {
   // Modo de visualización: Consultor GS (Back) vs Cliente (Front)
   const viewMode: 'consultor' | 'cliente' = activeTab === 'portal_preview' ? 'cliente' : 'consultor';
 
-  // Client Stage (Roadmap) persisted per client
+  // Real-time Supabase DB sync indicator
+  const [dbSyncStatus, setDbSyncStatus] = useState<'synced' | 'saving'>('synced');
+
+  // Client Stage (Roadmap) persisted per client in Supabase DB
   const [clientStage, setClientStageState] = useState<ClientStage>(() => {
     try {
       const saved = id ? localStorage.getItem(`gs_client_stage_${id}`) : null;
@@ -141,13 +151,15 @@ export default function ClientDetail() {
   const setClientStage = (nextStage: ClientStage) => {
     setClientStageState(nextStage);
     if (id) {
+      setDbSyncStatus('saving');
       try {
         localStorage.setItem(`gs_client_stage_${id}`, nextStage);
       } catch { /* ignore */ }
+      saveOrgWorkspaceToDb(id, { clientStage: nextStage }).then(() => setDbSyncStatus('synced'));
     }
   };
 
-  // Strategic Axis Metadata (Brecha, Iniciativa Estratégica, OKRs) per client
+  // Strategic Axis Metadata (Brecha, Iniciativa Estratégica, OKRs) per client in Supabase DB
   const [axesMeta, setAxesMeta] = useState<GSAxisStrategicMeta[]>(() => {
     try {
       const saved = id ? localStorage.getItem(`gs_axes_meta_${id}`) : null;
@@ -160,13 +172,15 @@ export default function ClientDetail() {
     const next = axesMeta.map((a) => (a.axisId === axisId ? { ...a, [field]: val } : a));
     setAxesMeta(next);
     if (id) {
+      setDbSyncStatus('saving');
       try {
         localStorage.setItem(`gs_axes_meta_${id}`, JSON.stringify(next));
       } catch { /* ignore */ }
+      saveOrgWorkspaceToDb(id, { axesMeta: next }).then(() => setDbSyncStatus('synced'));
     }
   };
 
-  // Client-reported task progress updates from Client Portal
+  // Client-reported task progress updates from Client Portal (synced via Supabase DB)
   const [clientTaskUpdates, setClientTaskUpdates] = useState<Record<string, { suggestedStatus: string; progress: number; note: string; updatedAt: string }>>(() => {
     try {
       const saved = id ? localStorage.getItem(`gs_client_task_updates_${id}`) : null;
@@ -175,23 +189,36 @@ export default function ClientDetail() {
     return {};
   });
 
-  const handleAcceptClientTaskUpdate = (code: string) => {
+  const handleAcceptClientTaskUpdate = async (code: string) => {
     const upd = clientTaskUpdates[code];
     if (!upd) return;
+    setDbSyncStatus('saving');
     const updatedTasks = tasks.map((t) =>
       t.code === code
         ? { ...t, status: upd.suggestedStatus as any, progress: upd.progress }
         : t
     );
     setTasks(updatedTasks);
-    if (id) {
-      localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(updatedTasks));
-    }
     const nextUpdates = { ...clientTaskUpdates };
     delete nextUpdates[code];
     setClientTaskUpdates(nextUpdates);
+
     if (id) {
+      localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(updatedTasks));
       localStorage.setItem(`gs_client_task_updates_${id}`, JSON.stringify(nextUpdates));
+      await Promise.all([
+        saveOrgWorkspaceToDb(id, { masterPlanTasks: updatedTasks }),
+        saveClientCollabToDb(id, { taskUpdates: nextUpdates }, {
+          activityType: 'consultant_validated_task_update',
+          performedBy: 'Consultor GS',
+          details: { code, status: upd.suggestedStatus, progress: upd.progress },
+        }),
+        (supabase.from('master_plan_tasks') as any)
+          .update({ status: upd.suggestedStatus, progress: upd.progress })
+          .eq('organization_id', id)
+          .eq('code', code),
+      ]);
+      setDbSyncStatus('synced');
     }
   };
 
@@ -294,6 +321,16 @@ export default function ClientDetail() {
 
     if (org) setClient(org);
 
+    // Load consolidated Supabase cloud workspace + Client Portal collaboration inbox
+    const [cloudWs, cloudCollab] = await Promise.all([
+      loadOrgWorkspaceFromDb(id as string),
+      loadClientCollabFromDb(id as string),
+    ]);
+
+    if (cloudWs?.clientStage) setClientStageState(cloudWs.clientStage);
+    if (cloudWs?.axesMeta && cloudWs.axesMeta.length > 0) setAxesMeta(cloudWs.axesMeta);
+    if (cloudCollab?.taskUpdates) setClientTaskUpdates(cloudCollab.taskUpdates);
+
     // 1. Reset and load Diagnostic Answers strictly for this client (no cross-client bleed)
     let clientAnswers: Record<number, ResponseOptionValue> =
       id === EJEMPLO_SAS_ID ? { ...EJEMPLO_SAS_DEFAULT_ANSWERS } : {};
@@ -333,6 +370,10 @@ export default function ClientDetail() {
       console.warn('Error reading local diag answers:', e);
     }
 
+    if (cloudWs?.diagnosticAnswers && Object.keys(cloudWs.diagnosticAnswers).length > 0) {
+      clientAnswers = { ...clientAnswers, ...cloudWs.diagnosticAnswers };
+    }
+
     setDiagnosticAnswers(clientAnswers);
 
     // 2. Load Quality Approvals (Rojo vs Verde) for this client
@@ -365,13 +406,22 @@ export default function ClientDetail() {
       }
     }
 
+    if (cloudWs?.approvals) {
+      if (cloudWs.approvals.omv) nextOmv = cloudWs.approvals.omv;
+      if (cloudWs.approvals.diagnostic_360) nextDiag = cloudWs.approvals.diagnostic_360;
+      if (cloudWs.approvals.master_plan) nextMp = cloudWs.approvals.master_plan;
+    }
+
     setOmvApproval(nextOmv);
     setDiagApproval(nextDiag);
     setMasterPlanApproval(nextMp);
 
-    // 3. Load Master Plan Tasks strictly for this client
+    // 3. Load Master Plan Tasks strictly for this client (Supabase Cloud Workspace -> master_plan_tasks -> localStorage)
     const localTasksRaw = localStorage.getItem(`gs_master_plan_tasks_${id}`);
-    if (localTasksRaw) {
+    if (cloudWs?.masterPlanTasks && cloudWs.masterPlanTasks.length > 0) {
+      setTasks(cloudWs.masterPlanTasks);
+      localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(cloudWs.masterPlanTasks));
+    } else if (localTasksRaw) {
       try {
         setTasks(JSON.parse(localTasksRaw));
       } catch {
@@ -427,6 +477,18 @@ export default function ClientDetail() {
       setMinuteApprovals(parsedMin);
     }
 
+    // Mirror current org metadata to cloud workspace so Client Portal always resolves org details cleanly
+    if (org && id) {
+      saveOrgWorkspaceToDb(id, {
+        orgId: id,
+        orgName: org.name,
+        industry: org.industry || 'PyME',
+        portalAccessCode: org.portal_access_code || 'GS-DEMO-2026',
+        approvals: { omv: nextOmv, diagnostic_360: nextDiag, master_plan: nextMp },
+        diagnosticAnswers: clientAnswers,
+      });
+    }
+
     setLoading(false);
   };
 
@@ -437,10 +499,25 @@ export default function ClientDetail() {
   }, [id]);
 
   const handleAnswerChange = (questionId: number, value: ResponseOptionValue) => {
+    setDbSyncStatus('saving');
     setDiagnosticAnswers(prev => {
       const next = { ...prev, [questionId]: value };
       if (id) {
         localStorage.setItem(`gs_diag_answers_${id}`, JSON.stringify(next));
+        const nextScores = calculateDiagnosticScores(next);
+        Promise.all([
+          saveOrgWorkspaceToDb(id, { diagnosticAnswers: next }),
+          (supabase.from('diagnostic_responses') as any).upsert([
+            {
+              organization_id: id,
+              answers: next,
+              pentagon_calculated: nextScores.pentagon,
+              ime_score: nextScores.globalIme,
+              ire_score: nextScores.globalIre,
+              status: 'in_progress',
+            },
+          ]),
+        ]).finally(() => setDbSyncStatus('synced'));
       }
       return next;
     });
@@ -494,7 +571,9 @@ export default function ClientDetail() {
     }
 
     if (id) {
+      setDbSyncStatus('saving');
       localStorage.setItem(`gs_approvals_${id}`, JSON.stringify(nextApprovals));
+      saveOrgWorkspaceToDb(id, { approvals: nextApprovals }).then(() => setDbSyncStatus('synced'));
     }
 
     try {
@@ -530,7 +609,9 @@ export default function ClientDetail() {
     );
     setTasks(updated);
     if (id) {
+      setDbSyncStatus('saving');
       localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(updated));
+      saveOrgWorkspaceToDb(id, { masterPlanTasks: updated }).then(() => setDbSyncStatus('synced'));
     }
     try {
       await (supabase.from('master_plan_tasks') as any)
@@ -563,7 +644,9 @@ export default function ClientDetail() {
     const updated = [...tasks, newItem];
     setTasks(updated);
     if (id) {
+      setDbSyncStatus('saving');
       localStorage.setItem(`gs_master_plan_tasks_${id}`, JSON.stringify(updated));
+      saveOrgWorkspaceToDb(id, { masterPlanTasks: updated }).then(() => setDbSyncStatus('synced'));
     }
     try {
       await (supabase.from('master_plan_tasks') as any).insert([{
@@ -650,16 +733,16 @@ export default function ClientDetail() {
   if (viewMode === 'cliente') {
     return (
       <div className="space-y-6 max-w-7xl mx-auto pb-16">
-        <div className="bg-black text-white border-2 border-red-600 px-5 py-3 rounded-2xl flex items-center justify-between text-xs font-bold font-display uppercase tracking-wider shadow-crimson">
+        <div className="bg-gradient-to-r from-[#0F2438] via-[#17324D] to-[#115E59] text-white px-5 py-3.5 rounded-2xl flex items-center justify-between text-xs font-semibold shadow-sm">
           <span className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-            Modo Portal Cliente (Front Activo) • Visualización de datos oficiales aprobados
+            <span className="w-2 h-2 rounded-full bg-[#2DD4BF] animate-ping" />
+            Simulación Portal Cliente Activa · Visualizando únicamente entregables aprobados
           </span>
           <button
             onClick={() => navigate(`/clients/${id}`)}
-            className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors border border-red-500"
+            className="btn-nordic-teal px-4 py-1.5 rounded-xl text-xs font-semibold cursor-pointer"
           >
-            Volver a Modo Consultor GS (Back)
+            Volver a Modo Consultor GS
           </button>
         </div>
         <ClientPortalView
@@ -688,7 +771,7 @@ export default function ClientDetail() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* Header Principal con Avance en el Perfil del Cliente & Executive Gauges */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5 border-b border-slate-200 pb-5 bg-white p-5 rounded-2xl shadow-xs">
+      <div className="figma-card p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => {
@@ -700,18 +783,18 @@ export default function ClientDetail() {
                 navigate('/clients');
               }
             }}
-            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors shadow-xs"
+            className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer"
             title={subAction ? "Volver a Reuniones" : (effectiveSection && effectiveSection !== 'dashboard') ? "Volver al Dashboard del Cliente" : "Volver al Directorio de Clientes"}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-2xl font-bold font-display tracking-tight text-slate-900">{client.name}</h1>
-              <span className="inline-flex items-center rounded-lg bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+              <h1 className="text-2xl font-bold font-display tracking-tight text-[#17324D]">{client.name}</h1>
+              <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-0.5 text-xs font-medium text-slate-600">
                 {client.industry || 'Empresa SAS'}
               </span>
-              <span className="inline-flex items-center rounded-lg bg-[#F9EFF2] border border-[#E6C5CD] px-2.5 py-0.5 text-xs font-semibold text-[#6B1D2F]">
+              <span className="inline-flex items-center rounded-full bg-[#F0FDFA] border border-teal-200 px-3 py-0.5 text-xs font-semibold text-[#0F766E]">
                 {clientStage === 'relevamiento'
                   ? '0. Relevamiento & Propuesta'
                   : clientStage === 'kickoff_omv'
@@ -727,27 +810,27 @@ export default function ClientDetail() {
             {/* Barra y Estadísticas de Avance en el Perfil del Cliente */}
             <div className="mt-2.5 flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
-                <Compass className="w-3.5 h-3.5 text-[#6B1D2F]" />
-                <span>Avance de Perfil: <strong className="text-slate-900 font-semibold">{answeredQuestionsCount} / {totalQuestionsCatalog}</strong> ({profileProgressPercent}%)</span>
+                <Compass className="w-3.5 h-3.5 text-[#0D9488]" />
+                <span>Avance 360°: <strong className="text-[#17324D] font-semibold">{answeredQuestionsCount} / {totalQuestionsCatalog}</strong> ({profileProgressPercent}%)</span>
               </div>
-              <div className="w-32 bg-slate-100 border border-slate-200 h-2 rounded-full overflow-hidden">
+              <div className="w-32 bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div 
-                  className="bg-[#6B1D2F] h-full rounded-full transition-all duration-500" 
+                  className="bg-gradient-to-r from-[#17324D] to-[#0D9488] h-full rounded-full transition-all duration-500" 
                   style={{ width: `${profileProgressPercent}%` }} 
                 />
               </div>
               <div 
-                className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-50 text-slate-700 font-mono text-[11px] border border-slate-200 shadow-xs"
-                title="Identificador único del cliente para blindaje de grabaciones y datos"
+                className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-50 text-slate-600 font-mono text-[11px] border border-slate-200/80"
+                title="Identificador único del cliente para blindaje multi-tenant"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>id_cliente: <strong className="text-slate-900 font-mono font-semibold">{client.id}</strong></span>
+                <ShieldCheck className="w-3.5 h-3.5 text-[#0D9488]" />
+                <span>Tenant: <strong className="text-slate-800 font-mono font-semibold">{client.id.substring(0, 8)}</strong></span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Top Gauges: IME 7.8/10 circular meter, Risk Index 22% & Link al Portal Cliente */}
+        {/* Top Gauges: IME circular meter, Risk Index & Link al Portal Cliente */}
         <div className="flex flex-wrap items-center gap-3 shrink-0">
           <CircularImeMeter 
             score={diagnosticResults.globalIme10 || 7.8} 
@@ -758,27 +841,27 @@ export default function ClientDetail() {
           />
           <Link
             to={`/portal/${client.id}`}
-            className="px-3.5 py-2.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-xs transition-all"
-            title="Abrir portal oficial del cliente en su propia página"
+            className="btn-nordic-primary px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2"
+            title="Abrir portal oficial del cliente"
           >
-            <Eye className="w-4 h-4" />
-            Abrir Portal Cliente ({client.portal_access_code || 'GS-DEMO-2026'})
+            <Eye className="w-4 h-4 text-[#2DD4BF]" />
+            Portal Cliente ({client.portal_access_code || 'GS-DEMO-2026'})
           </Link>
         </div>
       </div>
 
-      {/* Panel de Gobernanza Consultor GS: Qué puede ver este Cliente en su Portal (Semáforo Rojo / Verde) */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      {/* Panel de Gobernanza Consultor GS: Qué puede ver este Cliente en su Portal */}
+      <div className="figma-card p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+          <div className="w-9 h-9 rounded-xl bg-[#EDF3F8] text-[#17324D] flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-5 h-5 text-[#0D9488]" />
           </div>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B1D2F] block">
-              Control de Visibilidad del Cliente • Código Portal: <strong className="font-mono text-slate-900">{client.portal_access_code || 'GS-DEMO-2026'}</strong>
+            <span className="text-[11px] font-semibold text-[#17324D] block">
+              Gobierno de Visibilidad del Portal · Clave Corporativa: <strong className="font-mono text-[#0D9488]">{client.portal_access_code || 'GS-DEMO-2026'}</strong>
             </span>
-            <p className="text-xs text-slate-600">
-              Active en <strong className="text-emerald-700">VERDE (Publicado)</strong> los módulos que <strong>{client.name}</strong> tiene permitido visualizar, o pase a <strong className="text-red-700">ROJO (Revisión Interna)</strong> para ocultarlos del Portal del Cliente.
+            <p className="text-xs text-slate-500">
+              Alterne con 1 clic qué módulos están <strong className="text-emerald-700">Publicados</strong> para <strong>{client.name}</strong> o en <strong className="text-amber-700">Revisión Interna</strong>.
             </p>
           </div>
         </div>
@@ -787,19 +870,19 @@ export default function ClientDetail() {
           {[
             {
               key: 'omv' as const,
-              label: '1. Visión 2029 (OMB)',
+              label: '1. Visión OMV',
               status: omvApproval,
               audit: omvAudit,
             },
             {
               key: 'diagnostic_360' as const,
-              label: '2. Diagnóstico 360° & Pentágono',
+              label: '2. Diagnóstico 360°',
               status: diagApproval,
               audit: diagAudit,
             },
             {
               key: 'master_plan' as const,
-              label: '3. Master Plan (5 Ejes)',
+              label: '3. Master Plan',
               status: masterPlanApproval,
               audit: masterPlanAudit,
             },
@@ -816,53 +899,53 @@ export default function ClientDetail() {
                     item.audit
                   )
                 }
-                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
                   isApproved
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                    : 'bg-red-50 text-red-800 border-red-300 hover:bg-red-100'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
                 }`}
                 title="Clic para alternar visibilidad en el Portal de este Cliente"
               >
                 <span
                   className={`w-2 h-2 rounded-full ${
-                    isApproved ? 'bg-emerald-600' : 'bg-red-600'
+                    isApproved ? 'bg-emerald-500' : 'bg-amber-500'
                   }`}
                 />
-                {item.label}: {isApproved ? 'Visible (Verde)' : 'Oculto (Rojo)'}
+                {item.label}: {isApproved ? 'Publicado' : 'En Revisión'}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Tabs Principales de la Plataforma con URLs Propias para Historial de Navegación */}
-      <div className="border-b border-slate-200">
-        <nav className="-mb-px flex space-x-2 overflow-x-auto" aria-label="Tabs">
+      {/* Segmented Pill Navigation (Apple / Linear / Figma Style) */}
+      <div className="bg-slate-200/55 p-1.5 rounded-2xl border border-slate-200/80 overflow-x-auto no-scrollbar">
+        <nav className="flex items-center gap-1 min-w-max" aria-label="Tabs">
           {[
-            { id: 'dashboard', path: `/clients/${id}`, name: 'Dashboard 360', icon: Activity },
-            { id: 'relevamiento', path: `/clients/${id}/relevamiento`, name: '0. Relevamiento & Propuesta', icon: Briefcase },
+            { id: 'dashboard', path: `/clients/${id}`, name: 'Resumen 360°', icon: Activity },
+            { id: 'relevamiento', path: `/clients/${id}/relevamiento`, name: '0. Relevamiento', icon: Briefcase },
             { id: 'omv', path: `/clients/${id}/omb`, name: '1. Kickoff & OMV', icon: Compass },
             { id: 'diagnostic', path: `/clients/${id}/diagnostic`, name: '2. Diagnóstico 360°', icon: FileText, badge: `${diagnosticResults.progressPercentage}%` },
             { id: 'matrices', path: `/clients/${id}/matrices`, name: '3. Matrices & Riesgos', icon: Layers },
             { id: 'master_plan', path: `/clients/${id}/master-plan`, name: '4. Master Plan', icon: Target },
-            { id: 'documents', path: `/clients/${id}/documents`, name: 'Gestor Documental', icon: Folder },
-            { id: 'meetings', path: `/clients/${id}/meetings`, name: 'Reuniones & Minutas', icon: Calendar },
-            { id: 'portal_preview', path: `/clients/${id}/portal`, name: 'Portal Cliente', icon: Eye }
+            { id: 'documents', path: `/clients/${id}/documents`, name: 'Documentos', icon: Folder },
+            { id: 'meetings', path: `/clients/${id}/meetings`, name: 'Sesiones & Audio', icon: Calendar },
+            { id: 'portal_preview', path: `/clients/${id}/portal`, name: 'Vista Cliente', icon: Eye }
           ].map(tab => (
             <Link
               key={tab.id}
               to={tab.path}
-              className={`flex items-center gap-2 whitespace-nowrap py-2.5 px-3.5 border-b-2 text-xs font-medium transition-all ${
+              className={`flex items-center gap-2 whitespace-nowrap py-2 px-3.5 rounded-xl text-xs font-medium transition-all ${
                 activeTab === tab.id
-                  ? 'border-[#6B1D2F] text-[#6B1D2F] font-semibold bg-white rounded-t-xl shadow-xs'
-                  : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300'
+                  ? 'bg-white text-[#17324D] font-semibold shadow-xs border border-slate-200/70'
+                  : 'text-slate-600 hover:text-[#17324D] hover:bg-white/50'
               }`}
             >
-              <tab.icon className={`h-4 w-4 ${activeTab === tab.id ? 'text-[#6B1D2F]' : 'text-slate-400'}`} />
+              <tab.icon className={`h-3.5 w-3.5 ${activeTab === tab.id ? 'text-[#0D9488]' : 'text-slate-400'}`} />
               {tab.name}
               {tab.badge && (
-                <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-mono font-semibold ${
-                  activeTab === tab.id ? 'bg-[#6B1D2F] text-white' : 'bg-slate-100 text-slate-600'
+                <span className={`ml-0.5 rounded-full px-2 py-0.2 text-[10px] font-mono font-semibold ${
+                  activeTab === tab.id ? 'bg-[#F0FDFA] text-[#0F766E] border border-teal-200' : 'bg-slate-200/70 text-slate-600'
                 }`}>
                   {tab.badge}
                 </span>
@@ -875,29 +958,49 @@ export default function ClientDetail() {
       {/* TAB 1: DASHBOARD 360 */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
+          <StepAssistantBanner
+            roleBadge="Consultor GS · Centro de Comando"
+            stepTitle={`Expediente 360° de ${client.name} — Visión General y Control de Publicación`}
+            whatToDo="Use la barra superior 'Control de Visibilidad del Cliente' para pasar módulos de ROJO (Oculto) a VERDE (Publicado en Portal), o pulse 'Grabar / Subir Audio Ahora' para iniciar una sesión."
+            autoAssistNote="Cada avance de diagnóstico, OMV, minuta y tarea del Master Plan se respalda automáticamente en la Base de Datos Supabase."
+            growyPrompt={`Haceme un resumen ejecutivo completo del estado actual de ${client.name} y cuál es el siguiente paso recomendado como consultor.`}
+            dbSyncStatus={dbSyncStatus}
+            nextStepLabel="Ir a Etapa Actual"
+            onNextStep={() =>
+              navigate(
+                clientStage === 'relevamiento'
+                  ? `/clients/${id}/relevamiento`
+                  : clientStage === 'kickoff_omv'
+                    ? `/clients/${id}/omb`
+                    : clientStage === 'master_plan_active'
+                      ? `/clients/${id}/master-plan`
+                      : `/clients/${id}/diagnostic`
+              )
+            }
+          />
           {/* Direct Audio & Transcription Automatic Card */}
-          <div className="bg-zinc-950 text-white p-6 rounded-2xl border-2 border-zinc-900 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="bg-gradient-to-br from-[#0F2438] via-[#17324D] to-[#115E59] text-white p-6 sm:p-7 rounded-3xl shadow-[0_16px_38px_-12px_rgba(23,50,77,0.28)] flex flex-col md:flex-row md:items-center justify-between gap-5">
             <div className="space-y-1.5 max-w-2xl">
               <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-red-500 animate-ping" />
-                <span className="font-display text-[11px] font-bold uppercase tracking-widest text-red-400">
-                  Flujo Automático de Relevamiento
+                <span className="h-2 w-2 rounded-full bg-[#2DD4BF] animate-ping" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#5EEAD4]">
+                  Captura Inteligente de Sesión
                 </span>
               </div>
-              <h2 className="text-lg sm:text-xl font-black text-white font-display uppercase tracking-tight">
-                Grabar o Subir Audio → Responder las 100 Preguntas + Generar Informe y Minuta
+              <h2 className="text-lg sm:text-xl font-bold text-white font-display tracking-tight">
+                Audio en Vivo → 100 Preguntas Respondidas + Minuta Oficial .DOCX
               </h2>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                Toma el audio de la sesión (grabándolo en vivo o subiendo el archivo). El sistema identifica automáticamente cuáles de las <strong>100 preguntas</strong> se pueden responder, las contesta en el perfil ({answeredQuestionsCount}/100 respondidas) y genera el Informe con las Minutas.
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Grabe la reunión o suba el audio. El motor detecta respuestas con cita textual exacta ({answeredQuestionsCount}/100 completadas) y redacta la minuta lista para auditar.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 shrink-0">
               <button
                 onClick={() => navigate(`/clients/${id}/meetings/live`)}
-                className="px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg hover:scale-105 transition-all cursor-pointer"
+                className="btn-nordic-teal px-6 py-3 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer"
               >
                 <Mic className="w-4 h-4" />
-                Grabar / Subir Audio Ahora
+                Grabar o Subir Audio
               </button>
             </div>
           </div>
@@ -905,10 +1008,10 @@ export default function ClientDetail() {
           {/* Polished Pentagon Radar Chart & Recent Recordings Stream */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Pentagon Radar Chart (2 cols) */}
-            <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+            <div className="lg:col-span-2 figma-card p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <div>
-                  <h2 className="font-display text-base font-bold text-slate-900">
+                  <h2 className="font-display text-base font-bold text-[#17324D]">
                     Pentágono de Madurez (5 Ejes Estratégicos)
                   </h2>
                   <p className="text-xs text-slate-500">Comparativa histórica: {currentPeriod.label} vs. Actual en Vivo vs. Meta (8.2)</p>
@@ -918,11 +1021,11 @@ export default function ClientDetail() {
                     <span className="flex items-center gap-1 text-slate-500">
                       <span className="h-2 w-2 rounded-full bg-slate-400" /> {currentPeriod.periodCode} ({currentPeriod.imeActual})
                     </span>
-                    <span className="flex items-center gap-1 text-[#6B1D2F] font-semibold">
-                      <span className="h-2 w-2 rounded-full bg-[#6B1D2F]" /> Actual ({diagnosticResults.globalIme10})
+                    <span className="flex items-center gap-1 text-[#0D9488] font-semibold">
+                      <span className="h-2 w-2 rounded-full bg-[#0D9488]" /> Actual ({diagnosticResults.globalIme10})
                     </span>
-                    <span className="flex items-center gap-1 text-slate-900 font-medium">
-                      <span className="h-2 w-2 rounded-full bg-slate-900" /> Meta ({metaPeriod.imeActual})
+                    <span className="flex items-center gap-1 text-[#17324D] font-medium">
+                      <span className="h-2 w-2 rounded-full bg-[#17324D]" /> Meta ({metaPeriod.imeActual})
                     </span>
                   </div>
                   <div className="flex items-center gap-1 overflow-x-auto max-w-xs sm:max-w-md pb-0.5">
@@ -930,9 +1033,9 @@ export default function ClientDetail() {
                       <button
                         key={p.periodCode}
                         onClick={() => setSelectedPentagonPeriod(p.periodCode)}
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all ${
+                        className={`px-2.5 py-0.5 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
                           selectedPentagonPeriod === p.periodCode
-                            ? 'bg-slate-900 text-white shadow-xs'
+                            ? 'bg-[#17324D] text-white shadow-2xs'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                         }`}
                         title={p.label}
@@ -947,34 +1050,34 @@ export default function ClientDetail() {
                 <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={300}>
                   <RadarChart data={radarChartData}>
                     <PolarGrid stroke="#e2e8f0" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#334155', fontSize: 11, fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }} />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#17324D', fontSize: 11, fontWeight: 600, fontFamily: 'Plus Jakarta Sans, sans-serif' }} />
                     <PolarRadiusAxis angle={30} domain={[0, 10]} stroke="#94a3b8" />
                     <Tooltip />
-                    <Radar name="Línea Base" dataKey="Baseline" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.15} />
-                    <Radar name="Actual" dataKey="Actual" stroke="#6B1D2F" fill="#6B1D2F" fillOpacity={0.32} strokeWidth={2} />
-                    <Radar name="Meta Trienal" dataKey="Meta" stroke="#0f172a" fill="#0f172a" fillOpacity={0.08} strokeDasharray="3 3" strokeWidth={1.5} />
+                    <Radar name="Línea Base" dataKey="Baseline" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.14} />
+                    <Radar name="Actual" dataKey="Actual" stroke="#0D9488" fill="#0D9488" fillOpacity={0.26} strokeWidth={2.2} />
+                    <Radar name="Meta Trienal" dataKey="Meta" stroke="#17324D" fill="#17324D" fillOpacity={0.07} strokeDasharray="4 3" strokeWidth={1.6} />
                   </RadarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             {/* Critical Risks Column */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+            <div className="figma-card p-6 flex flex-col justify-between">
               <div>
-                <h2 className="font-display text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
-                  <ShieldAlert className="h-4 w-4 text-[#6B1D2F]" /> Focos Críticos de Riesgo
+                <h2 className="font-display text-base font-bold text-[#17324D] mb-1 flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-[#0D9488]" /> Focos Críticos de Riesgo
                 </h2>
                 <p className="text-xs text-slate-500 mb-4">Vulnerabilidades de impacto directo en la gobernanza</p>
 
                 <div className="space-y-3 overflow-y-auto max-h-[250px]">
                   {diagnosticResults.risks.slice(0, 3).map(r => (
-                    <div key={r.id} className="p-3 bg-[#F9EFF2]/70 border border-[#E6C5CD] rounded-xl">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-slate-800">
-                        <span>{r.code} • {r.category}</span>
-                        <span className="bg-[#6B1D2F] text-white px-1.5 py-0.2 rounded text-[9px] font-medium">{r.severityLevel}</span>
+                    <div key={r.id} className="p-3.5 bg-slate-50/80 border border-slate-200/80 rounded-xl">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-[#17324D]">
+                        <span>{r.code} · {r.category}</span>
+                        <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full text-[9px] font-semibold">{r.severityLevel}</span>
                       </div>
-                      <p className="text-xs text-slate-900 font-medium mt-1">{r.description}</p>
-                      <p className="text-[11px] text-slate-500 mt-1 italic">Acción: {r.suggestedAction}</p>
+                      <p className="text-xs text-slate-800 font-medium mt-1.5">{r.description}</p>
+                      <p className="text-[11px] text-slate-500 mt-1">Acción: {r.suggestedAction}</p>
                     </div>
                   ))}
                 </div>
@@ -984,7 +1087,7 @@ export default function ClientDetail() {
                 <span className="text-xs text-slate-500">Total detectados: {diagnosticResults.risks.length}</span>
                 <button
                   onClick={() => navigate(`/clients/${id}/matrices`)}
-                  className="text-xs font-semibold text-[#6B1D2F] hover:underline"
+                  className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] cursor-pointer"
                 >
                   Ver Matriz de Riesgos →
                 </button>
@@ -993,17 +1096,17 @@ export default function ClientDetail() {
           </div>
 
           {/* Quick Recordings Preview Strip */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+          <div className="figma-card p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Mic className="w-4 h-4 text-[#6B1D2F]" />
-                <h3 className="font-display text-base font-bold text-slate-900">
+                <Mic className="w-4 h-4 text-[#0D9488]" />
+                <h3 className="font-display text-base font-bold text-[#17324D]">
                   Grabaciones Recientes de Sesiones ({meetings.length})
                 </h3>
               </div>
               <button
                 onClick={() => navigate(`/clients/${id}/meetings`)}
-                className="text-xs font-semibold text-[#6B1D2F] hover:underline flex items-center gap-1"
+                className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] flex items-center gap-1 cursor-pointer"
               >
                 Ir a Grabaciones & Minutas →
               </button>
@@ -1069,16 +1172,36 @@ export default function ClientDetail() {
 
       {/* TAB 4: MATRICES ESTRATÉGICAS */}
       {activeTab === 'matrices' && (
-        <StrategicMatricesView
-          client={client}
-          results={diagnosticResults}
-          onBackToQuestions={() => navigate(`/clients/${id}/diagnostic`)}
-        />
+        <div className="space-y-6">
+          <StepAssistantBanner
+            roleBadge="Consultor GS · Etapa 3"
+            stepTitle="Matrices Estratégicas (FODA, PESTEL, Porter) y Matriz de Riesgos (IRE)"
+            whatToDo="Revise los puntajes calculados automáticamente de IME (9 áreas) e IRE (12 dimensiones + 27 riesgos). Cuando cierre el diagnóstico, pase a estructurar el Master Plan."
+            autoAssistNote="Todas las matrices derivan matemáticamente de las respuestas del Diagnóstico 360° guardadas en Base de Datos."
+            growyPrompt={`Explicame los principales riesgos críticos e indicadores IME/IRE detectados en ${client.name}.`}
+            dbSyncStatus={dbSyncStatus}
+            nextStepLabel="Ir a 4. Master Plan"
+            onNextStep={() => navigate(`/clients/${id}/master-plan`)}
+          />
+          <StrategicMatricesView
+            client={client}
+            results={diagnosticResults}
+            onBackToQuestions={() => navigate(`/clients/${id}/diagnostic`)}
+          />
+        </div>
       )}
 
       {/* TAB 5: MASTER PLAN ESTRATÉGICO */}
       {activeTab === 'master_plan' && (
         <div className="space-y-6">
+          <StepAssistantBanner
+            roleBadge="Consultor GS · Etapa 4"
+            stepTitle="Master Plan en 5 Ejes, Puente AVANCE-EJES y Validación de Avances del Cliente"
+            whatToDo="1) Seleccione un eje para editar su Brecha, Iniciativa y OKRs. 2) Revise y valide los avances reportados por el cliente. 3) Exporte el Workbook Oficial de 6 Hojas con Fórmulas (.XLSX)."
+            autoAssistNote="Regla GS: Los reportes enviados por el cliente desde su Portal aparecen en la bandeja amarilla y solo impactan el Pentágono cuando usted pulsa 'Validar e Impactar'."
+            growyPrompt={`Calculá el puente AVANCE-EJES de ${client.name} y decime si hay avances reportados por el cliente pendientes de validar.`}
+            dbSyncStatus={dbSyncStatus}
+          />
           <QualityApprovalBadge
             moduleName="Master Plan Estratégico"
             status={masterPlanApproval}
@@ -1095,22 +1218,22 @@ export default function ClientDetail() {
                 onClick={() => setMasterPlanSubTab('tasks')}
                 className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
                   masterPlanSubTab === 'tasks'
-                    ? 'bg-black text-white shadow-sm'
+                    ? 'bg-[#17324D] text-white shadow-sm'
                     : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-100'
                 }`}
               >
-                <Target className="w-3.5 h-3.5 text-red-500" />
+                <Target className="w-3.5 h-3.5 text-[#14B8A6]" />
                 Plan de Acción MPE & Puente AVANCE-EJES
               </button>
               <button
                 onClick={() => setMasterPlanSubTab('quarterly_tracking')}
                 className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
                   masterPlanSubTab === 'quarterly_tracking'
-                    ? 'bg-black text-white shadow-sm'
+                    ? 'bg-[#17324D] text-white shadow-sm'
                     : 'bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-100'
                 }`}
               >
-                <Calendar className="w-3.5 h-3.5 text-red-500" />
+                <Calendar className="w-3.5 h-3.5 text-[#14B8A6]" />
                 Seguimiento Trimestral PENT-PE (3 Meses)
               </button>
             </div>
@@ -1170,7 +1293,7 @@ export default function ClientDetail() {
                     <div key={code} className="bg-white rounded-xl border border-amber-200 p-3 flex items-start justify-between gap-3 text-xs">
                       <div className="space-y-1">
                         <div className="font-bold text-zinc-900">
-                          <span className="font-mono text-red-600 mr-1.5">{code}</span>
+                          <span className="font-mono text-[#0D9488] mr-1.5">{code}</span>
                           {taskObj?.title || 'Tarea del Master Plan'}
                         </div>
                         <p className="text-zinc-600">
@@ -1238,7 +1361,7 @@ export default function ClientDetail() {
                         </div>
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="text-slate-500">PENT-PE:</span>
-                          <strong className="font-mono text-[#6B1D2F]">{pentScore.toFixed(1)} ({pentPct}%)</strong>
+                          <strong className="font-mono text-[#17324D]">{pentScore.toFixed(1)} ({pentPct}%)</strong>
                         </div>
                       </div>
                     );
@@ -1251,7 +1374,7 @@ export default function ClientDetail() {
                   <button
                     onClick={() => setSelectedAxis('all')}
                     className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
-                      selectedAxis === 'all' ? 'bg-black text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                      selectedAxis === 'all' ? 'bg-[#17324D] text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                     }`}
                   >
                     Todos los Ejes (5)
@@ -1261,7 +1384,7 @@ export default function ClientDetail() {
                       key={axis.id}
                       onClick={() => setSelectedAxis(axis.id)}
                       className={`px-3.5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
-                        selectedAxis === axis.id ? 'bg-black text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+                        selectedAxis === axis.id ? 'bg-[#17324D] text-white shadow-sm' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
                       }`}
                     >
                       {axis.name.split(':')[0]}
@@ -1271,7 +1394,7 @@ export default function ClientDetail() {
                 <button
                   type="button"
                   onClick={() => setIsNewTaskModalOpen(true)}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shrink-0 shadow-crimson transition-all"
+                  className="px-4 py-2 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shrink-0 shadow-crimson transition-all"
                 >
                   <Plus className="h-4 w-4" /> Nueva Acción
                 </button>
@@ -1284,7 +1407,7 @@ export default function ClientDetail() {
                 return (
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-display text-xs font-black uppercase tracking-wider text-[#6B1D2F]">
+                      <h4 className="font-display text-xs font-black uppercase tracking-wider text-[#17324D]">
                         Cabecera Estratégica Hoja MPE — {currentAxisMeta.fullName}
                       </h4>
                       <span className="text-[11px] text-slate-400">Se exporta directamente al bloque superior del Eje en el Excel Oficial</span>
@@ -1391,7 +1514,7 @@ export default function ClientDetail() {
                       </select>
                       <button
                         type="submit"
-                        className="px-4 py-2 bg-zinc-900 hover:bg-black text-white rounded-lg font-bold uppercase tracking-wider shrink-0"
+                        className="px-4 py-2 bg-[#17324D] hover:bg-[#17324D] text-white rounded-lg font-bold uppercase tracking-wider shrink-0"
                       >
                         Guardar
                       </button>
@@ -1403,7 +1526,7 @@ export default function ClientDetail() {
               <div className="bg-white rounded-2xl border-2 border-zinc-900 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto max-h-[600px]">
                   <table className="min-w-full divide-y-2 divide-zinc-200 text-xs">
-                    <thead className="bg-zinc-900 text-white font-display uppercase tracking-wider sticky top-0 z-10">
+                    <thead className="bg-[#17324D] text-white font-display uppercase tracking-wider sticky top-0 z-10">
                       <tr>
                         <th className="px-4 py-3.5 text-left font-bold">Código</th>
                         <th className="px-4 py-3.5 text-left font-bold">Acción / Iniciativa ({client.name})</th>
@@ -1418,14 +1541,14 @@ export default function ClientDetail() {
                         .filter(t => selectedAxis === 'all' || t.axis === selectedAxis)
                         .map((t, idx) => (
                           <tr key={`${t.code}-${idx}`} className="hover:bg-zinc-50">
-                            <td className="px-4 py-3 font-mono font-bold text-red-600">{t.code}</td>
+                            <td className="px-4 py-3 font-mono font-bold text-[#0D9488]">{t.code}</td>
                             <td className="px-4 py-3 font-bold text-zinc-950">
                               {t.title}
                               <span className="block text-[10px] font-normal text-zinc-400">{t.axisName}</span>
                             </td>
                             <td className="px-4 py-3">
                               <span className={`px-2.5 py-0.5 rounded font-display font-bold uppercase text-[10px] ${
-                                String(t.priority).toUpperCase() === 'ALTA' ? 'bg-red-100 text-red-800' : 'bg-zinc-100 text-zinc-700'
+                                String(t.priority).toUpperCase() === 'ALTA' ? 'bg-[#EDF3F8] text-[#17324D]' : 'bg-zinc-100 text-zinc-700'
                               }`}>
                                 {t.priority}
                               </span>
@@ -1444,8 +1567,8 @@ export default function ClientDetail() {
                                     : t.status === 'EN PROCESO'
                                     ? 'bg-amber-500 text-white border-amber-600'
                                     : t.status === 'RETRASADO'
-                                    ? 'bg-red-600 text-white border-red-700'
-                                    : 'bg-zinc-900 text-white border-zinc-800'
+                                    ? 'bg-[#0D9488] text-white border-red-700'
+                                    : 'bg-[#17324D] text-white border-zinc-800'
                                 }`}
                               >
                                 <option value="SIN INICIAR">SIN INICIAR</option>
@@ -1492,8 +1615,8 @@ export default function ClientDetail() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="h-2.5 w-2.5 rounded-full bg-red-600 animate-ping" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#6B1D2F]">
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#0D9488] animate-ping" />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#17324D]">
                         Flujo Simplificado Automático • {client.name}
                       </span>
                     </div>
@@ -1509,7 +1632,7 @@ export default function ClientDetail() {
                     onClick={() => {
                       navigate(`/clients/${id}/meetings/live?type=diagnostico`);
                     }}
-                    className="px-6 py-3.5 bg-[#6B1D2F] hover:bg-[#541524] text-white rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-md hover:scale-105 transition-all self-start sm:self-center shrink-0 cursor-pointer"
+                    className="px-6 py-3.5 bg-[#17324D] hover:bg-[#0F2438] text-white rounded-xl font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-md hover:scale-105 transition-all self-start sm:self-center shrink-0 cursor-pointer"
                   >
                     <Mic className="w-4 h-4" /> Grabar / Subir Audio Ahora
                   </button>
@@ -1533,7 +1656,7 @@ export default function ClientDetail() {
                   </h3>
                   <Link
                     to="/meetings"
-                    className="text-xs font-semibold text-[#B91C1C] hover:text-[#991B1B]"
+                    className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E]"
                   >
                     Ver Todas las Minutas
                   </Link>
@@ -1563,7 +1686,7 @@ export default function ClientDetail() {
                                 className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg border transition-colors ${
                                   isMinApproved
                                     ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                                    : 'bg-red-50 text-red-800 border-red-300 hover:bg-red-100'
+                                    : 'bg-[#F0FDFA] text-[#17324D] border-teal-300 hover:bg-[#EDF3F8]'
                                 }`}
                                 title="Clic para publicar u ocultar esta minuta en el Portal del Cliente"
                               >
@@ -1577,7 +1700,7 @@ export default function ClientDetail() {
                             </span>
                             <Link
                               to={`/meetings/${m.id}`}
-                              className="text-xs font-semibold text-[#B91C1C] hover:text-[#991B1B] flex items-center gap-1"
+                              className="text-xs font-semibold text-[#0D9488] hover:text-[#0F766E] flex items-center gap-1"
                             >
                               Ver y Editar Minuta <ChevronRight className="w-3.5 h-3.5" />
                             </Link>

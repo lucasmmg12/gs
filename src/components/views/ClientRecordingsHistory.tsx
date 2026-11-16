@@ -159,8 +159,8 @@ export default function ClientRecordingsHistory({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Volume2 className="w-4 h-4 text-[#B91C1C]" />
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B91C1C]">
+            <Volume2 className="w-4 h-4 text-[#0D9488]" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-[#0D9488]">
               Repositorio de Audios & Transcripciones
             </span>
           </div>
@@ -183,14 +183,14 @@ export default function ClientRecordingsHistory({
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Buscar en grabaciones..."
-              className="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:border-[#B91C1C] focus:outline-none w-48 sm:w-56 bg-slate-50/50"
+              className="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:border-[#0D9488] focus:outline-none w-48 sm:w-56 bg-slate-50/50"
             />
           </div>
 
           <select
             value={filterType}
             onChange={e => setFilterType(e.target.value)}
-            className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:border-[#B91C1C] focus:outline-none font-medium bg-slate-50/50 text-slate-700"
+            className="px-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:border-[#0D9488] focus:outline-none font-medium bg-slate-50/50 text-slate-700"
           >
             <option value="all">Todos los Tipos</option>
             <option value="kickoff">Kick off (OMV)</option>
@@ -211,7 +211,7 @@ export default function ClientRecordingsHistory({
       {/* Grid or List of Recordings */}
       {loading ? (
         <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-3">
-          <RefreshCw className="w-6 h-6 text-[#B91C1C] animate-spin mx-auto" />
+          <RefreshCw className="w-6 h-6 text-[#0D9488] animate-spin mx-auto" />
           <p className="text-xs font-semibold text-slate-500">Cargando grabaciones del cliente...</p>
         </div>
       ) : filtered.length === 0 ? (
@@ -223,7 +223,7 @@ export default function ClientRecordingsHistory({
           {onNewRecording && (
             <button
               onClick={() => onNewRecording('diagnostico')}
-              className="px-4 py-2 bg-[#B91C1C] hover:bg-[#991B1B] text-white rounded-xl text-xs font-semibold shadow-xs transition-all"
+              className="px-4 py-2 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl text-xs font-semibold shadow-xs transition-all"
             >
               Iniciar Primera Grabación
             </button>
@@ -249,7 +249,7 @@ export default function ClientRecordingsHistory({
                           ? 'bg-purple-50 text-purple-700 border border-purple-200'
                           : rec.meeting_type === 'seguimiento_trimestral'
                           ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                          : 'bg-rose-50 text-[#B91C1C] border border-rose-200'
+                          : 'bg-rose-50 text-[#0D9488] border border-rose-200'
                       }`}>
                         {rec.meeting_type ? rec.meeting_type.toUpperCase() : 'DIAGNÓSTICO'}
                       </span>
@@ -306,7 +306,7 @@ export default function ClientRecordingsHistory({
                 {/* Audio Player Strip */}
                 {audioSrc && (
                   <div className="bg-slate-50/70 px-5 py-2.5 border-t border-slate-100 flex items-center gap-3">
-                    <Volume2 className="w-4 h-4 text-[#B91C1C] shrink-0" />
+                    <Volume2 className="w-4 h-4 text-[#0D9488] shrink-0" />
                     <audio 
                       controls 
                       src={audioSrc} 
@@ -325,7 +325,7 @@ export default function ClientRecordingsHistory({
                     {rec.resumen && (
                       <div className="space-y-1.5">
                         <h4 className="font-display text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                          <FileText className="w-3.5 h-3.5 text-[#B91C1C]" /> Resumen Ejecutivo
+                          <FileText className="w-3.5 h-3.5 text-[#0D9488]" /> Resumen Ejecutivo
                         </h4>
                         <p className="text-xs text-slate-700 bg-white p-3.5 rounded-xl border border-slate-200 leading-relaxed">
                           {rec.resumen}
@@ -368,7 +368,7 @@ export default function ClientRecordingsHistory({
                     {/* Transcripción Whisper Completa */}
                     {rec.transcripcion && (
                       <details className="border border-slate-200 rounded-xl bg-white p-3">
-                        <summary className="text-xs font-semibold text-slate-700 cursor-pointer hover:text-[#B91C1C]">
+                        <summary className="text-xs font-semibold text-slate-700 cursor-pointer hover:text-[#0D9488]">
                           Ver Transcripción Completa de Whisper
                         </summary>
                         <div className="mt-3 p-3 bg-slate-50 rounded-lg text-xs font-mono text-slate-700 max-h-60 overflow-y-auto whitespace-pre-wrap leading-relaxed border border-slate-100">

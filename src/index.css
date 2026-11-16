@@ -2,81 +2,132 @@
 
 @layer base {
   :root {
-    --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --color-borravino: #6B1D2F;
-    --color-borravino-hover: #541524;
-    --color-borravino-light: #F9EFF2;
-    --color-borravino-border: #E6C5CD;
-    --color-bg-app: #EEF2F6;
+    --color-nordic-navy: #17324D;
+    --color-nordic-navy-hover: #0F2438;
+    --color-nordic-navy-soft: #EDF3F8;
+    --color-nordic-teal: #0D9488;
+    --color-nordic-teal-hover: #0F766E;
+    --color-nordic-teal-soft: #F0FDFA;
+    --color-bg-app: #F8FAFC;
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: #EEF2F6;
+    background-color: #F8FAFC;
     color: #0F172A;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.022em;
   }
-  
+
   html {
     scroll-behavior: smooth;
   }
 
-  /* Executive Slate Custom Scrollbar */
+  /* Tabular numbers for financial, diagnostic & KPI precision */
+  .font-mono, td, [data-numeric="true"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Refined Nordic Minimal Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
-  
+
   ::-webkit-scrollbar-track {
-    background: #E2E8F0;
+    background: transparent;
   }
-  
+
   ::-webkit-scrollbar-thumb {
-    background: #94A3B8;
+    background: #CBD5E1;
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #64748B;
+    background: #94A3B8;
   }
 }
 
-/* Executive Borravino Accent Utilities */
-.btn-borravino {
-  background-color: #6B1D2F;
+/* Figma Surface & Elevation Utilities */
+.figma-card {
+  background-color: #FFFFFF;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 1rem;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 8px 24px -6px rgba(23, 50, 77, 0.05);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.figma-card-hover:hover {
+  border-color: rgba(13, 148, 136, 0.35);
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.04),
+    0 14px 32px -8px rgba(23, 50, 77, 0.09);
+}
+
+.figma-glass {
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.btn-nordic-primary {
+  background: linear-gradient(180deg, #1E3F60 0%, #17324D 100%);
   color: #FFFFFF;
-  transition: all 0.2s ease;
-}
-.btn-borravino:hover {
-  background-color: #541524;
-}
-
-.bg-borravino {
-  background-color: #6B1D2F;
+  border: 1px solid #12283E;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: all 0.18s ease;
 }
 
-.text-borravino {
-  color: #6B1D2F;
+.btn-nordic-primary:hover {
+  background: linear-gradient(180deg, #17324D 0%, #0F2438 100%);
+  transform: translateY(-0.5px);
 }
 
-.border-borravino {
-  border-color: #6B1D2F;
+.btn-nordic-teal {
+  background: linear-gradient(180deg, #14B8A6 0%, #0D9488 100%);
+  color: #FFFFFF;
+  border: 1px solid #0F766E;
+  box-shadow: 0 1px 2px rgba(13, 148, 136, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: all 0.18s ease;
 }
 
-.shadow-executive {
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+.btn-nordic-teal:hover {
+  background: linear-gradient(180deg, #0D9488 0%, #0F766E 100%);
+  transform: translateY(-0.5px);
 }
 
-.shadow-executive-hover {
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+/* Global Harmonization: Soften legacy harsh 2px black borders & heavy shadows into crisp Figma 1px surfaces */
+.border-2.border-zinc-900,
+.border-2.border-slate-900,
+.border-2.border-black {
+  border-width: 1px !important;
+  border-color: #E2E8F0 !important;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 8px 24px -6px rgba(23, 50, 77, 0.05) !important;
 }
 
-.border-slate-subtle {
-  border: 1px solid #E2E8F0;
+.shadow-crimson,
+.shadow-obsidian {
+  box-shadow:
+    0 2px 6px rgba(15, 23, 42, 0.05),
+    0 12px 28px -6px rgba(23, 50, 77, 0.08) !important;
 }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

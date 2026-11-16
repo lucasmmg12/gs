@@ -6,6 +6,7 @@ import {
   ShieldCheck, ShieldAlert, Mic, Square
 } from 'lucide-react';
 import { generateExcelReport, generatePdfReport } from '../lib/reportGenerator';
+import { resolveGrowySmartResponse } from '../lib/growyLocalBrain';
 
 interface MessageAttachment {
   type: 'excel' | 'pdf';
@@ -19,25 +20,33 @@ interface Message {
   attachment?: MessageAttachment;
 }
 
-const QUICK_ACTIONS = [
-  { label: '🎯 OMB (Rev 0)', prompt: 'Mostrame el estado actual del OMB (Objetivo Más Bárbaro - Visión a 3 años), las revisiones históricas (Rev A a Rev 0) y el consenso entre socios.' },
-  { label: '📐 Pentágono Matemático', prompt: 'Calculá la evolución matemática del Pentágono según las acciones ponderadas del Master Plan y su porcentaje de incidencia por eje: ΔEje = (10 - Base) * SUM(Incidencia% * Avance%).' },
-  { label: '📁 Documentos RAG', prompt: 'Consultá el repositorio documental del cliente y listame los archivos indexados por ámbito (Global, por Área del 1 al 10 o Pregunta).' },
-  { label: '⚖️ Cierre y Filtro Humano', prompt: 'Consultá las últimas sugerencias de actualización diagnóstica detectadas en reuniones para validación y aprobación del consultor humano.' },
+const CONSULTANT_QUICK_ACTIONS = [
+  { label: '🧭 Flujo Consultor 0→4', prompt: 'Explicame paso a paso cómo debe trabajar el Consultor GS desde Etapa 0 hasta Etapa 4 y cómo liberar entregables al cliente.' },
+  { label: '🎯 OMV & 8 Targets CVA', prompt: 'Mostrame el estado actual del OMV (Objetivo Material Visualizado en tiempo presente) y los 8 Valores TARGET a 3 años.' },
+  { label: '📐 Puente AVANCE-EJES', prompt: 'Calculá la evolución matemática del Pentágono y el puente AVANCE-EJES según las acciones ponderadas del Master Plan.' },
+  { label: '👤 Cómo opera el Cliente', prompt: 'Explicame cómo funciona el Portal y la autogestión del Cliente (Reportar Avance, Documentos, Autoevaluación y Preparar Reunión IA).' },
+  { label: '📑 Los 4 Entregables GS', prompt: 'Detallame los 4 entregables oficiales exportables (.XLSX de 6 hojas con fórmulas y los 3 documentos Word .DOCX).' },
   { label: '📊 Master Plan en Excel', prompt: 'Generame una planilla Excel (.xlsx) completa con todas las tareas del Master Plan Estratégico de la empresa organizada por ejes.' },
-  { label: '📑 Informe Diagnóstico en PDF', prompt: 'Generame un informe ejecutivo en PDF de presentación formal con el Diagnóstico 360°, el estado de madurez IME y el resumen de la empresa.' },
-  { label: '🛡️ Matriz de Riesgos en Excel', prompt: 'Generame un Excel con la Matriz de Riesgos de la empresa con nivel de riesgo, causas y planes de contingencia.' }
+];
+
+const CLIENT_QUICK_ACTIONS = [
+  { label: '🧭 Guía de mi Portal', prompt: 'Explicame cómo usar mi Portal Ejecutivo y cómo funciona mi autogestión paso a paso.' },
+  { label: '🎯 Mi OMV y 8 Targets', prompt: 'Mostrame el resumen de mi Visión OMV 2029 y mis 8 Valores TARGET a 3 años.' },
+  { label: '📐 Mi Pentágono e IME', prompt: 'Explicame cómo están mi Índice de Madurez (IME), mi Índice de Riesgo (IRE) y el avance de mi Master Plan.' },
+  { label: '✅ Cómo reportar avances', prompt: '¿Cómo reporto avances de mis tareas del Master Plan y cómo lo valida mi Consultor GS?' },
 ];
 
 interface GrowyChatProps {
   activeClientId?: string;
   activeClientName?: string;
+  roleMode?: 'consultant' | 'client';
 }
 
-export default function GrowyChat({ activeClientId, activeClientName }: GrowyChatProps) {
+export default function GrowyChat({ activeClientId, activeClientName, roleMode = 'consultant' }: GrowyChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [resolvedClientName, setResolvedClientName] = useState(activeClientName || '');
+  const quickActions = roleMode === 'client' ? CLIENT_QUICK_ACTIONS : CONSULTANT_QUICK_ACTIONS;
 
   useEffect(() => {
     if (activeClientId && !activeClientName) {
@@ -54,11 +63,14 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
     }
   }, [activeClientId, activeClientName]);
 
-  const [messages, setMessages] = useState<Message[]>([
-    { 
-      role: 'assistant', 
-      content: '¡Hola! Soy Growy, tu copiloto de inteligencia estratégica y analítica de Consultora GS.\n\nEstoy 100% actualizado con la metodología GS:\n• 🎯 **OMB (Objetivo Más Bárbaro)**: Visión trienal, control de revisiones (Rev A → Rev 0), unificación de socios y podcast.\n• ⚖️ **Filtro Humano**: Mitigación del margen de error (~15%) de la IA; sugerencias con citas textuales y validación obligatoria del consultor.\n• 📐 **Pentágono Matemático**: Cálculo determinístico según incidencias ponderadas: ΔEje = (10 - Base) × ∑(% Incidencia × % Avance).\n• 📁 **Gestor Documental & RAG**: Aislamiento estricto por cliente y ámbito (Global / Áreas 1..10).\n• 🎙️ **Comandos de Voz**: Dictame órdenes directamente con el micrófono (Whisper).\n\n¿Qué empresa o módulo querés analizar hoy?' 
-    }
+  const [messages, setMessages] = useState<Message[]>(() => [
+    {
+      role: 'assistant',
+      content:
+        roleMode === 'client'
+          ? `¡Hola! Soy **Growy**, el copiloto ejecutivo exclusivo de **${activeClientName || 'tu organización'}**.\n\nEstoy conectado en vivo a tu expediente validado en Base de Datos para asistirte paso a paso:\n• 🎯 **Visión OMV & 8 Targets CVA**: Tu norte estratégico a 3 años.\n• 📊 **Pentágono, IME e IRE**: Interpretación clara de tu madurez y riesgos.\n• ✅ **Autogestión**: Cómo reportar avances de tareas, subir documentos, completar tu autoevaluación mensual y preparar tus reuniones clave con IA.\n\n¿En qué paso te ayudo hoy?`
+          : `¡Hola! Soy **Growy**, tu copiloto metodológico de **Estudio GS (Manual Operativo v3.0)**.\n\nEstoy entrenado con todo el flujo **Consultor + Portal Cliente** y conectado a Supabase:\n• 🧭 **Ciclo Completo Etapas 0 a 4**: Relevamiento Comercial → Kickoff & OMV (8 KPIs CVA) → Diagnóstico 360° (Audio Texto Plano) → Matrices IME/IRE → Master Plan.\n• 📐 **Puente \`AVANCE-EJES\`**: Coherencia matemática \`MPE ↔ PENT-PE\` (±0,5 pp) y validación de avances del cliente.\n• 📑 **4 Entregables Oficiales**: Workbook Excel de **6 hojas con fórmulas** (\`.XLSX\`) + Minuta, Diagnóstico 360° y Brief en Word (\`.DOCX\`).\n\nTocá un acceso rápido o preguntame sobre cualquier paso.`,
+    },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -157,29 +169,52 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
       }));
 
       const { data, error } = await supabase.functions.invoke('growy-chat', {
-        body: { 
+        body: {
           messages: currentMessages,
-          organization_id: activeClientId
+          organization_id: activeClientId,
+          role_mode: roleMode,
         }
       });
 
-      if (error) throw error;
+      if (error || !data?.reply) {
+        throw error || new Error('Fallback to local GS brain');
+      }
 
       setMessages(prev => [
-        ...prev, 
-        { 
-          role: 'assistant', 
-          content: data.reply || 'He procesado tu solicitud.',
+        ...prev,
+        {
+          role: 'assistant',
+          content: data.reply,
           attachment: data.attachment
         }
       ]);
-    } catch (error: any) {
-      console.error('Error al consultar a Growy:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error.message || 'No se pudo conectar con el servicio'}` }]);
+    } catch {
+      // Guaranteed DB-backed + Manual v3.0 intelligent answer so Growy never fails
+      const smartReply = await resolveGrowySmartResponse({
+        query: userMessage,
+        roleMode,
+        organizationId: activeClientId,
+        organizationName: resolvedClientName || activeClientName,
+      });
+      setMessages(prev => [...prev, { role: 'assistant', content: smartReply }]);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Listen to contextual StepAssistantBanner triggers across the entire platform
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const customEv = ev as CustomEvent<{ prompt?: string }>;
+      const prompt = customEv.detail?.prompt;
+      setIsOpen(true);
+      if (prompt) {
+        sendQuery(prompt);
+      }
+    };
+    window.addEventListener('gs:ask-growy', handler);
+    return () => window.removeEventListener('gs:ask-growy', handler);
+  }, [activeClientId, resolvedClientName, roleMode, isLoading]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,20 +239,20 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 p-4 rounded-full bg-[#6B1D2F] text-white shadow-lg border-2 border-[#8A2B42] transition-all hover:bg-[#541524] hover:scale-105 z-50 flex items-center gap-2.5 ${
+        className={`fixed bottom-6 right-6 px-4 py-3.5 rounded-2xl bg-gradient-to-r from-[#17324D] to-[#0D9488] text-white shadow-[0_12px_30px_-6px_rgba(13,148,136,0.45)] border border-white/15 transition-all hover:scale-105 z-50 flex items-center gap-2.5 cursor-pointer ${
           isOpen ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'
         }`}
-        title="Abrir Asistente Virtual GS"
+        title="Abrir Copiloto Growy IA"
       >
-        <Bot className="h-6 w-6 stroke-[2.5]" />
-        <span className="font-display text-xs font-black uppercase tracking-wider hidden sm:inline">
-          Growy Asistente
+        <Bot className="h-5 w-5 stroke-[2.2]" />
+        <span className="font-display text-xs font-semibold tracking-wide hidden sm:inline">
+          Growy Copiloto
         </span>
       </button>
 
       {/* Chat Window */}
       <div
-        className={`fixed bottom-6 right-6 bg-white rounded-2xl shadow-obsidian flex flex-col overflow-hidden transition-all duration-300 transform origin-bottom-right z-50 border-2 border-slate-900 ${
+        className={`fixed bottom-6 right-6 bg-white rounded-3xl shadow-[0_24px_60px_-12px_rgba(23,50,77,0.25)] flex flex-col overflow-hidden transition-all duration-300 transform origin-bottom-right z-50 border border-slate-200/90 ${
           isExpanded 
             ? 'w-[92vw] sm:w-[650px] h-[85vh] max-h-[850px]' 
             : 'w-[92vw] sm:w-[420px] h-[640px] max-h-[82vh]'
@@ -226,30 +261,32 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 bg-slate-950 border-b-2 border-[#6B1D2F] text-white shrink-0 shadow-sm">
+        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#0F2438] via-[#17324D] to-[#115E59] text-white shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#6B1D2F] text-white rounded-xl shadow-xs">
-              <Bot className="h-5 w-5 stroke-[2.5]" />
+            <div className="p-2 bg-white/12 backdrop-blur-md border border-white/15 text-[#5EEAD4] rounded-xl">
+              <Bot className="h-5 w-5 stroke-[2.2]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-display font-black text-sm tracking-wider uppercase">Growy Asistente</h3>
-                <span className="bg-[#6B1D2F] text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded tracking-widest">IA + BD</span>
+                <h3 className="font-display font-bold text-sm tracking-tight">Growy Copiloto</h3>
+                <span className="bg-[#0D9488]/30 border border-[#2DD4BF]/40 text-[#5EEAD4] text-[9px] font-semibold px-2 py-0.5 rounded-full">
+                  IA + Cloud BD
+                </span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium">Consultora GS · Inteligencia Metodológica</p>
+              <p className="text-[11px] text-slate-300">Estudio GS · Asistente Metodológico</p>
             </div>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1.5 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white"
+              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-300 hover:text-white cursor-pointer"
               title={isExpanded ? 'Reducir ventana' : 'Expandir ventana'}
             >
               {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1.5 hover:bg-[#6B1D2F]/20 hover:text-[#E6C5CD] rounded-lg transition-colors text-slate-400"
+              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-slate-300 hover:text-white cursor-pointer"
               title="Cerrar chat"
             >
               <X className="h-5 w-5" />
@@ -259,64 +296,64 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
 
         {/* Security & Multi-tenant Isolation Strip */}
         {activeClientId ? (
-          <div className="bg-emerald-950 text-emerald-300 px-3 py-1.5 text-[10px] font-mono flex items-center justify-between border-b border-emerald-800 shrink-0">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              Aislamiento Activo: <strong className="text-white">{resolvedClientName || activeClientName || activeClientId.substring(0, 8)}</strong>
+          <div className="bg-[#F0FDFA] text-[#0F766E] px-3.5 py-2 text-[11px] flex items-center justify-between border-b border-teal-200/70 shrink-0">
+            <span className="flex items-center gap-1.5 truncate">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
+              Contexto aislado: <strong className="font-semibold text-[#17324D] truncate">{resolvedClientName || activeClientName || activeClientId.substring(0, 8)}</strong>
             </span>
-            <span className="text-[9px] uppercase font-bold text-emerald-400 bg-emerald-900/50 px-1.5 py-0.5 rounded">
-              Multi-tenant Seguro
+            <span className="text-[10px] font-semibold text-[#0D9488] bg-white px-2 py-0.5 rounded-full border border-teal-200/80 shrink-0">
+              Multi-tenant
             </span>
           </div>
         ) : (
-          <div className="bg-zinc-900 text-zinc-400 px-3 py-1.5 text-[10px] font-mono flex items-center gap-1.5 border-b border-zinc-800 shrink-0">
-            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-            <span>Modo Global • Selecciona un cliente para consultas contextuales aisladas</span>
+          <div className="bg-slate-50 text-slate-600 px-3.5 py-2 text-[11px] flex items-center gap-1.5 border-b border-slate-200/70 shrink-0">
+            <ShieldAlert className="w-3.5 h-3.5 text-[#0D9488]" />
+            <span>Modo Cartera Global · Seleccione un cliente para análisis aislado</span>
           </div>
         )}
 
         {/* Quick Action Chips */}
-        <div className="bg-zinc-100 border-b border-zinc-200 p-2.5 overflow-x-auto flex gap-1.5 shrink-0 no-scrollbar">
-          {QUICK_ACTIONS.map((action, idx) => (
+        <div className="bg-slate-50/80 border-b border-slate-100 p-2.5 overflow-x-auto flex gap-1.5 shrink-0 no-scrollbar">
+          {quickActions.map((action, idx) => (
             <button
               key={idx}
               onClick={() => sendQuery(action.prompt)}
               disabled={isLoading}
-              className="text-[11px] font-bold bg-white hover:bg-red-50 hover:text-red-700 hover:border-red-300 text-zinc-700 border border-zinc-200 rounded-lg px-2.5 py-1 whitespace-nowrap transition-colors shadow-2xs shrink-0 flex items-center gap-1.5 disabled:opacity-50"
+              className="text-[11px] font-medium bg-white hover:bg-[#F0FDFA] hover:text-[#0F766E] hover:border-teal-300 text-slate-700 border border-slate-200/90 rounded-full px-3 py-1 whitespace-nowrap transition-colors shadow-2xs shrink-0 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
             >
-              <Sparkles className="h-3 w-3 text-red-600 shrink-0" />
+              <Sparkles className="h-3 w-3 text-[#0D9488] shrink-0" />
               {action.label}
             </button>
           ))}
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-zinc-50">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#F8FAFC]">
           {messages.map((msg, idx) => (
             <div
               key={idx}
               className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.role === 'assistant' && (
-                <div className="h-8 w-8 rounded-full bg-zinc-950 text-red-500 border border-zinc-800 flex items-center justify-center shrink-0">
-                  <Bot className="h-4 w-4 stroke-[2.5]" />
+                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#17324D] to-[#0D9488] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <Bot className="h-4 w-4 stroke-[2.2]" />
                 </div>
               )}
               <div
-                className={`px-4 py-3 rounded-2xl max-w-[85%] text-xs sm:text-sm shadow-xs ${
+                className={`px-4 py-3 rounded-2xl max-w-[85%] text-xs sm:text-[13px] shadow-2xs ${
                   msg.role === 'user'
-                    ? 'bg-red-600 text-white rounded-br-none font-medium shadow-crimson'
-                    : 'bg-white border border-zinc-200 text-zinc-800 rounded-bl-none'
+                    ? 'bg-[#17324D] text-white rounded-br-sm font-medium'
+                    : 'bg-white border border-slate-200/90 text-slate-700 rounded-bl-sm'
                 }`}
               >
                 <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
 
                 {/* Attachment Card if present */}
                 {msg.attachment && (
-                  <div className="mt-3 p-3 rounded-xl border bg-zinc-50 border-zinc-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="mt-3 p-3 rounded-xl border bg-slate-50 border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <div className={`p-2.5 rounded-lg text-white shrink-0 ${
-                        msg.attachment.type === 'excel' ? 'bg-emerald-600' : 'bg-red-600'
+                      <div className={`p-2.5 rounded-xl text-white shrink-0 ${
+                        msg.attachment.type === 'excel' ? 'bg-[#0D9488]' : 'bg-[#17324D]'
                       }`}>
                         {msg.attachment.type === 'excel' ? (
                           <FileSpreadsheet className="h-5 w-5" />
@@ -326,20 +363,16 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-bold text-xs text-zinc-900 truncate">
+                          <p className="font-semibold text-xs text-slate-900 truncate">
                             {msg.attachment.fileName}
                           </p>
-                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
-                            msg.attachment.type === 'excel' 
-                              ? 'bg-emerald-100 text-emerald-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-[#F0FDFA] text-[#0F766E] border border-teal-200 uppercase">
                             {msg.attachment.type === 'excel' ? 'Excel .XLSX' : 'PDF Oficial'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-1">
-                          <CheckCircle className="h-3 w-3 text-emerald-500 inline" />
-                          Generado listo para descargar
+                        <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3 text-[#0D9488] inline" />
+                          Listo para descargar
                         </p>
                       </div>
                     </div>
@@ -347,20 +380,16 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
                     <button
                       type="button"
                       onClick={() => handleDownloadAttachment(msg.attachment!)}
-                      className={`px-3.5 py-2 rounded-lg text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-all shadow-xs shrink-0 ${
-                        msg.attachment.type === 'excel'
-                          ? 'bg-emerald-600 hover:bg-emerald-700'
-                          : 'bg-red-600 hover:bg-red-700 shadow-crimson'
-                      }`}
+                      className="btn-nordic-teal px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
                     >
                       <Download className="h-3.5 w-3.5" />
-                      Descargar {msg.attachment.type === 'excel' ? 'Excel' : 'PDF'}
+                      Descargar
                     </button>
                   </div>
                 )}
               </div>
               {msg.role === 'user' && (
-                <div className="h-8 w-8 rounded-full bg-zinc-950 text-white border border-zinc-800 flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 rounded-xl bg-[#EDF3F8] text-[#17324D] flex items-center justify-center shrink-0">
                   <User className="h-4 w-4" />
                 </div>
               )}
@@ -369,13 +398,13 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
 
           {isLoading && (
             <div className="flex gap-3 justify-start">
-              <div className="h-8 w-8 rounded-full bg-slate-950 text-[#DA9BAC] border border-slate-800 flex items-center justify-center shrink-0">
+              <div className="h-8 w-8 rounded-xl bg-[#17324D] text-[#5EEAD4] flex items-center justify-center shrink-0">
                 <Bot className="h-4 w-4" />
               </div>
-              <div className="px-4 py-3 rounded-2xl bg-white border border-slate-200 text-slate-700 rounded-bl-none shadow-xs flex items-center gap-2.5">
-                <Loader2 className="h-4 w-4 animate-spin text-[#6B1D2F]" />
-                <span className="text-xs text-slate-500 font-medium">
-                  Consultando base de datos y preparando respuesta...
+              <div className="px-4 py-3 rounded-2xl bg-white border border-slate-200 text-slate-600 rounded-bl-sm shadow-2xs flex items-center gap-2.5">
+                <Loader2 className="h-4 w-4 animate-spin text-[#0D9488]" />
+                <span className="text-xs font-medium">
+                  Consultando base de datos en tiempo real...
                 </span>
               </div>
             </div>
@@ -385,35 +414,32 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
 
         {/* Voice Dictation Banner */}
         {isVoiceRecording && (
-          <div className="px-4 py-2 bg-rose-50 border-t border-rose-200 flex items-center justify-between text-xs text-rose-800 animate-in fade-in">
+          <div className="px-4 py-2 bg-[#F0FDFA] border-t border-teal-200 flex items-center justify-between text-xs text-[#0F766E] animate-in fade-in">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
-              <span className="font-bold">
-                🎙️ Escuchando orden de voz ({voiceDuration}s)...
-              </span>
-              <span className="text-[11px] text-rose-600 hidden sm:inline">
-                "Growy, procesá la reunión de hoy y generá la minuta..."
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0D9488] animate-ping" />
+              <span className="font-semibold">
+                Escuchando dictado ({voiceDuration}s)...
               </span>
             </div>
             <button
               type="button"
               onClick={() => stopVoiceDictation(true)}
-              className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-xs"
+              className="btn-nordic-teal px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wider"
             >
-              Enviar Orden
+              Enviar
             </button>
           </div>
         )}
 
         {/* Input Area */}
-        <div className="p-3.5 bg-white border-t border-slate-200">
+        <div className="p-3.5 bg-white border-t border-slate-100">
           <form onSubmit={handleSubmit} className="flex items-center gap-2">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isVoiceRecording ? "Escuchando tu voz..." : "Preguntame sobre clientes, minutas o pedime un Excel/PDF..."}
-              className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#6B1D2F] focus:border-[#6B1D2F] bg-slate-50 text-slate-900 placeholder:text-slate-400"
+              placeholder={isVoiceRecording ? "Escuchando tu voz..." : "Consultá indicadores, etapas o pedí un reporte..."}
+              className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] bg-slate-50/70 text-slate-900 placeholder:text-slate-400"
               disabled={isLoading}
             />
 
@@ -421,20 +447,20 @@ export default function GrowyChat({ activeClientId, activeClientName }: GrowyCha
               type="button"
               onClick={isVoiceRecording ? () => stopVoiceDictation(true) : startVoiceDictation}
               disabled={isLoading}
-              className={`p-2.5 rounded-xl transition-all shrink-0 ${
+              className={`p-2.5 rounded-xl transition-all shrink-0 cursor-pointer ${
                 isVoiceRecording
-                  ? 'bg-rose-600 text-white animate-pulse shadow-crimson'
-                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 border border-zinc-200'
+                  ? 'bg-[#0D9488] text-white animate-pulse'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200/80'
               }`}
-              title={isVoiceRecording ? "Detener y Enviar Orden de Voz" : "Dictar orden por voz a Growy (Whisper)"}
+              title={isVoiceRecording ? "Detener y Enviar Orden de Voz" : "Dictar orden por voz a Growy"}
             >
-              {isVoiceRecording ? <Square className="h-4 w-4 fill-white" /> : <Mic className="h-4 w-4 text-[#6B1D2F]" />}
+              {isVoiceRecording ? <Square className="h-4 w-4 fill-white" /> : <Mic className="h-4 w-4 text-[#0D9488]" />}
             </button>
 
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="p-2.5 bg-[#6B1D2F] text-white rounded-xl hover:bg-[#541524] transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-xs"
+              className="btn-nordic-primary p-2.5 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed shrink-0 cursor-pointer"
               title="Enviar consulta"
             >
               <Send className="h-4 w-4" />

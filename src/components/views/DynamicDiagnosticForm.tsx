@@ -27,6 +27,8 @@ import { exportOfficialDiagnostic360Docx } from '../../lib/gsOfficialExporter';
 import { DEFAULT_OMV_TARGETS, LIKERT_1_TO_5_QUESTION_IDS } from '../../data/gsAxisMetadata';
 import type { ClientStage } from './OMBModule';
 import { supabase } from '../../lib/supabase';
+import { loadOrgWorkspaceFromDb, saveOrgWorkspaceToDb } from '../../lib/gsCloudSync';
+import { StepAssistantBanner } from '../StepAssistantBanner';
 
 export interface AISuggestionItem {
   id: string;
@@ -75,6 +77,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
   >({});
   const [areaKpiValues, setAreaKpiValues] = useState<Record<string, string>>({});
   const [exportingDocx, setExportingDocx] = useState(false);
+  const [dbSyncStatus, setDbSyncStatus] = useState<'synced' | 'saving'>('synced');
 
   const isDiagnosticClosed = stage === 'diagnostic_closed' || stage === 'master_plan_active';
 
@@ -96,12 +99,31 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
 
     async function loadFromDb() {
       try {
-        const { data } = await (supabase.from('diagnostic_responses') as any)
-          .select('answers')
-          .eq('organization_id', client.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const [{ data }, cloudWs] = await Promise.all([
+          (supabase.from('diagnostic_responses') as any)
+            .select('answers')
+            .eq('organization_id', client.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          loadOrgWorkspaceFromDb(client.id),
+        ]);
+
+        if (cloudWs?.qualitativeAnswers) {
+          const normalizedCloud: Record<number, { answer: string; quote: string; updatedAt: string }> = {};
+          Object.entries(cloudWs.qualitativeAnswers).forEach(([k, v]) => {
+            normalizedCloud[Number(k)] = {
+              answer: v.answer || '',
+              quote: v.quote || v.answer || '',
+              updatedAt: v.updatedAt || 'En BD',
+            };
+          });
+          setQualitativeMap((prev) => ({ ...prev, ...normalizedCloud }));
+        }
+
+        if (cloudWs?.areaKpis) {
+          setAreaKpiValues((prev) => ({ ...prev, ...cloudWs.areaKpis }));
+        }
 
         if (data?.answers && typeof data.answers === 'object') {
           const dbQual: Record<number, { answer: string; quote: string; updatedAt: string }> = {};
@@ -128,6 +150,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
   }, [client?.id]);
 
   const handleQualitativeChange = (questionId: number, text: string) => {
+    setDbSyncStatus('saving');
     setQualitativeMap((prev) => {
       const next = {
         ...prev,
@@ -138,15 +161,18 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
         },
       };
       localStorage.setItem(`gs_qualitative_answers_${client.id}`, JSON.stringify(next));
+      saveOrgWorkspaceToDb(client.id, { qualitativeAnswers: next }).then(() => setDbSyncStatus('synced'));
       return next;
     });
   };
 
   const handleAreaKpiChange = (areaId: string, kpiName: string, value: string) => {
     const key = `${areaId}_${kpiName}`;
+    setDbSyncStatus('saving');
     setAreaKpiValues((prev) => {
       const next = { ...prev, [key]: value };
       localStorage.setItem(`gs_area_kpis_${client.id}`, JSON.stringify(next));
+      saveOrgWorkspaceToDb(client.id, { areaKpis: next }).then(() => setDbSyncStatus('synced'));
       return next;
     });
   };
@@ -201,6 +227,17 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
+      <StepAssistantBanner
+        roleBadge="Consultor GS · Etapa 2"
+        stepTitle="Diagnóstico Integral 360° (10 Áreas · Nivelación + Narrativa + KPIs)"
+        whatToDo="Seleccione un área a la izquierda, marque el nivel de madurez o grabe una sesión de audio para autocompletar preguntas, registre la narrativa libre y cargue los KPIs numéricos."
+        autoAssistNote="Sus respuestas, notas cualitativas y KPIs se respaldan en tiempo real en Supabase y recalculan IME e IRE automáticamente."
+        growyPrompt={`Analizame el avance del Diagnóstico 360° de ${client.name}, su IME (${diagnosticResults.globalIme10}/10) y qué áreas priorizar.`}
+        dbSyncStatus={dbSyncStatus}
+        nextStepLabel="Ver Matrices & Riesgos"
+        onNextStep={onViewMatrices}
+      />
+
       {/* 1. Semáforo Rojo/Verde y Trazabilidad Multi-Consultor */}
       <QualityApprovalBadge
         moduleName="Formulario de Diagnóstico"
@@ -237,9 +274,9 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
         </div>
       ) : (
         onOpenAudioSession && (
-          <div className="bg-zinc-950 text-white border-2 border-[#6B1D2F] rounded-2xl p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="bg-[#17324D] text-white border-2 border-[#17324D] rounded-2xl p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <span className="font-display text-[10px] font-black uppercase tracking-widest text-red-400">
+              <span className="font-display text-[10px] font-black uppercase tracking-widest text-[#5EEAD4]">
                 Autocompletado Híbrido por Voz • 10 Áreas · Preguntas + Texto Libre + KPIs
               </span>
               <h3 className="font-display text-base font-black uppercase tracking-wide text-white">
@@ -252,7 +289,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
             <button
               type="button"
               onClick={onOpenAudioSession}
-              className="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shrink-0 shadow-lg hover:scale-105 transition-all cursor-pointer"
+              className="px-5 py-3 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white font-display text-xs font-black uppercase tracking-wider flex items-center gap-2 shrink-0 shadow-lg hover:scale-105 transition-all cursor-pointer"
             >
               <Mic className="w-4 h-4" />
               Grabar / Subir Audio de Sesión
@@ -267,18 +304,18 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
               <span className="font-display text-xs font-bold text-zinc-900 uppercase tracking-wider flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-red-600" />
+                <Sparkles className="w-4 h-4 text-[#0D9488]" />
                 {isDiagnosticClosed
                   ? 'Cobertura Consolidada del Diagnóstico PyME 360°'
                   : 'Avance del Diagnóstico Estratégico (8 a 10 Sesiones)'}
               </span>
-              <span className="font-display text-sm font-black text-red-600">
+              <span className="font-display text-sm font-black text-[#0D9488]">
                 {diagnosticResults.totalAnswered} / {diagnosticResults.totalQuestions} RESPONDIDAS ({diagnosticResults.progressPercentage}%)
               </span>
             </div>
             <div className="w-full bg-zinc-100 h-3 rounded-full overflow-hidden border border-zinc-200">
               <div
-                className="bg-red-600 h-full transition-all duration-500 rounded-full"
+                className="bg-[#0D9488] h-full transition-all duration-500 rounded-full"
                 style={{ width: `${diagnosticResults.progressPercentage}%` }}
               />
             </div>
@@ -288,22 +325,22 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="bg-zinc-950 border-2 border-zinc-800 px-3.5 py-2 rounded-xl text-center min-w-[112px]">
+            <div className="bg-[#17324D] border-2 border-zinc-800 px-3.5 py-2 rounded-xl text-center min-w-[112px]">
               <span className="font-display text-[10px] font-bold text-zinc-400 uppercase tracking-widest block">
                 IME (Madurez)
               </span>
               <div className="flex items-baseline justify-center gap-1 mt-0.5">
                 <span className="font-display text-lg font-black text-white">{diagnosticResults.globalIme}%</span>
-                <span className="font-display text-xs font-bold text-red-500">({diagnosticResults.globalIme10}/10)</span>
+                <span className="font-display text-xs font-bold text-[#14B8A6]">({diagnosticResults.globalIme10}/10)</span>
               </div>
             </div>
 
-            <div className="bg-zinc-950 border-2 border-red-900/60 px-3.5 py-2 rounded-xl text-center min-w-[112px]">
-              <span className="font-display text-[10px] font-bold text-red-400 uppercase tracking-widest block">
+            <div className="bg-[#17324D] border-2 border-teal-400/30 px-3.5 py-2 rounded-xl text-center min-w-[112px]">
+              <span className="font-display text-[10px] font-bold text-[#5EEAD4] uppercase tracking-widest block">
                 IRE (Riesgo)
               </span>
               <div className="flex items-baseline justify-center gap-1 mt-0.5">
-                <span className="font-display text-lg font-black text-red-500">{diagnosticResults.globalIre}%</span>
+                <span className="font-display text-lg font-black text-[#14B8A6]">{diagnosticResults.globalIre}%</span>
                 <span className="text-[10px] text-zinc-400 font-bold uppercase">Expos.</span>
               </div>
             </div>
@@ -313,7 +350,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                 type="button"
                 onClick={handleExportWordOfficial}
                 disabled={exportingDocx}
-                className="px-3.5 py-2.5 bg-[#6B1D2F] hover:bg-[#521523] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="px-3.5 py-2.5 bg-[#17324D] hover:bg-[#521523] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                 title="Descargar Formulario Oficial GS Diagnóstico 360° en Word (.docx)"
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -323,10 +360,10 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
               <button
                 type="button"
                 onClick={() => exportDiagnostic360ExecutiveReport(client, diagnosticResults, auditConsultants)}
-                className="px-3 py-2.5 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 border border-zinc-700 shadow-sm transition-all cursor-pointer"
+                className="px-3 py-2.5 bg-[#17324D] hover:bg-[#17324D] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 border border-zinc-700 shadow-sm transition-all cursor-pointer"
                 title="Descargar Resumen Ejecutivo en PDF"
               >
-                <Download className="w-3.5 h-3.5 text-red-500" />
+                <Download className="w-3.5 h-3.5 text-[#14B8A6]" />
                 PDF
               </button>
 
@@ -342,7 +379,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
 
               <button
                 onClick={onViewMatrices}
-                className="px-3.5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all shrink-0 cursor-pointer"
+                className="px-3.5 py-2.5 bg-[#0D9488] hover:bg-[#0F766E] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-all shrink-0 cursor-pointer"
               >
                 Matrices
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -373,14 +410,14 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                 onClick={() => setSelectedAreaId(area.id)}
                 className={`w-full text-left p-3 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
                   isSelected
-                    ? 'bg-black text-white shadow-md border-l-4 border-l-red-600'
+                    ? 'bg-[#17324D] text-white shadow-md border-l-4 border-l-[#0D9488]'
                     : 'text-zinc-700 hover:bg-zinc-100'
                 }`}
               >
                 <div className="flex items-center gap-2.5 truncate">
                   <span
                     className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-bold ${
-                      isSelected ? 'bg-red-600 text-white' : 'bg-zinc-200 text-zinc-800'
+                      isSelected ? 'bg-[#0D9488] text-white' : 'bg-zinc-200 text-zinc-800'
                     }`}
                   >
                     {area.number}
@@ -390,7 +427,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
 
                 <div className="flex items-center gap-1.5 shrink-0 ml-1">
                   {isCompleted ? (
-                    <CheckCircle2 className={`w-4 h-4 ${isSelected ? 'text-red-500' : 'text-emerald-600'}`} />
+                    <CheckCircle2 className={`w-4 h-4 ${isSelected ? 'text-[#14B8A6]' : 'text-emerald-600'}`} />
                   ) : (
                     <span className={`text-[10px] font-mono font-bold ${isSelected ? 'text-zinc-400' : 'text-zinc-500'}`}>
                       {areaScore?.answeredCount || 0}/{areaScore?.totalQuestions || 0}
@@ -406,7 +443,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
           <div className="border-b-2 border-zinc-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 bg-black text-red-400 font-display text-xs font-bold rounded-md uppercase tracking-wider">
+                <span className="px-2.5 py-0.5 bg-[#17324D] text-[#5EEAD4] font-display text-xs font-bold rounded-md uppercase tracking-wider">
                   Área {currentArea.number}
                 </span>
                 <h2 className="text-xl font-bold font-display text-zinc-950 uppercase tracking-wide">
@@ -419,7 +456,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
             {(() => {
               const currentScore = diagnosticResults.areaScores.find((a) => a.areaId === currentArea.id);
               return (
-                <div className="flex items-center gap-3 bg-zinc-900 text-white px-4 py-2 rounded-xl border border-zinc-800 shrink-0">
+                <div className="flex items-center gap-3 bg-[#17324D] text-white px-4 py-2 rounded-xl border border-zinc-800 shrink-0">
                   <div className="text-right">
                     <span className="text-[10px] text-zinc-400 block font-bold font-display uppercase tracking-wider">
                       IME Área
@@ -433,7 +470,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                     <span className="text-[10px] text-zinc-400 block font-bold font-display uppercase tracking-wider">
                       IRE Área
                     </span>
-                    <span className="text-base font-black font-display text-red-500">
+                    <span className="text-base font-black font-display text-[#14B8A6]">
                       {currentScore?.ireScore || 0}%
                     </span>
                   </div>
@@ -460,7 +497,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                         <span className="text-[11px] text-zinc-800 font-bold leading-tight truncate" title={kpi.name}>
                           {kpi.name}
                         </span>
-                        <span className="font-mono text-[10px] font-semibold text-[#6B1D2F] shrink-0">
+                        <span className="font-mono text-[10px] font-semibold text-[#17324D] shrink-0">
                           {kpi.unit}
                         </span>
                       </div>
@@ -469,7 +506,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                         value={areaKpiValues[key] ?? kpi.baseline ?? ''}
                         onChange={(e) => handleAreaKpiChange(currentArea.id, kpi.name, e.target.value)}
                         placeholder={`Valor actual (${kpi.unit})`}
-                        className="w-full rounded border border-zinc-200 px-2 py-1 text-xs font-mono text-zinc-900 focus:border-[#6B1D2F] focus:outline-none"
+                        className="w-full rounded border border-zinc-200 px-2 py-1 text-xs font-mono text-zinc-900 focus:border-[#17324D] focus:outline-none"
                       />
                     </div>
                   );
@@ -497,7 +534,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                   key={question.id}
                   className={`p-5 rounded-xl border-2 transition-all ${
                     isSubquestion
-                      ? 'bg-zinc-50 border-red-400 ml-6 border-l-4 border-l-red-600'
+                      ? 'bg-zinc-50 border-red-400 ml-6 border-l-4 border-l-[#0D9488]'
                       : selectedValue || qualitativeMap[question.id]?.answer
                       ? 'bg-white border-zinc-900 shadow-xs'
                       : 'bg-zinc-50 border-dashed border-zinc-300'
@@ -507,7 +544,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                     <div className="flex items-start gap-2.5">
                       <span
                         className={`text-xs font-mono font-black px-2 py-0.5 rounded ${
-                          isSubquestion ? 'bg-red-600 text-white' : 'bg-black text-white'
+                          isSubquestion ? 'bg-[#0D9488] text-white' : 'bg-[#17324D] text-white'
                         }`}
                       >
                         P{question.id} · {question.code}
@@ -516,7 +553,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                         <h4 className="text-sm font-bold text-zinc-950 leading-snug">{question.title}</h4>
                         {question.guide && (
                           <p className="text-[11px] text-zinc-500 italic mt-1 flex items-center gap-1.5 font-medium">
-                            <HelpCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                            <HelpCircle className="w-3.5 h-3.5 text-[#0D9488] shrink-0" />
                             {question.guide}
                           </p>
                         )}
@@ -530,7 +567,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                         </span>
                       )}
                       {question.kpi && (
-                        <span className="px-2.5 py-1 bg-red-50 border border-red-200 text-red-700 text-[10px] font-bold font-display uppercase tracking-wider rounded-md">
+                        <span className="px-2.5 py-1 bg-[#F0FDFA] border border-teal-200/80 text-[#0F766E] text-[10px] font-bold font-display uppercase tracking-wider rounded-md">
                           KPI: {question.kpi}
                         </span>
                       )}
@@ -552,7 +589,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                       value={qualitativeMap[question.id]?.answer || ''}
                       onChange={(e) => handleQualitativeChange(question.id, e.target.value)}
                       placeholder="Redacte o edite aquí la respuesta abierta relevada en sesión (o grabe el audio para autocompletarla)..."
-                      className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-800 leading-relaxed focus:border-[#6B1D2F] focus:outline-none"
+                      className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-800 leading-relaxed focus:border-[#17324D] focus:outline-none"
                     />
                   </div>
 
@@ -571,13 +608,13 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                             onClick={() => onAnswerChange(question.id, option.value)}
                             className={`p-2.5 rounded-xl text-left text-xs font-medium transition-all flex items-start gap-2 border-2 ${
                               isOptionSelected
-                                ? 'bg-black text-white border-black shadow-md ring-2 ring-red-600'
-                                : 'bg-white text-zinc-800 border-zinc-200 hover:border-zinc-900 hover:bg-zinc-50'
+                                ? 'bg-[#17324D] text-white border-[#17324D] shadow-md ring-2 ring-[#0D9488]'
+                                : 'bg-white text-zinc-800 border-zinc-200 hover:border-[#0D9488]/50 hover:bg-zinc-50'
                             }`}
                           >
                             <div
                               className={`w-4 h-4 rounded-full border-2 mt-0.5 flex items-center justify-center shrink-0 ${
-                                isOptionSelected ? 'border-red-500 bg-red-600' : 'border-zinc-400 bg-white'
+                                isOptionSelected ? 'border-[#0D9488] bg-[#0D9488]' : 'border-zinc-400 bg-white'
                               }`}
                             >
                               {isOptionSelected && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
@@ -607,7 +644,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
           <div className="pt-4 border-t-2 border-zinc-100 flex flex-wrap items-center justify-between gap-3">
             <span className="text-xs text-zinc-600 font-medium">
               Progreso de <strong className="text-zinc-950 font-bold uppercase">{currentArea.name}</strong>:{' '}
-              <strong className="text-red-600 font-mono font-bold">
+              <strong className="text-[#0D9488] font-mono font-bold">
                 {diagnosticResults.areaScores.find((a) => a.areaId === currentArea.id)?.answeredCount || 0} de{' '}
                 {diagnosticResults.areaScores.find((a) => a.areaId === currentArea.id)?.totalQuestions || 0}
               </strong>
@@ -618,7 +655,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
                 type="button"
                 onClick={handleExportWordOfficial}
                 disabled={exportingDocx}
-                className="px-4 py-2.5 bg-[#6B1D2F] hover:bg-[#521523] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                className="px-4 py-2.5 bg-[#17324D] hover:bg-[#521523] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
               >
                 <FileText className="w-4 h-4" />
                 Exportar Word 360° (.DOCX)
@@ -626,9 +663,9 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
               <button
                 type="button"
                 onClick={onSave}
-                className="px-5 py-2.5 bg-black hover:bg-zinc-800 text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shadow-sm transition-colors border border-zinc-700 cursor-pointer"
+                className="px-5 py-2.5 bg-[#17324D] hover:bg-[#0F2438] text-white rounded-xl text-xs font-bold font-display uppercase tracking-wider flex items-center gap-2 shadow-sm transition-colors border border-zinc-700 cursor-pointer"
               >
-                <Save className="w-4 h-4 text-red-500" />
+                <Save className="w-4 h-4 text-[#14B8A6]" />
                 Guardar Diagnóstico
               </button>
             </div>
