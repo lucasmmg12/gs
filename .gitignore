@@ -30,3 +30,6 @@ extracted.txt
 *.sln
 *.sw?
 scratch/
+
+# Client test audio archives (do not commit raw .m4a recordings)
+01 Pruebas-*/

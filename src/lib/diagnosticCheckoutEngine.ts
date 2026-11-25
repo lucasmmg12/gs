@@ -44,6 +44,9 @@ export interface DiagnosticCheckoutSuggestion {
   status: 'pending' | 'accepted' | 'rejected' | 'modified';
   editedAnswer?: string;
   editedOption?: ResponseOptionValue;
+  sourceSessionId?: string;
+  sourceSessionTitle?: string;
+  additionalEvidences?: { sessionTitle: string; quote: string; answer?: string }[];
 }
 
 export interface CheckoutAnalysisResult {
@@ -72,106 +75,120 @@ function normalizeText(str: string): string {
  * Specific semantic triggers for the 100 Diagnostic Questions (Q1..Q100)
  */
 const QUESTION_SEMANTIC_TRIGGERS: Record<number, string[]> = {
-  1: ['vision', 'mision', 'proposito', 'rumbo', 'norte estrategico', 'lema'],
-  2: ['objetivos estrategicos', 'metas anuales', 'objetivos a 12 meses', 'tres objetivos', 'metas del ano'],
-  3: ['vision compartida', 'alineacion entre socios', 'vision de largo plazo', 'socios alineados'],
-  4: ['horas por semana', 'trabajar en la empresa', 'apagar incendios', 'operacion diaria', 'tiempo en estrategia', 'delegar'],
+  // Área 1: Dirección y Estrategia (1-10)
+  1: ['vision', 'mision', 'proposito', 'rumbo', 'norte estrategico', 'omv'],
+  2: ['objetivos estrategicos', 'metas anuales', 'objetivos a 12 meses', 'proximos 12 meses', 'tres objetivos'],
+  3: ['vision compartida', 'alineacion entre socios', 'vision de largo plazo', 'socios'],
+  4: ['horas por semana', 'trabajar en la empresa', 'apagar incendios', 'operacion diaria', 'delegar', 'estrategia'],
   5: ['reuniones estrategicas', 'directorio', 'sesiones mensuales', 'comite directivo', 'agenda fija'],
-  6: ['urgencia operativa', 'dia a dia', 'absorbe', 'urgencias'],
+  6: ['urgencia operativa', 'dia a dia', 'absorbe', 'urgencias', 'incendio'],
   7: ['toma de decisiones', 'quien decide', 'decisiones importantes', 'autonomia'],
   8: ['organigrama', 'estructura organizativa', 'roles y responsabilidades', 'jerarquia'],
-  9: ['valores', 'cultura', 'no negociables', 'principios'],
-  10: ['facturacion', 'ventas anuales', 'estacionalidad', 'facturamos', 'ingresos anuales'],
-  11: ['fuentes de ingreso', 'lineas de negocio', 'mix de ventas', 'unidades de negocio'],
-  12: ['margen bruto', 'margen neto', 'rentabilidad', 'utilidad', 'margenes'],
-  13: ['costos fijos', 'punto de equilibrio', 'estructura de costos', 'gastos fijos'],
-  14: ['costos ocultos', 'ineficiencias', 'perdida de dinero', 'tiempos muertos', 'desperdicio'],
-  15: ['registro de ingresos', 'egresos', 'sistema contable', 'excel financiero', 'contabilidad'],
-  16: ['flujo de caja', 'cash flow', 'proyeccion financiera', 'reserva', 'runway', 'liquidez'],
-  17: ['finanzas personales', 'cuenta bancaria', 'retiro de socios', 'honorarios', 'dividendos', 'caja unica'],
-  18: ['deudas', 'prestamos', 'creditos', 'pasivos', 'compromisos financieros', 'bancos'],
-  19: ['salud financiera', 'situacion financiera', 'solvencia'],
-  20: ['procesos principales', 'mapa de procesos', 'paso a paso', 'cadena de valor', 'circuito operativo'],
-  21: ['capacidad maxima', 'proyectos simultaneos', 'capacidad instalada', 'techo operativo', 'obras simultaneas'],
-  22: ['minimo de facturacion', 'mvp operativo', 'cubrir costos'],
-  23: ['reproceso', 'errores operativos', 'correcciones', 'fallas de calidad', 'rehacer'],
-  24: ['indicadores de calidad', 'certificacion', 'iso 9001', 'normas de calidad', 'estandar de calidad'],
-  25: ['procesos documentados', 'estandarizados', 'procedimientos operativos'],
-  26: ['cuellos de botella', 'donde se rompe', 'trabas operativas', 'demoras en produccion'],
-  27: ['personas clave', 'dependencia', 'en su cabeza', 'imprescindible', 'ausencia'],
-  28: ['cantidad de empleados', 'dotacion', 'plantilla', 'personal', 'colaboradores', 'cuantas personas'],
-  29: ['descripcion de puesto', 'roles por escrito', 'funciones definidas', 'perfiles de puesto'],
-  30: ['mandos medios', 'lideres de area', 'jefes', 'supervisores', 'autonomia del equipo'],
-  31: ['induccion', 'onboarding de personal', 'nuevo integrante', 'incorporacion'],
-  32: ['capacitacion', 'formacion', 'entrenamiento', 'horas de capacitacion'],
-  33: ['clima laboral', 'ambiente de trabajo', 'motivacion del equipo'],
-  34: ['rotacion de personal', 'bajas', 'renuncias', 'desvinculaciones'],
-  35: ['retener talento', 'fidelizar empleados', 'beneficios al personal'],
-  36: ['propuesta de valor', 'diferencial', 'por que nos eligen', 'ventaja competitiva'],
-  37: ['segmento de mercado', 'posicionamiento', 'mercado objetivo', 'target'],
-  38: ['conseguir clientes', 'prospeccion', 'boca a boca', 'canales de venta', 'captacion'],
-  39: ['cotizaciones', 'presupuestos enviados', 'tasa de conversion', 'cierres de venta'],
-  40: ['ciclo de venta', 'tiempo de cierre', 'demora en adjudicar'],
-  41: ['pagina web', 'redes sociales', 'canales digitales', 'leads', 'consultas online'],
-  42: ['marketing', 'inversion publicitaria', 'publicidad', 'campanas'],
-  43: ['estrategia comercial', 'fuerza de ventas', 'vendedores', 'equipo comercial'],
-  44: ['principales clientes', 'concentracion de cartera', 'cliente mas grande', 'dependencia de clientes'],
-  45: ['recompra', 'clientes recurrentes', 'frecuencia de compra', 'retencion de clientes'],
-  46: ['satisfaccion del cliente', 'encuestas', 'nps', 'feedback de clientes'],
-  47: ['reclamos', 'quejas', 'postventa', 'tiempo de resolucion'],
-  48: ['fidelizar clientes', 'mantenimiento postventa', 'seguimiento post entrega'],
-  49: ['instructivos escritos', 'procedimientos escritos', 'manuales'],
-  50: ['manual de operaciones', 'manual de calidad', 'actualizacion de manuales'],
-  51: ['checklists', 'listas de control', 'trabajar de la misma manera'],
-  52: ['certificacion iso', 'habilitaciones', 'normativa iso'],
-  53: ['madurez de sistemas', 'sistemas de gestion'],
-  54: ['seguimiento de proyectos', 'tablero de proyectos', 'planificacion de obras', 'gantt'],
-  55: ['fuera de plazo', 'fuera de presupuesto', 'atrasos en entregas', 'desvios de obra'],
-  56: ['software', 'erp', 'sistemas informaticos', 'herramientas digitales'],
-  57: ['silos', 'integracion de sistemas', 'doble carga', 'datos duplicados'],
-  58: ['digitalizado', 'papel', 'planillas sueltas'],
-  59: ['inteligencia artificial', 'chatgpt', 'claude', 'gemini', 'automatizacion con ia'],
-  60: ['dolores tecnologicos', 'problemas de sistemas', 'fallas informaticas'],
-  61: ['proveedores criticos', 'insumos criticos', 'cinco proveedores'],
-  62: ['proveedores alternativos', 'acuerdos con proveedores', 'desarrollo de proveedores'],
-  63: ['gestion de compras', 'circuito de compras', 'aprobacion de compras', 'abastecimiento'],
-  64: ['inventario', 'stock', 'almacen', 'deposito', 'rotacion de stock'],
-  65: ['condiciones de pago', 'plazo de pago a proveedores', 'calce financiero', 'dias de pago'],
-  66: ['regulaciones', 'normativas', 'leyes', 'seguridad e higiene', 'art', 'habilitaciones legales'],
-  67: ['cambio politico', 'gobierno', 'licitaciones publicas', 'contexto politico'],
-  68: ['inflacion', 'tipo de cambio', 'dolar', 'redeterminacion de precios', 'ajuste por inflacion'],
-  69: ['crecimiento del sector', 'mercado en crecimiento', 'tendencia del sector'],
-  70: ['tendencias sociales', 'sustentabilidad', 'medio ambiente', 'nuevos habitos'],
-  71: ['tecnologia emergente', 'disrupcion', 'innovacion tecnologica'],
-  72: ['competidores', 'competencia directa', 'contra quien competimos'],
-  73: ['oportunidades de mercado', 'nuevos mercados', 'expansion'],
-  74: ['intensidad competitiva', 'guerra de precios', 'rivalidad'],
-  75: ['tres mayores dolores', 'principales dolores', 'problemas mas graves', 'urgencias hoy'],
-  76: ['freno al crecimiento', 'limitacion para crecer', 'techo de crecimiento'],
-  77: ['superpoder', 'lo que mejor hacemos', 'fortaleza principal'],
-  78: ['algo adicional', 'comentario final', 'observacion importante'],
-  79: ['protocolo de socios', 'acuerdo societario', 'sucesion', 'protocolo familiar', 'acuerdo de accionistas'],
-  80: ['presupuesto anual', 'tablero financiero', 'control presupuestario', 'desvios mensuales'],
-  81: ['mantenimiento preventivo', 'mantenimiento de equipos', 'maquinaria', 'flota'],
-  82: ['prevencion de accidentes', 'seguridad en obra', 'epp', 'riesgos operativos'],
-  83: ['evaluacion de desempeno', 'feedback al personal', 'evaluaciones anuales'],
-  84: ['escala salarial', 'remuneraciones', 'premios', 'comisiones', 'incentivos'],
-  85: ['crm', 'embudo de ventas', 'pipeline comercial', 'seguimiento de leads'],
-  86: ['lista de precios', 'politica de descuentos', 'condiciones comerciales'],
-  87: ['segmentacion abc', 'cartera abc', 'clasificacion de clientes'],
-  88: ['contratos con clientes', 'ordenes de compra', 'sla', 'nivel de servicio'],
-  89: ['alta de clientes', 'onboarding de clientes', 'bienvenida de clientes'],
-  90: ['cobranzas', 'cuentas por cobrar', 'mora', 'plazo de cobro', 'dso'],
-  91: ['auditorias internas', 'control de procesos', 'revision de procedimientos'],
-  92: ['no conformidades', 'causa raiz', 'mejora continua'],
-  93: ['medianera conceptual', 'procesos antes que personas', 'organigrama de procesos'],
-  94: ['backups', 'ciberseguridad', 'seguridad informatica', 'copias de seguridad'],
-  95: ['tableros en tiempo real', 'reportes automaticos', 'bi', 'indicadores en vivo'],
-  96: ['nube', 'google drive', 'repositorio documental', 'archivos compartidos'],
-  97: ['inversion tecnologica', 'renovacion de equipos', 'hardware'],
-  98: ['evaluacion de proveedores', 'calificacion de proveedores', 'cumplimiento de proveedores'],
-  99: ['control de recepcion', 'recepcion de materiales', 'calidad de insumos'],
-  100: ['alianzas con proveedores', 'acuerdos anuales de compra', 'partners estrategicos']
+  9: ['valores', 'cultura', 'no negociables', 'principios', 'honestidad'],
+  10: ['pacto de socios', 'acuerdo societario', 'figura societaria', 'srl', 'sas', 'sociedad de hecho', 'retiro de utilidades'],
+  // Área 2: Administración y Finanzas (11-23)
+  11: ['facturacion', 'ventas anuales', 'ultimos 12 meses', 'estacionalidad', 'facturamos'],
+  12: ['fuentes de ingreso', 'lineas de negocio', 'mix de ventas', 'unidades de negocio'],
+  13: ['dolares', 'pesos', 'moneda', 'usd', 'tipo de cambio', 'contratos en dolares'],
+  14: ['margen bruto', 'margen neto', 'rentabilidad', 'utilidad', 'margenes'],
+  15: ['costos fijos', 'punto de equilibrio', 'estructura de costos', 'gastos fijos'],
+  16: ['precios', 'presupuestos', 'por m2', 'metro cuadrado', 'redeterminacion', 'administracion', 'costo mas margen'],
+  17: ['costos ocultos', 'ineficiencias', 'perdida de dinero', 'desperdicio', 'sobrantes'],
+  18: ['registro de ingresos', 'egresos', 'sistema contable', 'excel financiero', 'contabilidad'],
+  19: ['flujo de caja', 'cash flow', 'proyeccion financiera', 'reserva', 'liquidez'],
+  20: ['plazos de cobro', 'anticipos', 'certificados de avance', 'cobranza', 'incobrables', 'demoras'],
+  21: ['finanzas personales', 'cuenta bancaria', 'cuenta personal', 'retiro de socios', 'separadas'],
+  22: ['deudas', 'prestamos', 'creditos', 'pasivos', 'compromisos financieros', 'bancos'],
+  23: ['salud financiera', 'situacion financiera', 'solvencia'],
+  // Área 3: Operaciones y Producción (24-33)
+  24: ['procesos principales', 'paso a paso', 'circuito operativo', 'desde que aparece'],
+  25: ['capacidad maxima', 'obras simultaneas', 'proyectos simultaneos', 'capacidad instalada'],
+  26: ['minimo de facturacion', 'mvp operativo', 'cubrir costos fijos'],
+  27: ['rechazar', 'derivar', 'postergar', 'falta de capacidad', 'oportunidades'],
+  28: ['reproceso', 'errores operativos', 'correcciones', 'rehacer'],
+  29: ['indicadores de calidad', 'certificacion', 'iso 9001', 'satisfaccion del trabajo'],
+  30: ['plazos de obra', 'cumplen los plazos', 'retrasan', 'atrasos', 'entregas'],
+  31: ['procesos operativos', 'documentados', 'estandarizados'],
+  32: ['cuellos de botella', 'donde se rompe', 'trabas operativas'],
+  33: ['personas clave', 'ausencia', 'en su cabeza', 'imprescindible'],
+  // Área 4: Recursos Humanos (34-44)
+  34: ['cuantas personas', 'dotacion', 'plantilla', 'personal', 'subcontratos', 'planta permanente'],
+  35: ['tareas realiza cada socio', 'delegar', 'solo ustedes pueden hacer', 'rol de socios'],
+  36: ['vinculo formal', 'relacion de dependencia', 'monotributo', 'registracion', 'altas', 'en negro', 'en blanco'],
+  37: ['descripcion de puesto', 'roles por escrito', 'funciones definidas'],
+  38: ['mandos medios', 'lideres de area', 'autonoma', 'jefes de obra'],
+  39: ['induccion', 'nuevo integrante', 'onboarding', 'productivo'],
+  40: ['subcontratistas', 'gremios', 'cuadrillas', 'tercerizados', 'seleccionan'],
+  41: ['capacitacion', 'formacion', 'horas de capacitacion', 'presupuesto para formacion'],
+  42: ['clima laboral', 'ambiente de trabajo'],
+  43: ['dejaron la empresa', 'rotacion', 'bajas', 'renuncias'],
+  44: ['retener', 'motivar', 'talento clave', 'incentivos'],
+  // Área 5: Comercial y Marketing (45-53)
+  45: ['propuesta de valor', 'diferencial', 'por que nos eligen'],
+  46: ['segmento', 'posicionamiento', 'en 3 anos', 'mercado objetivo'],
+  47: ['nuevos clientes', 'boca a boca', 'referidos', 'primer contacto'],
+  48: ['cotizaciones', 'presupuestos', 'convierten en venta', 'tasa de conversion'],
+  49: ['adjudicacion', 'ciclo de venta', 'cuanto tarda', 'cierre'],
+  50: ['licitaciones', 'homologacion', 'proveedores de mineras', 'grandes empresas', 'corporativos'],
+  51: ['pagina web', 'redes sociales', 'instagram', 'linkedin', 'canales digitales', 'leads'],
+  52: ['marketing', 'inversion publicitaria', 'estrategia de marketing'],
+  53: ['estrategia comercial', 'activa y estructurada', 'equipo comercial'],
+  // Área 6: Clientes y Experiencia (54-58)
+  54: ['principales clientes', 'concentracion', 'porcentaje de facturacion'],
+  55: ['compras repetidas', 'clientes recurrentes', 'recompra', 'duracion de la relacion'],
+  56: ['satisfaccion', 'feedback', 'encuestas', 'nps'],
+  57: ['reclamos', 'quejas', 'tiempo de resolucion'],
+  58: ['fidelizar', 'postventa', 'despues de entregar'],
+  // Área 7: Procesos y Sistemas de Gestión (59-66)
+  59: ['procedimientos', 'instructivos escritos', 'no estan documentados'],
+  60: ['manual de operaciones', 'manual de calidad', 'manual de procedimientos'],
+  61: ['checklists', 'listas de control', 'misma manera'],
+  62: ['confidencialidad', 'resguardo', 'planos', 'acuerdos firmados', 'documentacion de clientes'],
+  63: ['certificacion de calidad', 'iso 9001', 'vigente'],
+  64: ['madurez de sus sistemas', 'sistemas de gestion'],
+  65: ['seguimiento de los proyectos', 'planifica', 'proyectos activos', 'cronograma'],
+  66: ['fuera de plazo', 'fuera de presupuesto', 'desvios de obra'],
+  // Área 8: Tecnología y Sistemas (67-73)
+  67: ['software', 'erp', 'gestionar la empresa', 'excel', 'herramientas'],
+  68: ['revit', 'bim', 'autocad', 'computos', 'gestion de obra', 'trabajo tecnico'],
+  69: ['centralizada', 'respaldada', 'nube', 'drive', 'dispersa', 'cuentas personales', 'backup'],
+  70: ['silos', 'integrados', 'datos duplicada', 'doble carga'],
+  71: ['digitalizado', 'papel', 'whatsapp', 'verbal'],
+  72: ['inteligencia artificial', 'chatgpt', 'claude', 'gemini', 'ia'],
+  73: ['dolores tecnologicos', 'problemas tecnologicos', 'sistemas'],
+  // Área 9: Proveedores y Cadena de Valor (74-79)
+  74: ['proveedores criticos', 'cinco proveedores', 'corralon', 'hormigon'],
+  75: ['proveedores alternativos', 'acuerdos formales', 'contratos'],
+  76: ['compras', 'abastecimiento', 'responsable de compras', 'aprobacion'],
+  77: ['inventario', 'stock', 'deposito', 'almacen', 'rotacion'],
+  78: ['maquinaria', 'herramientas', 'equipos', 'alquiler', 'utilitario', 'camioneta', 'vehiculo'],
+  79: ['condiciones de pago', 'plazo de pago', 'calzan', 'contado', '30 dias'],
+  // Área 10: Seguridad, Seguros y Gestión de Riesgos (80-89)
+  80: ['seguros', 'responsabilidad civil', 'todo riesgo', 'poliza', 'art', 'robo', 'incendio'],
+  81: ['seguro de vida', 'accidentes personales', 'socios', 'personal clave'],
+  82: ['oficina', 'deposito', 'obrador', 'asegurados', 'valor de reposicion'],
+  83: ['cobertura de seguros', 'riesgos reales'],
+  84: ['seguridad e higiene', 'legajos tecnicos', 'programa de seguridad', 'aviso de obra'],
+  85: ['art vigente', 'epp', 'elementos de proteccion', 'casco', 'botines', 'antes de ingresar'],
+  86: ['protocolos de seguridad', 'trabajo en altura', 'andamios', 'excavaciones', 'electricidad'],
+  87: ['accidentes', 'incidentes', 'casi-accidentes', 'registran'],
+  88: ['antes de iniciar', 'inspecciones', 'exigen art', 'subcontratistas registrados'],
+  89: ['patrimonio personal', 'siniestro grave', 'juicio laboral', 'fondo para contingencias', 'accidente fatal'],
+  // Área 11: Contexto Externo (PESTEL) y Reflexión Final (90-103)
+  90: ['regulaciones', 'normativas', 'codigo de edificacion', 'municipalidad', 'colegio de arquitectos'],
+  91: ['cambio politico', 'regulatorio', 'proximos 2 anos', 'gobierno'],
+  92: ['inflacion', 'tipo de cambio', 'dolar', 'redeterminacion de precios'],
+  93: ['sector esta creciendo', 'declive', 'estable', 'construccion'],
+  94: ['mineria', 'cobre', 'obra publica', 'inversores inmobiliarios', 'san juan', 'ola minera'],
+  95: ['tendencias sociales', 'sustentabilidad', 'eficiencia energetica', 'nuevos habitos'],
+  96: ['tecnologia emergente', 'disrumpir', 'industrializacion', 'construccion en seco'],
+  97: ['competidores', 'competencia', 'contra quien compiten', 'diferencia'],
+  98: ['oportunidades no exploradas', 'creciendo el mercado', 'nuevos negocios'],
+  99: ['intensidad competitiva', 'guerra de precios', 'rivalidad'],
+  100: ['mayores dolores', 'tres dolores', 'problemas hoy', 'cambiarian todo'],
+  101: ['mayor freno', 'limitacion', 'crecer mas rapido'],
+  102: ['superpoder', 'mejor hace', 'fortaleza'],
+  103: ['algo que no se pregunto', 'familiares', 'importante que gs sepa', 'observacion final']
 };
 
 /**
@@ -643,27 +660,64 @@ export async function persistAutoAnsweredQuestions(params: {
     console.warn('Notice reading existing diagnostic_responses:', e);
   }
 
-  // 3. Apply all auto-answered questions from this audio
+  // 3. Apply all auto-answered questions from this audio (respecting validated answers in QA mode)
   const updatedAnswersMap: Record<number, ResponseOptionValue> = { ...existingAnswers };
 
   activeSuggestions.forEach(sug => {
     const finalOption = sug.editedOption || sug.suggestedOption || 'partial_dev';
     const finalAnswer = sug.editedAnswer || sug.suggestedAnswer;
+    const existingQual: any = qualitativeMap[sug.questionId];
+    const existingDb: any = mergedDbAnswers[sug.questionId];
+    const isAlreadyValidated = Boolean(existingQual?.validatedByConsultant || existingDb?.validatedByConsultant);
+
+    const newEvidenceList: { sessionTitle: string; quote: string }[] = [
+      ...(Array.isArray(existingQual?.evidences) ? existingQual.evidences : []),
+      { sessionTitle: sug.sourceSessionTitle || meetingTitle, quote: sug.detectedQuote },
+      ...(sug.additionalEvidences || []).map(e => ({ sessionTitle: e.sessionTitle, quote: e.quote }))
+    ];
+    // Deduplicate evidences by quote prefix
+    const seenQuotes = new Set<string>();
+    const dedupEvidences = newEvidenceList.filter(e => {
+      const key = (e.quote || '').slice(0, 60).toLowerCase();
+      if (!key || seenQuotes.has(key)) return false;
+      seenQuotes.add(key);
+      return true;
+    });
+
+    if (isAlreadyValidated && !sug.editedAnswer && !sug.editedOption) {
+      // Never overwrite consultant-validated answer; append complementary evidence only
+      mergedDbAnswers[sug.questionId] = {
+        ...(typeof existingDb === 'object' ? existingDb : { value: existingDb }),
+        evidences: dedupEvidences,
+        updatedAt: new Date().toISOString()
+      };
+      qualitativeMap[sug.questionId] = {
+        ...existingQual,
+        evidences: dedupEvidences
+      } as any;
+      return;
+    }
+
     updatedAnswersMap[sug.questionId] = finalOption;
 
     mergedDbAnswers[sug.questionId] = {
       value: finalOption,
       notes: finalAnswer,
       evidence: sug.detectedQuote,
-      meetingTitle,
+      meetingTitle: sug.sourceSessionTitle || meetingTitle,
+      evidences: dedupEvidences,
+      validatedByConsultant: sug.status === 'accepted' || sug.status === 'modified',
       updatedAt: new Date().toISOString()
     };
 
     qualitativeMap[sug.questionId] = {
       answer: finalAnswer,
       quote: sug.detectedQuote,
-      updatedAt: new Date().toLocaleDateString('es-AR')
-    };
+      updatedAt: new Date().toLocaleDateString('es-AR'),
+      sourceSessionTitle: sug.sourceSessionTitle || meetingTitle,
+      evidences: dedupEvidences,
+      validatedByConsultant: sug.status === 'accepted' || sug.status === 'modified'
+    } as any;
   });
 
   // Save qualitative answers locally for immediate display across all tabs
@@ -716,4 +770,140 @@ export async function persistAutoAnsweredQuestions(params: {
   }
 
   return { updatedAnswersMap, qualitativeMap };
+}
+
+export interface MultiSessionInput {
+  id: string;
+  title: string;
+  durationSeconds: number;
+  transcript: string;
+}
+
+/**
+ * Cumulative Multi-Session Q/A Analyzer (11 Areas / 103 Questions).
+ * Runs analysis across every selected transcribed session, merges suggestions by questionId
+ * preserving the strongest confidence as primary and appending complementary quotes from other sessions,
+ * and marks suggestions as 'pending' for consultant QA review (human-in-the-loop).
+ */
+export async function analyzeMultiSessionForQA(params: {
+  clientId: string;
+  clientName: string;
+  sessions: MultiSessionInput[];
+  onProgress?: (current: number, total: number, sessionTitle: string) => void;
+}): Promise<{
+  suggestions: DiagnosticCheckoutSuggestion[];
+  totalSessionsAnalyzed: number;
+  modelsUsed: string[];
+}> {
+  const { clientId, clientName, sessions, onProgress } = params;
+  const validSessions = sessions.filter(s => (s.transcript || '').trim().length >= 20);
+  const mergedByQid = new Map<number, DiagnosticCheckoutSuggestion>();
+  const modelsUsed = new Set<string>();
+  const confRank: Record<string, number> = { alta: 3, media: 2, baja: 1 };
+
+  for (let i = 0; i < validSessions.length; i++) {
+    const sess = validSessions[i];
+    // Split long transcripts (>18k chars) into safe blocks so Supabase Edge Function never hits 150s timeout
+    const BLOCK_SIZE = 18000;
+    const blocks: string[] = [];
+    for (let off = 0; off < sess.transcript.length; off += BLOCK_SIZE) {
+      blocks.push(sess.transcript.slice(off, off + BLOCK_SIZE));
+    }
+
+    for (let bi = 0; bi < blocks.length; bi++) {
+      const label = blocks.length > 1 ? `${sess.title} (Bloque ${bi + 1}/${blocks.length})` : sess.title;
+      onProgress?.(i + 1, validSessions.length, label);
+
+      let blockSuggestions: DiagnosticCheckoutSuggestion[] = [];
+      let blockModel = '';
+
+      try {
+        const { data, error } = await supabase.functions.invoke('gobernanza-ai', {
+          body: {
+            action: 'analyze_transcript_100',
+            payload: {
+              entrevista_id: sess.id,
+              client_id: clientId,
+              client_name: clientName,
+              meeting_title: label,
+              duration_seconds: Math.round((sess.durationSeconds || 1800) / blocks.length),
+              transcript: blocks[bi],
+              skip_minute: true,
+              catalog: getAllDiagnosticQuestions().map(q => ({
+                id: q.id,
+                code: q.code,
+                areaId: q.areaId,
+                title: q.title
+              }))
+            }
+          }
+        });
+        if (!error && Array.isArray(data?.suggestions)) {
+          blockSuggestions = data.suggestions;
+          blockModel = data.aiModelUsed || 'gpt-5.5';
+        }
+      } catch {
+        // fallback to local semantic engine below
+      }
+
+      if (blockSuggestions.length === 0) {
+        const fallbackRes = generateClientCheckoutSynthesis({
+          clientName,
+          meetingTitle: label,
+          durationSeconds: Math.round((sess.durationSeconds || 1800) / blocks.length),
+          transcript: blocks[bi]
+        });
+        blockSuggestions = fallbackRes.suggestions;
+        blockModel = fallbackRes.aiModelUsed || 'local-5.5';
+      }
+
+      if (blockModel) modelsUsed.add(blockModel);
+
+      for (const sug of blockSuggestions) {
+        const tagged: DiagnosticCheckoutSuggestion = {
+          ...sug,
+          id: `qa-q-${sug.questionId}`,
+          sourceSessionId: sess.id,
+          sourceSessionTitle: sess.title,
+          status: 'pending',
+          additionalEvidences: []
+        };
+
+        const existing = mergedByQid.get(sug.questionId);
+        if (!existing) {
+          mergedByQid.set(sug.questionId, tagged);
+        } else {
+          const newRank = confRank[tagged.confidence] || 1;
+          const oldRank = confRank[existing.confidence] || 1;
+          if (newRank > oldRank) {
+            tagged.additionalEvidences = [
+              ...(existing.additionalEvidences || []),
+              {
+                sessionTitle: existing.sourceSessionTitle || 'Sesión previa',
+                quote: existing.detectedQuote,
+                answer: existing.suggestedAnswer
+              }
+            ];
+            mergedByQid.set(sug.questionId, tagged);
+          } else {
+            existing.additionalEvidences = [
+              ...(existing.additionalEvidences || []),
+              {
+                sessionTitle: sess.title,
+                quote: tagged.detectedQuote,
+                answer: tagged.suggestedAnswer
+              }
+            ];
+          }
+        }
+      }
+    }
+  }
+
+  const ordered = Array.from(mergedByQid.values()).sort((a, b) => a.questionId - b.questionId);
+  return {
+    suggestions: ordered,
+    totalSessionsAnalyzed: validSessions.length,
+    modelsUsed: Array.from(modelsUsed)
+  };
 }

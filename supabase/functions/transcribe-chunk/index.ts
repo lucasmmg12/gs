@@ -101,20 +101,39 @@ serve(async (req) => {
       );
     }
 
-    // 1. If storagePath was not provided, upload to Supabase Storage now
+    // 1. Detect real extension and content-type so .m4a, .wav, .mp3, .mp4, .webm all work cleanly
+    const incomingFileName = (audioBlob instanceof File && audioBlob.name) ? audioBlob.name : '';
+    const rawType = (audioBlob.type || '').toLowerCase();
+    let ext = 'webm';
+    let safeMime = 'audio/webm';
+    if (incomingFileName.toLowerCase().endsWith('.wav') || rawType.includes('wav')) {
+      ext = 'wav';
+      safeMime = 'audio/wav';
+    } else if (incomingFileName.toLowerCase().endsWith('.m4a') || rawType.includes('m4a') || rawType.includes('mp4') || rawType.includes('aac')) {
+      ext = 'm4a';
+      safeMime = 'audio/mp4';
+    } else if (incomingFileName.toLowerCase().endsWith('.mp3') || rawType.includes('mpeg') || rawType.includes('mp3')) {
+      ext = 'mp3';
+      safeMime = 'audio/mpeg';
+    } else if (incomingFileName.toLowerCase().endsWith('.ogg') || rawType.includes('ogg')) {
+      ext = 'ogg';
+      safeMime = 'audio/ogg';
+    }
+
+    // If storagePath was not provided, upload to Supabase Storage now
     if (!storagePath) {
-      storagePath = `${clientId}/${sessionId}/chunk_${String(chunkIndex).padStart(4, '0')}.webm`;
+      storagePath = `${clientId}/${sessionId}/chunk_${String(chunkIndex).padStart(4, '0')}.${ext}`;
       await supabase.storage
         .from('gobernanza_audios')
         .upload(storagePath, audioBlob, {
-          contentType: 'audio/webm;codecs=opus',
+          contentType: safeMime,
           upsert: true
         });
     }
 
     // 2. Transcribe with OpenAI GPT-4o-Transcribe (fallback to Whisper-1)
-    console.log(`[transcribe-chunk] Transcribing chunk ${chunkIndex} (${audioBlob.size} bytes)...`);
-    const audioFile = new File([audioBlob], `chunk_${chunkIndex}.webm`, { type: 'audio/webm' });
+    console.log(`[transcribe-chunk] Transcribing chunk ${chunkIndex} (${audioBlob.size} bytes, ${ext}/${safeMime})...`);
+    const audioFile = new File([audioBlob], `chunk_${chunkIndex}.${ext}`, { type: safeMime });
 
     const audioModels = [
       Deno.env.get('OPENAI_AUDIO_MODEL'),
@@ -124,20 +143,30 @@ serve(async (req) => {
 
     let transcriptText = '';
     let activeAudioModel = 'gpt-4o-transcribe';
+    let lastAudioError = '';
     for (const modelName of audioModels) {
       try {
         const transcriptionResponse = await openai.audio.transcriptions.create({
           file: audioFile,
           model: modelName,
           language: 'es',
-          temperature: 0.1
+          temperature: 0.1,
+          prompt: 'Reunión de consultoría empresarial PyME en español rioplatense (Argentina). Términos frecuentes: Consultora GS, OMV, CVA, IME, IRE, Master Plan, directorio, obra, presupuesto, cash flow, ART, monotributo.'
         });
         transcriptText = (transcriptionResponse.text || '').trim();
         activeAudioModel = modelName;
         break;
       } catch (whisperErr: any) {
-        console.warn(`[transcribe-chunk] Audio model ${modelName} warning:`, whisperErr.message);
+        lastAudioError = whisperErr?.message || String(whisperErr);
+        console.warn(`[transcribe-chunk] Audio model ${modelName} warning:`, lastAudioError);
       }
+    }
+
+    if (!transcriptText && lastAudioError) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Error transcribiendo chunk ${chunkIndex}: ${lastAudioError}` }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Filter out common Whisper hallucination tokens on background noise

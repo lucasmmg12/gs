@@ -73,7 +73,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
 }) => {
  const [selectedAreaId, setSelectedAreaId] = useState<string>(DIAGNOSTIC_AREAS[0].id);
  const [qualitativeMap, setQualitativeMap] = useState<
- Record<number, { answer: string; quote: string; updatedAt: string }>
+ Record<number, { answer: string; quote: string; updatedAt: string; validatedByConsultant?: boolean; sourceSessionTitle?: string }>
  >({});
  const [areaKpiValues, setAreaKpiValues] = useState<Record<string, string>>({});
  const [exportingDocx, setExportingDocx] = useState(false);
@@ -126,7 +126,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  }
 
  if (data?.answers && typeof data.answers === 'object') {
- const dbQual: Record<number, { answer: string; quote: string; updatedAt: string }> = {};
+ const dbQual: Record<number, { answer: string; quote: string; updatedAt: string; validatedByConsultant?: boolean; sourceSessionTitle?: string }> = {};
  Object.entries(data.answers).forEach(([k, val]: [string, any]) => {
  if (val && typeof val === 'object' && (val.notes || val.evidence)) {
  dbQual[Number(k)] = {
@@ -135,6 +135,8 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  updatedAt: val.updatedAt
  ? new Date(val.updatedAt).toLocaleDateString('es-AR')
  : 'Reciente',
+ validatedByConsultant: Boolean(val.validatedByConsultant),
+ sourceSessionTitle: val.meetingTitle || undefined,
  };
  }
  });
@@ -148,6 +150,47 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  }
  loadFromDb();
  }, [client?.id]);
+
+ const handleValidateQuestionQA = async (questionId: number) => {
+ setDbSyncStatus('saving');
+ setQualitativeMap((prev) => {
+ const cur = prev[questionId];
+ if (!cur) return prev;
+ const next = {
+ ...prev,
+ [questionId]: { ...cur, validatedByConsultant: true, updatedAt: new Date().toLocaleDateString('es-AR') },
+ };
+ try {
+ localStorage.setItem(`gs_qualitative_answers_${client.id}`, JSON.stringify(next));
+ } catch {
+ // ignore
+ }
+ return next;
+ });
+
+ try {
+ const { data: currentDiag } = await (supabase.from('diagnostic_responses') as any)
+ .select('answers')
+ .eq('organization_id', client.id)
+ .order('created_at', { ascending: false })
+ .limit(1)
+ .maybeSingle();
+ const existing = (currentDiag?.answers && typeof currentDiag.answers === 'object') ? { ...currentDiag.answers } : {};
+ const curEntry = existing[questionId];
+ existing[questionId] =
+ curEntry && typeof curEntry === 'object'
+ ? { ...curEntry, validatedByConsultant: true, updatedAt: new Date().toISOString() }
+ : { value: answers[questionId] || 'partial_dev', notes: qualitativeMap[questionId]?.answer || '', validatedByConsultant: true, updatedAt: new Date().toISOString() };
+ await (supabase.from('diagnostic_responses') as any).upsert(
+ { organization_id: client.id, answers: existing, updated_at: new Date().toISOString() },
+ { onConflict: 'organization_id' }
+ );
+ } catch (e) {
+ console.warn('Error persisting QA validation:', e);
+ } finally {
+ setDbSyncStatus('synced');
+ }
+ };
 
  const handleQualitativeChange = (questionId: number, text: string) => {
  setDbSyncStatus('saving');
@@ -229,7 +272,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
  <StepAssistantBanner
  roleBadge="Consultor GS · Etapa 2"
- stepTitle="Diagnóstico Integral 360° (10 Áreas · Nivelación + Narrativa + KPIs)"
+ stepTitle="Diagnóstico Integral 360° (11 Áreas · 103 Preguntas Rev10 · KPIs)"
  whatToDo="Seleccione un área a la izquierda, marque el nivel de madurez o grabe una sesión de audio para autocompletar preguntas, registre la narrativa libre y cargue los KPIs numéricos."
  autoAssistNote="Sus respuestas, notas cualitativas y KPIs se respaldan en tiempo real en Supabase y recalculan IME e IRE automáticamente."
  growyPrompt={`Analizame el avance del Diagnóstico 360° de ${client.name}, su IME (${diagnosticResults.globalIme10}/10) y qué áreas priorizar.`}
@@ -277,7 +320,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  <div className="bg-[#17324D] text-white border-2 border-[#17324D] rounded-2xl p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
  <div className="space-y-1">
  <span className="font-display text-[10px] font-bold text-[#5EEAD4]">
- Autocompletado Híbrido por Voz • 10 Áreas · Preguntas + Texto Libre + KPIs
+ Autocompletado Híbrido por Voz • 11 Áreas · 103 Preguntas + Texto Libre + KPIs
  </span>
  <h3 className="font-display text-base font-bold text-white">
  Relevamiento en Curso (8 a 10 sesiones semanales)
@@ -394,7 +437,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  <div className="lg:col-span-1 space-y-1.5 bg-white p-3.5 rounded-2xl border-2 border-zinc-900 shadow-sm h-fit">
  <div className="px-2 py-1 mb-2 border-b border-zinc-200 flex items-center justify-between">
  <span className="font-display text-xs font-bold text-zinc-900 ">
- 10 Áreas Oficiales GS
+ 11 Áreas Oficiales GS (Rev10)
  </span>
  </div>
 
@@ -576,21 +619,54 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
 
  {/* A. Respuesta Abierta / Texto Libre Oficial GS (Autocompletada por IA o escrita por el consultor) */}
  <div className="mt-2 mb-3">
- <label className="text-[10px] font-bold text-zinc-500 flex items-center justify-between mb-1">
+ <label className="text-[10px] font-bold text-zinc-500 flex flex-wrap items-center justify-between gap-2 mb-1">
  <span>Respuesta Desarrollada / Evidencia Cualitativa (Texto libre para el Word Oficial GS)</span>
+ <div className="flex items-center gap-2">
+ {qualitativeMap[question.id]?.answer && (
+ qualitativeMap[question.id]?.validatedByConsultant ? (
+ <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold flex items-center gap-1">
+ <CheckCircle2 className="w-3 h-3" /> Validado por consultor
+ </span>
+ ) : (
+ <span className="inline-flex items-center gap-1.5">
+ <span className="px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800 font-semibold">
+ IA · Pendiente validación QA
+ </span>
+ <button
+ type="button"
+ onClick={() => handleValidateQuestionQA(question.id)}
+ className="px-2 py-0.5 rounded bg-[#17324D] hover:bg-[#0F2438] text-white font-semibold cursor-pointer"
+ >
+ Validar QA
+ </button>
+ </span>
+ )
+ )}
  {qualitativeMap[question.id]?.updatedAt && (
- <span className="text-emerald-700">
- Actualizado: {qualitativeMap[question.id].updatedAt}
+ <span className="text-slate-400">
+ {qualitativeMap[question.id].updatedAt}
  </span>
  )}
+ </div>
  </label>
  <textarea
  rows={2}
  value={qualitativeMap[question.id]?.answer || ''}
  onChange={(e) => handleQualitativeChange(question.id, e.target.value)}
- placeholder="Redacte o edite aquí la respuesta abierta relevada en sesión (o grabe el audio para autocompletarla)..."
+ placeholder="Redacte o edite aquí la respuesta abierta relevada en sesión (o grabe/suba audios para autocompletarla)..."
  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-800 leading-relaxed focus:border-[#17324D] focus:outline-none"
  />
+ {qualitativeMap[question.id]?.quote && qualitativeMap[question.id]?.quote !== qualitativeMap[question.id]?.answer && (
+ <div className="mt-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600">
+ <span className="font-semibold text-slate-700">Cita de audio:</span>{' '}
+ <span className="italic">&ldquo;{qualitativeMap[question.id].quote}&rdquo;</span>
+ {qualitativeMap[question.id]?.sourceSessionTitle && (
+ <span className="ml-1.5 text-[10px] font-medium text-[#0D9488]">
+ · {qualitativeMap[question.id].sourceSessionTitle}
+ </span>
+ )}
+ </div>
+ )}
  </div>
 
  {/* B. Nivel de Madurez / Riesgo para Cálculo Matemático Automático de IME e IRE */}

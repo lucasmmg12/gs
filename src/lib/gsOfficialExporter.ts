@@ -1470,7 +1470,7 @@ export async function exportOfficialDiagnostic360Docx(opts: OfficialDiagnostic36
                 new Paragraph({
                   children: [
                     new TextRun({
-                      text: '10 Áreas · 78 Preguntas · KPIs por Área · Visión CVA · IME + IRE',
+                      text: '11 Áreas · 103 Preguntas · KPIs por Área · Visión CVA · IME + IRE',
                       color: 'FCA5A5',
                       size: 18,
                       font: 'Calibri',

@@ -87,7 +87,16 @@ serve(async (req) => {
 
       if (downloadError) throw new Error(`Error descargando audio: ${downloadError.message}`);
 
-      const audioFile = new File([audioData], 'audio.webm', { type: 'audio/webm' });
+      const pathExt = (audio_path.split('.').pop() || 'webm').toLowerCase();
+      const mimeMap: Record<string, string> = {
+        wav: 'audio/wav',
+        m4a: 'audio/mp4',
+        mp4: 'audio/mp4',
+        mp3: 'audio/mpeg',
+        ogg: 'audio/ogg',
+        webm: 'audio/webm'
+      };
+      const audioFile = new File([audioData], `audio.${pathExt}`, { type: mimeMap[pathExt] || 'audio/webm' });
       const { text, modelUsed } = await createTranscriptionWithCascade(openai, audioFile);
 
       return new Response(
@@ -103,16 +112,52 @@ serve(async (req) => {
         meeting_title,
         duration_seconds,
         transcript,
-        catalog
+        catalog,
+        skip_minute
       } = payload;
 
-      const systemPrompt = `Sos el Motor de Inteligencia Ejecutiva de última generación (Familia GPT-5.5+) de Consultora GS.
-Tenés el catálogo oficial completo de 100 preguntas de diagnóstico empresarial 360° (divididas en 10 áreas) y la transcripción completa de un audio de sesión con el cliente "${client_name}".
+      const totalQs = Array.isArray(catalog) ? catalog.length : 103;
+      const systemPrompt = skip_minute
+        ? `Sos el Motor de Inteligencia Ejecutiva de Consultora GS.
+Tenés el catálogo oficial de ${totalQs} preguntas de diagnóstico empresarial 360° (11 áreas) y un bloque de transcripción real con "${client_name}" (${meeting_title}).
+
+Tu misión:
+1. Detectar TODAS las preguntas del catálogo (Q1 a Q${totalQs}) que tengan evidencia real directa o indirecta en este bloque. NO inventes respuestas sin evidencia.
+2. Para cada pregunta detectada devolvé:
+   - questionId (1..${totalQs}), questionCode ("Q13"), areaId, areaName, questionTitle
+   - detectedQuote (cita textual breve y exacta del audio, máx 220 caracteres)
+   - suggestedAnswer (síntesis ejecutiva clara y concisa con hechos/métricas reales, máx 280 caracteres)
+   - suggestedOption: uno de ["formal_active", "informal_active", "partial_dev", "none_no_record"]
+   - confidence: "alta" o "media"
+   - reason: breve justificación (máx 80 caracteres)
+
+Devolvé estrictamente JSON:
+{
+  "suggestions": [
+    {
+      "id": "auto-q-1",
+      "questionId": 1,
+      "questionCode": "Q1",
+      "areaId": "area_1_direccion",
+      "areaName": "Dirección y Estrategia",
+      "questionTitle": "...",
+      "detectedQuote": "...",
+      "suggestedAnswer": "...",
+      "suggestedOption": "partial_dev",
+      "confidence": "alta",
+      "reason": "Evidencia directa en audio",
+      "isTangential": false,
+      "status": "pending"
+    }
+  ]
+}`
+        : `Sos el Motor de Inteligencia Ejecutiva de última generación (Familia GPT-5.5+) de Consultora GS.
+Tenés el catálogo oficial completo de ${totalQs} preguntas de diagnóstico empresarial 360° (divididas en 11 áreas, incluyendo Seguridad, Seguros y Gestión de Riesgos) y la transcripción completa de un audio de sesión con el cliente "${client_name}".
 
 Tu misión es realizar un análisis profundo, semántico y contextual para:
-1. Detectar TODAS las preguntas del catálogo de 100 preguntas (Q1 a Q100) que se pueden responder directa o indirectamente con lo conversado en el audio.
+1. Detectar TODAS las preguntas del catálogo (Q1 a Q${totalQs}) que se pueden responder directa o indirectamente con lo conversado en el audio. No inventes respuestas si no hay evidencia real en la transcripción.
 2. Responder automáticamente cada pregunta detectada con redacción ejecutiva de nivel consultor senior, indicando:
-   - questionId (número del 1 al 100)
+   - questionId (número del 1 al ${totalQs})
    - questionCode (ej: "Q13")
    - areaId (ej: "area_2_finanzas")
    - areaName (nombre del área)

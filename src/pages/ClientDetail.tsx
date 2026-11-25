@@ -33,6 +33,7 @@ import ClientMeetingSession from '../components/views/ClientMeetingSession';
 import type { MeetingType } from '../components/views/ClientMeetingSession';
 import type { PlannedMeetingData } from '../components/views/ClientMeetingPlanner';
 import ClientRecordingsHistory from '../components/views/ClientRecordingsHistory';
+import MultiAudioBatchQA from '../components/views/MultiAudioBatchQA';
 import MasterPlanQuarterlyTracking from '../components/views/MasterPlanQuarterlyTracking';
 import { DocumentosCliente } from '../components/views/DocumentosCliente';
 
@@ -822,7 +823,7 @@ export default function ClientDetail() {
  case 'diagnostic':
  return {
  badge: 'Etapa 2 · Diagnóstico 360°',
- title: 'Relevamiento de 100 Preguntas en 10 Áreas',
+ title: 'Relevamiento de 103 Preguntas en 11 Áreas (Rev10)',
  text: 'Complete las respuestas por área o utilice Grabar Sesión para responder automáticamente con citas textuales desde el audio.',
  prompt: `¿Qué áreas del Diagnóstico 360° de ${client.name} faltan completar y cuáles son críticas?`,
  nextLabel: 'Ir a 3. Matrices & Riesgos',
@@ -1950,10 +1951,10 @@ export default function ClientDetail() {
  </span>
  </div>
  <h2 className="font-display text-lg font-bold text-[#17324D] tracking-tight">
- Audio y Transcripción → 100 Preguntas + Informe y Minutas
+ Audio y Transcripción → 103 Preguntas (11 Áreas) + Informe y Minutas
  </h2>
  <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
- Grabe la reunión en vivo o suba un audio. El sistema cruza la conversación contra las <strong>100 preguntas</strong> del diagnóstico y redacta la <strong>Minuta Ejecutiva</strong> lista para auditar.
+ Grabe la reunión en vivo o importe múltiples audios pesados (&gt;25 MB). El sistema particiona, transcribe y cruza la conversación contra las <strong>103 preguntas Rev10</strong> en modo Q/A acumulativo.
  </p>
  </div>
 
@@ -1963,10 +1964,17 @@ export default function ClientDetail() {
  }}
  className="btn-nordic-primary px-5 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 self-start sm:self-center shrink-0 cursor-pointer"
  >
- <Mic className="w-4 h-4 text-[#2DD4BF]" /> Grabar / Subir Audio
+ <Mic className="w-4 h-4 text-[#2DD4BF]" /> Grabar en Vivo
  </button>
  </div>
  </div>
+
+ {/* INGESTA MULTI-AUDIO CON PARTICIONADO AUTOMÁTICO + REVISIÓN QA ACUMULATIVA */}
+ <MultiAudioBatchQA
+ client={{ id: client.id, name: client.name }}
+ onDiagnosticUpdated={() => fetchClientData()}
+ onSessionsUpdated={() => fetchClientData()}
+ />
 
  {/* HISTORIAL ORGANIZADO DE GRABACIONES */}
  <ClientRecordingsHistory

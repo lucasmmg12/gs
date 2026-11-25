@@ -179,12 +179,13 @@ export const OFFICIAL_IME_9_AREA_WEIGHTS: { areaNumber: number; name: string; we
 export const LIKERT_1_TO_5_QUESTION_IDS: Record<number, string[]> = {
   3: ['Nada clara', 'Poco clara', 'Moderada', 'Bastante clara', 'Totalmente clara y compartida'],
   6: ['Nunca', 'Rara vez', 'A veces', 'Frecuentemente', 'Siempre me consume'],
-  19: ['Muy crítica', 'Ajustada', 'Estable', 'Sólida', 'Excelente'],
-  25: ['Nada documentado', 'Muy poco', 'Parcialmente', 'Mayormente', 'Completo y actualizado'],
-  33: ['Muy malo', 'Regular', 'Aceptable', 'Bueno', 'Excelente'],
-  43: ['Completamente reactiva', 'Poco activa', 'Moderada', 'Bastante activa', 'Muy estructurada y proactiva'],
-  53: ['Informal/caótico', 'Incipiente', 'En desarrollo', 'Gestionado', 'Optimizado'],
-  74: ['Muy baja', 'Baja', 'Moderada', 'Alta', 'Muy alta / agresiva'],
+  23: ['Muy crítica', 'Ajustada', 'Estable', 'Sólida', 'Excelente'],
+  31: ['Nada documentado', 'Muy poco', 'Parcialmente', 'Mayormente', 'Completo y actualizado'],
+  42: ['Muy malo', 'Regular', 'Aceptable', 'Bueno', 'Excelente'],
+  53: ['Completamente reactiva', 'Poco activa', 'Moderada', 'Bastante activa', 'Muy estructurada y proactiva'],
+  64: ['Informal/caótico', 'Incipiente', 'En desarrollo', 'Gestionado', 'Optimizado'],
+  83: ['Sin cobertura', 'Muy insuficiente', 'Parcial', 'Adecuada', 'Cobertura integral actualizada'],
+  99: ['Muy baja', 'Baja', 'Moderada', 'Alta', 'Muy alta / agresiva'],
 };
 
 export const DEFAULT_GS_AXES_META: GSAxisStrategicMeta[] = [

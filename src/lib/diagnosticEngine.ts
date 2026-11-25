@@ -107,18 +107,19 @@ interface IRERiskDimensionConfig {
 }
 
 const IRE_CONFIG: IRERiskDimensionConfig[] = [
-  { code: 'R1', name: 'Dependencia del dueño', weight: 0.15, questionIds: [4, 7, 27, 30], category: 'Gobernanza / Operativo', mitigation: 'Delegación de roles operativos y protocolo de directorio' },
-  { code: 'R2', name: 'Estructura societaria / patrimonial', weight: 0.10, questionIds: [8, 17], category: 'Estratégico / Legal', mitigation: 'Firma de Estatuto de Convivencia y separación de cuentas bancarias' },
-  { code: 'R3', name: 'Financiero y de liquidez', weight: 0.15, questionIds: [12, 13, 16, 19], category: 'Financiero', mitigation: 'Flujo de caja proyectado a 6 meses y fondo de reserva segregado' },
-  { code: 'R4', name: 'Concentración de clientes / mercado', weight: 0.12, questionIds: [44, 45], category: 'Comercial', mitigation: 'Plan de ventas y diversificación en nuevos segmentos de bajo riesgo' },
-  { code: 'R5', name: 'Operativo y conocimiento clave', weight: 0.10, questionIds: [21, 26, 27], category: 'Operaciones', mitigation: 'Mapeo de procesos y documentación de instructivos críticos' },
-  { code: 'R6', name: 'Comercial / pipeline', weight: 0.08, questionIds: [38, 39, 43], category: 'Comercial', mitigation: 'Sistematización del embudo de ventas y medición de conversión' },
-  { code: 'R7', name: 'Cadena de valor / abastecimiento', weight: 0.06, questionIds: [61, 62, 65], category: 'Proveedores', mitigation: 'Proveedores alternativos homologados y proceso de compras formal' },
-  { code: 'R8', name: 'Regulatorio y de cumplimiento', weight: 0.07, questionIds: [66, 67], category: 'Legal / Externo', mitigation: 'Monitoreo normativo trimestral y aseguramiento de habilitaciones' },
-  { code: 'R9', name: 'Procesos y calidad', weight: 0.07, questionIds: [23, 25, 49, 52], category: 'Procesos', mitigation: 'Implementación de checklists y sistema de gestión ISO 9001' },
-  { code: 'R10', name: 'Tecnológico y continuidad', weight: 0.04, questionIds: [57, 58, 60], category: 'Tecnología', mitigation: 'Integración de software, backup formal y resguardo de datos' },
-  { code: 'R11', name: 'Reputacional / marca', weight: 0.03, questionIds: [41, 46], category: 'Comercial', mitigation: 'Canal único de postventa y medición sistemática de satisfacción (NPS)' },
-  { code: 'R12', name: 'Contexto macro (PESTEL)', weight: 0.03, questionIds: [68, 69, 74], category: 'Externo', mitigation: 'Pricing con cobertura inflacionaria y vigilancia competitiva' }
+  { code: 'R1', name: 'Dependencia del dueño', weight: 0.14, questionIds: [4, 7, 33, 35, 38], category: 'Gobernanza / Operativo', mitigation: 'Delegación de roles operativos y protocolo de directorio' },
+  { code: 'R2', name: 'Estructura societaria / patrimonial', weight: 0.10, questionIds: [8, 10, 21, 89], category: 'Estratégico / Legal', mitigation: 'Constitución societaria, Estatuto de Convivencia y separación patrimonial' },
+  { code: 'R3', name: 'Financiero y de liquidez', weight: 0.14, questionIds: [14, 15, 19, 20, 23], category: 'Financiero', mitigation: 'Flujo de caja proyectado a 6 meses y fondo de reserva segregado' },
+  { code: 'R4', name: 'Concentración de clientes / mercado', weight: 0.11, questionIds: [54, 55], category: 'Comercial', mitigation: 'Plan de ventas y diversificación en nuevos segmentos de bajo riesgo' },
+  { code: 'R5', name: 'Operativo y conocimiento clave', weight: 0.09, questionIds: [25, 32, 33], category: 'Operaciones', mitigation: 'Mapeo de procesos y documentación de instructivos críticos' },
+  { code: 'R6', name: 'Comercial / pipeline', weight: 0.07, questionIds: [47, 48, 53], category: 'Comercial', mitigation: 'Sistematización del embudo de ventas y medición de conversión' },
+  { code: 'R7', name: 'Cadena de valor / abastecimiento', weight: 0.06, questionIds: [74, 75, 76, 79], category: 'Proveedores', mitigation: 'Proveedores alternativos homologados y proceso de compras formal' },
+  { code: 'R8', name: 'Regulatorio y de cumplimiento', weight: 0.06, questionIds: [36, 88, 90, 91], category: 'Legal / Externo', mitigation: 'Monitoreo normativo trimestral y regularización laboral/habilitaciones' },
+  { code: 'R9', name: 'Procesos y calidad', weight: 0.06, questionIds: [28, 31, 59, 63, 64], category: 'Procesos', mitigation: 'Implementación de checklists y sistema de gestión de calidad' },
+  { code: 'R10', name: 'Tecnológico y continuidad', weight: 0.04, questionIds: [69, 70, 71, 73], category: 'Tecnología', mitigation: 'Centralización documental en nube, integración de software y backup verificado' },
+  { code: 'R11', name: 'Reputacional / marca', weight: 0.02, questionIds: [51, 56, 57], category: 'Comercial', mitigation: 'Canal único de postventa y medición sistemática de satisfacción (NPS)' },
+  { code: 'R12', name: 'Contexto macro (PESTEL)', weight: 0.03, questionIds: [92, 93, 94, 99], category: 'Externo', mitigation: 'Pricing con cobertura inflacionaria y vigilancia sectorial/competitiva' },
+  { code: 'R13', name: 'Seguridad, siniestralidad y coberturas', weight: 0.08, questionIds: [80, 81, 82, 83, 84, 85, 86, 87], category: 'Seguridad / Riesgos', mitigation: 'Adecuación integral de pólizas (RC, Todo Riesgo, ART, Vida) y protocolos HyS en obra' }
 ];
 
 export function calculateDiagnosticScores(
@@ -198,9 +199,9 @@ export function calculateDiagnosticScores(
             });
           }
 
-          // PESTEL (Área 10)
-          if (area.number === 10) {
-            const cat = q.id <= 67 ? 'politico' : q.id <= 69 ? 'economico' : q.id <= 71 ? 'social' : 'tecnologico';
+          // PESTEL (Área 11 — Contexto Externo)
+          if (area.number === 11) {
+            const cat = q.id <= 91 ? 'politico' : q.id <= 94 ? 'economico' : q.id <= 95 ? 'social' : 'tecnologico';
             pestelMap[cat]?.push({
               category: cat as any,
               title: q.title,
@@ -228,9 +229,9 @@ export function calculateDiagnosticScores(
     };
   });
 
-  // 2. Cálculo Oficial del IME (Ponderado de 9 áreas internas, suma de pesos = 1.00)
-  // Pesos: Dir 15%, Fin 15%, Op 15%, RRHH 10%, Com 15%, Clientes 10%, Proc 10%, Tec 5%, Prov 5%
-  const internalAreas = areaScores.filter(a => a.areaNumber <= 9);
+  // 2. Cálculo Oficial del IME (Ponderado de 10 áreas internas Rev10, suma de pesos = 1.00)
+  // Pesos: Dir 14%, Fin 14%, Op 14%, RRHH 9%, Com 13%, Clientes 9%, Proc 9%, Tec 5%, Prov 5%, Seg/Riesgos 8%
+  const internalAreas = areaScores.filter(a => a.areaNumber <= 10);
   let weightedImeSum = 0;
   let weightsSum = 0;
 
@@ -280,17 +281,18 @@ export function calculateDiagnosticScores(
   const a7 = areaScores.find(a => a.areaNumber === 7)?.imeScore || 40; // Procesos
   const a8 = areaScores.find(a => a.areaNumber === 8)?.imeScore || 40; // Tecnología
   const a9 = areaScores.find(a => a.areaNumber === 9)?.imeScore || 50; // Proveedores
+  const a10 = areaScores.find(a => a.areaNumber === 10)?.imeScore || 40; // Seguridad, Seguros y Riesgos
 
   // Eje 1 Gobernanza: 100% de Área 1
   const pentDirectorio = Number((a1 / 10).toFixed(1));
-  // Eje 2 Procesos: Op (15%) + Proc (10%) + Tec (5%) + Prov (5%) = 35%
-  const pentProcesos = Number(((a3 * 0.15 + a7 * 0.10 + a8 * 0.05 + a9 * 0.05) / 0.35 / 10).toFixed(1));
+  // Eje 2 Procesos: Op (14%) + Proc (9%) + Tec (5%) + Prov (5%) + Seg/Riesgos (8%) = 41%
+  const pentProcesos = Number(((a3 * 0.14 + a7 * 0.09 + a8 * 0.05 + a9 * 0.05 + a10 * 0.08) / 0.41 / 10).toFixed(1));
   // Eje 3 Finanzas: 100% de Área 2
   const pentFinanzas = Number((a2 / 10).toFixed(1));
   // Eje 4 Talento: 100% de Área 4
   const pentTalento = Number((a4 / 10).toFixed(1));
-  // Eje 5 Comercial: Comercial (15%) + Clientes (10%) = 25%
-  const pentComercial = Number(((a5 * 0.15 + a6 * 0.10) / 0.25 / 10).toFixed(1));
+  // Eje 5 Comercial: Comercial (13%) + Clientes (9%) = 22%
+  const pentComercial = Number(((a5 * 0.13 + a6 * 0.09) / 0.22 / 10).toFixed(1));
 
   const pentagon: PentagonScores = {
     directorio: pentDirectorio,

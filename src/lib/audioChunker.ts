@@ -210,8 +210,11 @@ export async function sendChunkToEdgeTranscriber(
   error?: string;
 }> {
   try {
-    const isMp4 = record.blob.type.includes('mp4') || record.blob.type.includes('aac');
-    const ext = isMp4 ? 'mp4' : 'webm';
+    const rawType = (record.blob.type || '').toLowerCase();
+    const isWav = rawType.includes('wav');
+    const isMp4 = rawType.includes('mp4') || rawType.includes('m4a') || rawType.includes('aac');
+    const isMp3 = rawType.includes('mpeg') || rawType.includes('mp3');
+    const ext = isWav ? 'wav' : isMp4 ? 'm4a' : isMp3 ? 'mp3' : 'webm';
     const formData = new FormData();
     formData.append('file', record.blob, `chunk_${record.chunkIndex}.${ext}`);
     formData.append('sessionId', record.sessionId);

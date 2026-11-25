@@ -10,6 +10,7 @@ import {
   saveLocalChunk,
   sendChunkToEdgeTranscriber,
 } from '../../lib/audioChunker';
+import { splitAudioFileForTranscription } from '../../lib/audioFileSplitter';
 import {
   persistentRecorder,
   usePersistentRecorder,
@@ -239,7 +240,7 @@ export default function ClientMeetingSession({
     await persistentRecorder.pauseRecording();
   };
 
-  // 2. UPLOAD EXISTING AUDIO FILE (.mp3, .wav, .m4a, .webm, .ogg)
+  // 2. UPLOAD EXISTING AUDIO FILE (.mp3, .wav, .m4a, .webm, .ogg) — auto-splits >6 MB files into 16kHz mono chunks
   const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -251,57 +252,48 @@ export default function ClientMeetingSession({
     setIsTranscribingUpload(true);
 
     try {
-      const record = await saveLocalChunk(
-        client.id,
-        activeSid,
-        chunksCount,
-        file,
-        undefined,
-        meetingTitle
-      );
+      const { chunks, totalDurationSeconds } = await splitAudioFileForTranscription(file);
+      const transcripts: string[] = [];
 
-      const res = await sendChunkToEdgeTranscriber(record, {
-        questionId: '',
-        questionTitle: 'Audio Subido',
-        meetingTitle,
-        durationSeconds: 180
-      });
+      for (let i = 0; i < chunks.length; i++) {
+        const ch = chunks[i];
+        const record = await saveLocalChunk(
+          client.id,
+          activeSid,
+          chunksCount + i,
+          ch.blob,
+          undefined,
+          meetingTitle
+        );
 
-      let extractedText = res.transcription?.trim() || '';
-
-      if (!extractedText) {
-        const filePath = `${client.id}/${activeSid}_${file.name.replace(/\s+/g, '_')}`;
-        await supabase.storage.from('gobernanza_audios').upload(filePath, file, { upsert: true });
-        const { data } = await supabase.functions.invoke('gobernanza-ai', {
-          body: {
-            action: 'transcribe_audio_file',
-            payload: { audio_path: filePath }
-          }
+        const res = await sendChunkToEdgeTranscriber(record, {
+          questionId: '',
+          questionTitle: `Audio Subido (${i + 1}/${chunks.length})`,
+          meetingTitle,
+          durationSeconds: ch.durationSeconds
         });
-        if (data?.transcript) {
-          extractedText = data.transcript.trim();
+
+        if (!res.success) {
+          throw new Error(res.error || `Error transcribiendo segmento ${i + 1}/${chunks.length}`);
+        }
+        if (res.transcription?.trim()) {
+          transcripts.push(res.transcription.trim());
         }
       }
 
-      if (extractedText) {
-        const nextTranscript = liveTranscript ? `${liveTranscript}\n${extractedText}` : extractedText;
-        persistentRecorder.updateTranscriptManually(nextTranscript);
-        setIsTranscribingUpload(false);
-        await runAutomaticProcessing(nextTranscript, (duration || 0) + 180, activeSid);
-      } else {
-        const fallbackAudioTranscript = generateSampleClientTranscript(client.name);
-        const nextTranscript = liveTranscript ? `${liveTranscript}\n${fallbackAudioTranscript}` : fallbackAudioTranscript;
-        persistentRecorder.updateTranscriptManually(nextTranscript);
-        setIsTranscribingUpload(false);
-        await runAutomaticProcessing(nextTranscript, (duration || 0) + 180, activeSid);
+      const extractedText = transcripts.join('\n').trim();
+      if (!extractedText) {
+        throw new Error('No se obtuvo texto de la transcripción. Verificá que el audio tenga voz audible y que el servicio de transcripción esté disponible.');
       }
-    } catch (err) {
-      console.warn('Error transcribing uploaded file, using fallback:', err);
-      const fallbackAudioTranscript = generateSampleClientTranscript(client.name);
-      const nextTranscript = liveTranscript ? `${liveTranscript}\n${fallbackAudioTranscript}` : fallbackAudioTranscript;
+
+      const nextTranscript = liveTranscript ? `${liveTranscript}\n${extractedText}` : extractedText;
       persistentRecorder.updateTranscriptManually(nextTranscript);
       setIsTranscribingUpload(false);
-      await runAutomaticProcessing(nextTranscript, (duration || 0) + 180, activeSid);
+      await runAutomaticProcessing(nextTranscript, (duration || 0) + totalDurationSeconds, activeSid);
+    } catch (err: any) {
+      console.error('Error transcribing uploaded file:', err);
+      setIsTranscribingUpload(false);
+      alert(`Error al transcribir "${file.name}": ${err?.message || 'Error de conexión con el motor de transcripción'}. No se generaron datos simulados.`);
     }
   };
 
@@ -829,7 +821,7 @@ export default function ClientMeetingSession({
           {/* Direct Action Button to Analyze Transcript */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-zinc-200">
             <div className="text-xs text-zinc-500">
-              El motor cruzará todo el texto contra las <strong>100 preguntas de las 10 áreas</strong> y guardará todo automáticamente.
+              El motor cruzará todo el texto contra las <strong>103 preguntas de las 11 áreas (Rev10)</strong> y guardará todo automáticamente.
             </div>
             <button
               type="button"

@@ -137,37 +137,23 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
   {
     id: 'area_1_direccion',
     number: 1,
-    name: 'Dirección y Estrategia',
+    name: "Dirección y Estrategia",
     icon: 'Compass',
     pentagonAxis: 'Directorio',
-    description: 'Pensamiento estratégico, visión a 3 años, gobernanza y separación del rol de dueño vs operador.',
-    imeWeight: 0.15,
+    description: "Visión, objetivos estratégicos, toma de decisiones, organigrama y acuerdos societarios.",
+    imeWeight: 0.14,
     kpis: [
-      {
-            "name": "% tiempo semanal dedicado a estrategia",
-            "unit": "%"
-      },
-      {
-            "name": "N° reuniones estratégicas por mes",
-            "unit": "N°"
-      },
-      {
-            "name": "N° objetivos formalizados con KPI",
-            "unit": "N°"
-      },
-      {
-            "name": "Score de alineación en la dirección",
-            "unit": "1-10"
-      }
-],
+      { name: "Horas/semana en estrategia (EN vs DENTRO)", unit: "hs/sem", target: ">= 8 hs/sem" },
+      { name: "Reuniones de Directorio realizadas/año", unit: "reuniones", target: "12/año" },
+      { name: "Grado de formalización societaria", unit: "1-5", target: "5" }
+    ],
     questions: [
       {
         id: 1,
         areaId: 'area_1_direccion',
         code: 'Q1',
         title: "¿Tiene la empresa una Visión y una Misión formalmente definidas y comunicadas al equipo?",
-        guide: "Si la empresa comunica un lema o mensaje comercial, ¿existe una Visión/Misión formal más allá de ese mensaje? Si existen, transcríbalas.",
-        kpi: "Existencia de Visión/Misión documentada (Sí/No)",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
@@ -175,15 +161,15 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         areaId: 'area_1_direccion',
         code: 'Q2',
         title: "¿Cuáles son los 3 objetivos estratégicos más importantes para los próximos 12 meses?",
-        guide: "Considere el foco del negocio y sus principales frentes de mercado. Incluya números, plazos y responsables.",
-        kpi: "N° de objetivos formalizados con métricas",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 3,
         areaId: 'area_1_direccion',
         code: 'Q3',
-        title: "¿Qué tan clara y compartida está la visión de largo plazo dentro de la dirección (Juan, Pedro, María, Luis, Ana)?",
+        title: "¿Qué tan clara y compartida está la visión de largo plazo dentro de la dirección (socios / dirección)?",
+        questionType: 'maturity_level',
         options: SCALE_1_TO_5_OPTIONS
       },
       {
@@ -191,8 +177,7 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         areaId: 'area_1_direccion',
         code: 'Q4',
         title: "¿Cuántas horas por semana dedica el/la titular a pensar y trabajar EN la empresa (estrategia) vs. trabajar DENTRO de ella (dirección técnica, comercial, operación)?",
-        guide: "Con frecuencia el/la titular concentra dirección, operaciones y comercial. Sea honesto: esta es una de las brechas más comunes y el eje de la \"poda\".",
-        kpi: "% de tiempo en estrategia (meta: 30%+)",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
@@ -200,6 +185,7 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         areaId: 'area_1_direccion',
         code: 'Q5',
         title: "¿Existen reuniones estratégicas periódicas (no operativas)? ¿Con qué frecuencia? ¿Quiénes participan? ¿Hay agenda fija?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
@@ -207,6 +193,7 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         areaId: 'area_1_direccion',
         code: 'Q6',
         title: "¿En qué medida la urgencia operativa del día a día impide trabajar en la estrategia?",
+        questionType: 'maturity_level',
         options: SCALE_1_TO_5_OPTIONS
       },
       {
@@ -214,6 +201,7 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         areaId: 'area_1_direccion',
         code: 'Q7',
         title: "¿Cómo se toman las decisiones importantes? ¿Quién decide sobre cada área: operaciones, finanzas, técnica, provisiones?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
@@ -221,7 +209,7 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         areaId: 'area_1_direccion',
         code: 'Q8',
         title: "¿Existe un organigrama formal con roles y responsabilidades claras? ¿Se comparte con el equipo?",
-        guide: "Si la empresa muestra distintas áreas de dirección, ¿está formalizado por escrito y con límites de autoridad?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
@@ -229,1067 +217,919 @@ export const DIAGNOSTIC_AREAS: DiagnosticArea[] = [
         areaId: 'area_1_direccion',
         code: 'Q9',
         title: "¿Cuáles son los valores no negociables de la empresa? ¿Están documentados?",
-        guide: "Si la empresa comunica valores como calidad, seguridad o cumplimiento de plazos, ¿son valores declarados y vividos, o solo comerciales?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 79,
+        id: 10,
         areaId: 'area_1_direccion',
-        code: 'Q79',
-        title: "¿Existe un protocolo de socios o acuerdo de directorio formalizado para toma de decisiones, dividendos y sucesión?",
-        guide: "Evalúe si las reglas entre socios están escritas y firmadas o si se manejan de palabra.",
-        kpi: "Protocolo societario formalizado (Sí/No)",
+        code: 'Q10',
+        title: "Como sociedad entre socios: ¿existen acuerdos formales entre ustedes —pacto de socios, reglas de retiro de utilidades, protocolo ante desacuerdos o ante la salida de un socio— y una figura societaria que ordene todo esto?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
-      },
+      }
     ]
   },
   {
     id: 'area_2_finanzas',
     number: 2,
-    name: 'Administración y Finanzas',
+    name: "Administración y Finanzas",
     icon: 'DollarSign',
     pentagonAxis: 'Finanzas',
-    description: 'Salud financiera, flujo de caja, punto de equilibrio, rentabilidad por proyecto y ordenamiento contable.',
-    imeWeight: 0.15,
+    description: "Facturación, márgenes, estructura de costos, precios/redeterminación, flujo de caja y separación patrimonial.",
+    imeWeight: 0.14,
     kpis: [
-      {
-            "name": "Facturación anual",
-            "unit": "$"
-      },
-      {
-            "name": "Margen bruto",
-            "unit": "%"
-      },
-      {
-            "name": "Margen neto",
-            "unit": "%"
-      },
-      {
-            "name": "Costos fijos mensuales (estructura)",
-            "unit": "$"
-      },
-      {
-            "name": "Punto de equilibrio",
-            "unit": "$/mes"
-      },
-      {
-            "name": "Runway (reserva)",
-            "unit": "Meses"
-      },
-      {
-            "name": "Plazo promedio de cobro",
-            "unit": "Días"
-      },
-      {
-            "name": "Deuda total",
-            "unit": "$"
-      }
-],
+      { name: "Margen neto operativo", unit: "%", target: ">= 15%" },
+      { name: "Meses de reserva de caja (Runway)", unit: "meses", target: ">= 3 meses" },
+      { name: "Plazo promedio de cobro (DSO)", unit: "días", target: "<= 30 días" }
+    ],
     questions: [
-      {
-        id: 10,
-        areaId: 'area_2_finanzas',
-        code: 'Q10',
-        title: "¿Cuál fue la facturación de los últimos 12 meses? ¿Cómo evolucionó mes a mes? ¿Hay estacionalidad?",
-        guide: "Muchos negocios tienen estacionalidad según su mercado. Adjunte planilla si la tiene.",
-        kpi: "Facturación anual ($) y variabilidad mensual (CV%)",
-        options: STANDARD_CLOSED_OPTIONS
-      },
       {
         id: 11,
         areaId: 'area_2_finanzas',
         code: 'Q11',
-        title: "¿Cuáles son sus principales fuentes de ingreso y qué % representa cada una?",
-        guide: "Abra el mix por línea de servicio o producto y por mercado o segmento de cliente.",
+        title: "¿Cuál fue la facturación de los últimos 12 meses? ¿Cómo evolucionó mes a mes? ¿Hay estacionalidad?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 12,
         areaId: 'area_2_finanzas',
         code: 'Q12',
-        title: "¿Conoce su margen bruto y neto? ¿Cómo los calcula? ¿Varían según el tipo de producto o servicio?",
-        guide: "Compare márgenes entre las distintas líneas de negocio.",
-        kpi: "Margen bruto (%) y margen neto (%)",
+        title: "¿Cuáles son sus principales fuentes de ingreso y qué % representa cada una?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 13,
         areaId: 'area_2_finanzas',
         code: 'Q13',
-        title: "¿Tiene identificados sus costos fijos mensuales (estructura)? ¿Cuál es su punto de equilibrio?",
-        guide: "Liste los principales costos fijos de la estructura estable que la empresa quiere mantener.",
-        kpi: "Punto de equilibrio mensual ($)",
+        title: "¿En qué monedas facturan y cobran (pesos, dólares)? ¿Qué porcentaje representa cada una? ¿Tienen contratos u obras nominados en USD (p. ej. sector minero)?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 14,
         areaId: 'area_2_finanzas',
         code: 'Q14',
-        title: "¿Existen costos ocultos o ineficiencias conocidas que aún no ha podido resolver?",
-        guide: "¿Dónde se pierde dinero silenciosamente hoy: reprocesos, tiempos muertos, stock inmovilizado?",
+        title: "¿Conoce su margen bruto y neto? ¿Cómo los calcula? ¿Varían según el tipo de producto o servicio?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 15,
         areaId: 'area_2_finanzas',
         code: 'Q15',
-        title: "¿Lleva registro de ingresos y egresos? ¿Con qué herramienta y frecuencia lo revisa?",
-        guide: "Ejemplos: sistema contable, Excel, ERP.",
+        title: "¿Tiene identificados sus costos fijos mensuales (estructura)? ¿Cuál es su punto de equilibrio?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 16,
         areaId: 'area_2_finanzas',
         code: 'Q16',
-        title: "¿Tiene proyección de flujo de caja a 3, 6 o 12 meses? ¿Cuántos meses de reserva tiene la empresa?",
-        guide: "Clave cuando el cobro suele demorar y exige capital de trabajo.",
-        kpi: "Runway (meses de reserva)",
+        title: "¿Cómo definen los precios y presupuestos de cada obra o servicio (por m², presupuesto cerrado, por administración / costo + margen)? ¿Con qué frecuencia y criterio los actualizan (redeterminación por inflación)?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 17,
         areaId: 'area_2_finanzas',
         code: 'Q17',
-        title: "¿Están las finanzas de la empresa completamente separadas de las personales? ¿Hay cuenta bancaria empresarial? ¿Cómo retira el/la titular sus beneficios?",
-        guide: "Punto crítico especialmente en empresas unipersonales: el patrimonio personal responde por la empresa. Evalúe el grado de separación real.",
+        title: "¿Existen costos ocultos o ineficiencias conocidas que aún no ha podido resolver?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 18,
         areaId: 'area_2_finanzas',
         code: 'Q18',
-        title: "¿Tiene deudas o compromisos financieros activos (préstamos, equipamiento, proveedores)? Detalle monto, tasa y plazo.",
-        kpi: "Ratio deuda/patrimonio",
+        title: "¿Lleva registro de ingresos y egresos? ¿Con qué herramienta y frecuencia lo revisa?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 19,
         areaId: 'area_2_finanzas',
         code: 'Q19',
-        title: "¿Cómo calificaría la salud financiera actual de la empresa?",
-        options: SCALE_1_TO_5_OPTIONS
-      },
-      {
-        id: 80,
-        areaId: 'area_2_finanzas',
-        code: 'Q80',
-        title: "¿Cuenta con un presupuesto anual y tablero de control financiero mensual con análisis de desvíos?",
-        guide: "Verifique si comparan lo presupuestado contra lo ejecutado cada mes.",
-        kpi: "% de desvío presupuestario mensual",
+        title: "¿Tiene proyección de flujo de caja a 3, 6 o 12 meses? ¿Cuántos meses de reserva tiene la empresa?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
+      {
+        id: 20,
+        areaId: 'area_2_finanzas',
+        code: 'Q20',
+        title: "¿Cuáles son los plazos reales de cobro de sus clientes? ¿Trabajan con anticipos, certificados de avance o pagos contra entrega? ¿Existen demoras o incobrables? ¿Cómo gestionan la cobranza?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 21,
+        areaId: 'area_2_finanzas',
+        code: 'Q21',
+        title: "¿Están las finanzas de la empresa completamente separadas de las personales? ¿Hay cuenta bancaria empresarial? ¿Cómo retira el/la titular sus beneficios?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 22,
+        areaId: 'area_2_finanzas',
+        code: 'Q22',
+        title: "¿Tiene deudas o compromisos financieros activos (préstamos, equipamiento, proveedores)? Detalle monto, tasa y plazo.",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 23,
+        areaId: 'area_2_finanzas',
+        code: 'Q23',
+        title: "¿Cómo calificaría la salud financiera actual de la empresa?",
+        questionType: 'maturity_level',
+        options: SCALE_1_TO_5_OPTIONS
+      }
     ]
   },
   {
     id: 'area_3_operaciones',
     number: 3,
-    name: 'Operaciones y Producción',
+    name: "Operaciones y Producción",
     icon: 'Settings',
     pentagonAxis: 'Procesos',
-    description: 'Capacidad operativa, procesos de ejecución, cuellos de botella y estandarización.',
-    imeWeight: 0.15,
+    description: "Procesos principales, capacidad instalada, cumplimiento de plazos, reprocesos y cuellos de botella.",
+    imeWeight: 0.14,
     kpis: [
-      {
-            "name": "N° de proyectos simultáneos (capacidad)",
-            "unit": "N°"
-      },
-      {
-            "name": "Utilización actual de capacidad",
-            "unit": "%"
-      },
-      {
-            "name": "MVP operativo mensual",
-            "unit": "$"
-      },
-      {
-            "name": "Tasa de reproceso",
-            "unit": "%"
-      },
-      {
-            "name": "% procesos documentados",
-            "unit": "%"
-      },
-      {
-            "name": "Plazo comprometido vs. real",
-            "unit": "Días"
-      },
-      {
-            "name": "% trabajos entregados en fecha",
-            "unit": "%"
-      }
-],
+      { name: "Proyectos / obras simultáneas (capacidad)", unit: "unidades", target: "Definida" },
+      { name: "% trabajos con reproceso", unit: "%", target: "< 5%" },
+      { name: "% cumplimiento de plazos comprometidos", unit: "%", target: ">= 90%" }
+    ],
     questions: [
-      {
-        id: 20,
-        areaId: 'area_3_operaciones',
-        code: 'Q20',
-        title: "¿Cuáles son sus procesos principales? Descríbalos paso a paso, desde que aparece una oportunidad hasta que se cierra el trabajo.",
-        guide: "Sugerencia de etapas: Relevamiento/Factibilidad → Diseño/Propuesta → Cotización → Adjudicación → Planificación → Ejecución → Control de avance → Entrega/Cierre.",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 21,
-        areaId: 'area_3_operaciones',
-        code: 'Q21',
-        title: "¿Cuál es su capacidad máxima actual (N° de proyectos/contratos simultáneos) con la estructura de hoy?",
-        guide: "Relacione con su capacidad instalada y de gestión. ¿Cuál es el \"techo\" real de gestión simultánea?",
-        kpi: "N° de proyectos simultáneos y monto máximo gestionable",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 22,
-        areaId: 'area_3_operaciones',
-        code: 'Q22',
-        title: "¿Cuál es el mínimo de facturación mensual (MVP operativo) para cubrir costos fijos y no perder dinero?",
-        kpi: "MVP en $ mensuales",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 23,
-        areaId: 'area_3_operaciones',
-        code: 'Q23',
-        title: "¿Qué porcentaje de trabajos requieren reproceso o corrección antes de la entrega? ¿Cuánto cuesta al mes?",
-        kpi: "Tasa de reproceso (%) y costo mensual ($)",
-        options: STANDARD_CLOSED_OPTIONS
-      },
       {
         id: 24,
         areaId: 'area_3_operaciones',
         code: 'Q24',
-        title: "¿Tiene indicadores de calidad activos? ¿Certificaciones (ISO, etc.)? ¿Cómo mide la satisfacción del trabajo entregado?",
-        guide: "Considere estándares externos o habilitaciones ya alcanzadas como referencia.",
+        title: "¿Cuáles son sus procesos principales? Descríbalos paso a paso, desde que aparece una oportunidad hasta que se cierra el trabajo.",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 25,
         areaId: 'area_3_operaciones',
         code: 'Q25',
-        title: "¿En qué medida los procesos operativos están documentados y estandarizados?",
-        options: SCALE_1_TO_5_OPTIONS
+        title: "¿Cuál es su capacidad máxima actual (N° de proyectos/contratos simultáneos) con la estructura de hoy?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 26,
         areaId: 'area_3_operaciones',
         code: 'Q26',
-        title: "¿Cuáles son los 3 principales cuellos de botella de la operación? ¿Dónde se \"rompe\" el sistema con mayor frecuencia?",
+        title: "¿Cuál es el mínimo de facturación mensual (MVP operativo) para cubrir costos fijos y no perder dinero?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 27,
         areaId: 'area_3_operaciones',
         code: 'Q27',
+        title: "¿Qué porcentaje de las oportunidades u obras deben rechazar, derivar o postergar por falta de capacidad de gestión o de estructura, y qué hacen en esos casos?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 28,
+        areaId: 'area_3_operaciones',
+        code: 'Q28',
+        title: "¿Qué porcentaje de trabajos requieren reproceso o corrección antes de la entrega? ¿Cuánto cuesta al mes?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 29,
+        areaId: 'area_3_operaciones',
+        code: 'Q29',
+        title: "¿Tiene indicadores de calidad activos? ¿Certificaciones (ISO, etc.)? ¿Cómo mide la satisfacción del trabajo entregado?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 30,
+        areaId: 'area_3_operaciones',
+        code: 'Q30',
+        title: "¿Cumplen los plazos de obra y entrega comprometidos? ¿Con qué frecuencia se retrasan, cuáles son las causas más frecuentes y cómo lo comunican al cliente?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 31,
+        areaId: 'area_3_operaciones',
+        code: 'Q31',
+        title: "¿En qué medida los procesos operativos están documentados y estandarizados?",
+        questionType: 'maturity_level',
+        options: SCALE_1_TO_5_OPTIONS
+      },
+      {
+        id: 32,
+        areaId: 'area_3_operaciones',
+        code: 'Q32',
+        title: "¿Cuáles son los 3 principales cuellos de botella de la operación? ¿Dónde se \"rompe\" el sistema con mayor frecuencia?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 33,
+        areaId: 'area_3_operaciones',
+        code: 'Q33',
         title: "¿Hay personas cuya ausencia detendría o comprometería seriamente la operación? ¿Su conocimiento está documentado o solo en su cabeza?",
-        guide: "Evalúe especialmente la dependencia de las personas clave de operaciones y de la propia dirección.",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 81,
-        areaId: 'area_3_operaciones',
-        code: 'Q81',
-        title: "¿Existe un plan de mantenimiento preventivo para equipos, maquinaria, vehículos o infraestructura crítica?",
-        guide: "Determine si el mantenimiento es preventivo y programado o meramente correctivo ante roturas.",
-        kpi: "% cumplimiento plan preventivo",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 82,
-        areaId: 'area_3_operaciones',
-        code: 'Q82',
-        title: "¿Cómo se gestionan la seguridad e higiene operativa, prevención de accidentes y riesgos en planta u obra?",
-        kpi: "Índice de siniestralidad / incidentes",
-        options: STANDARD_CLOSED_OPTIONS
-      },
+      }
     ]
   },
   {
     id: 'area_4_rrhh',
     number: 4,
-    name: 'Recursos Humanos',
+    name: "Recursos Humanos",
     icon: 'Users',
     pentagonAxis: 'Talento',
-    description: 'Equipo, roles, liderazgo, cultura, retención y desarrollo del capital humano.',
-    imeWeight: 0.1,
+    description: "Dotación, roles de socios, registración formal, mandos medios, inducción, capacitación y clima laboral.",
+    imeWeight: 0.09,
     kpis: [
-      {
-            "name": "N° empleados totales",
-            "unit": "N°"
-      },
-      {
-            "name": "N° mandos medios con rol definido",
-            "unit": "N°"
-      },
-      {
-            "name": "Tasa de rotación anual",
-            "unit": "%"
-      },
-      {
-            "name": "Horas de capacitación/persona/año",
-            "unit": "Horas"
-      },
-      {
-            "name": "Tiempo de onboarding",
-            "unit": "Días"
-      },
-      {
-            "name": "Score de clima laboral",
-            "unit": "1-10"
-      },
-      {
-            "name": "% conocimiento clave documentado",
-            "unit": "%"
-      }
-],
+      { name: "Dotación total (propios + subcontratos)", unit: "personas", target: "Estructurada" },
+      { name: "% roles con descripción escrita", unit: "%", target: "100%" },
+      { name: "Rotación anual de personal clave", unit: "%", target: "< 10%" }
+    ],
     questions: [
-      {
-        id: 28,
-        areaId: 'area_4_rrhh',
-        code: 'Q28',
-        title: "¿Cuántas personas integran la empresa (dirección, planta permanente, personal variable, subcontratos, freelance)? Detalle por área.",
-        guide: "Detalle la dirección y las áreas, e incluya además la mano de obra o personal variable.",
-        kpi: "N° empleados totales y por área",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 29,
-        areaId: 'area_4_rrhh',
-        code: 'Q29',
-        title: "¿Cada persona tiene rol y responsabilidades definidos por escrito? ¿Existen descripciones de puesto?",
-        kpi: "% roles con descripción formalizada",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 30,
-        areaId: 'area_4_rrhh',
-        code: 'Q30',
-        title: "¿Tiene mandos medios o líderes de área capacitados para gestionar de forma autónoma?",
-        guide: "¿Puede un proyecto avanzar sin la intervención directa del/de la titular?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 31,
-        areaId: 'area_4_rrhh',
-        code: 'Q31',
-        title: "¿Cuánto tarda un nuevo integrante en ser productivo? ¿Existe un proceso de inducción estructurado?",
-        kpi: "Tiempo de onboarding (días)",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 32,
-        areaId: 'area_4_rrhh',
-        code: 'Q32',
-        title: "¿Cuántas horas de capacitación formal recibe cada persona por año? ¿Hay presupuesto para formación?",
-        kpi: "Horas de capacitación/persona/año",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 33,
-        areaId: 'area_4_rrhh',
-        code: 'Q33',
-        title: "¿Cómo calificaría el clima laboral actual?",
-        options: SCALE_1_TO_5_OPTIONS
-      },
       {
         id: 34,
         areaId: 'area_4_rrhh',
         code: 'Q34',
-        title: "¿Cuántas personas dejaron la empresa en los últimos 12 meses y por qué razones?",
-        kpi: "Tasa de rotación anual (%)",
+        title: "¿Cuántas personas integran la empresa (dirección, planta permanente, personal variable, subcontratos, freelance)? Detalle por área.",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 35,
         areaId: 'area_4_rrhh',
         code: 'Q35',
+        title: "¿Qué tareas realiza hoy cada socio (comerciales, proyecto/técnica, obra, administrativas)? ¿Cuáles consideran que solo ustedes pueden hacer y cuáles podrían delegar?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 36,
+        areaId: 'area_4_rrhh',
+        code: 'Q36',
+        title: "¿Qué tipo de vínculo formal tienen con el personal y los subcontratistas (relación de dependencia, monotributo/factura, acuerdos verbales)? ¿Cómo se gestionan las altas y la registración?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 37,
+        areaId: 'area_4_rrhh',
+        code: 'Q37',
+        title: "¿Cada persona tiene rol y responsabilidades definidos por escrito? ¿Existen descripciones de puesto?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 38,
+        areaId: 'area_4_rrhh',
+        code: 'Q38',
+        title: "¿Tiene mandos medios o líderes de área capacitados para gestionar de forma autónoma?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 39,
+        areaId: 'area_4_rrhh',
+        code: 'Q39',
+        title: "¿Cuánto tarda un nuevo integrante en ser productivo? ¿Existe un proceso de inducción estructurado?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 40,
+        areaId: 'area_4_rrhh',
+        code: 'Q40',
+        title: "¿Cómo seleccionan y evalúan a los subcontratistas, gremios y personal de obra (cuadrillas, tercerizados)? ¿Qué requisitos exigen (experiencia, referencias, papeles, seguridad)?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 41,
+        areaId: 'area_4_rrhh',
+        code: 'Q41',
+        title: "¿Cuántas horas de capacitación formal recibe cada persona por año? ¿Hay presupuesto para formación?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 42,
+        areaId: 'area_4_rrhh',
+        code: 'Q42',
+        title: "¿Cómo calificaría el clima laboral actual?",
+        questionType: 'maturity_level',
+        options: SCALE_1_TO_5_OPTIONS
+      },
+      {
+        id: 43,
+        areaId: 'area_4_rrhh',
+        code: 'Q43',
+        title: "¿Cuántas personas dejaron la empresa en los últimos 12 meses y por qué razones?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 44,
+        areaId: 'area_4_rrhh',
+        code: 'Q44',
         title: "¿Qué hace la empresa para retener y motivar al talento clave?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 83,
-        areaId: 'area_4_rrhh',
-        code: 'Q83',
-        title: "¿Realiza evaluaciones de desempeño periódicas con devolución formal y objetivos de mejora para el equipo?",
-        kpi: "% del personal evaluado anualmente",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 84,
-        areaId: 'area_4_rrhh',
-        code: 'Q84',
-        title: "¿Existe una política clara de remuneraciones, escalas salariales e incentivos por cumplimiento de metas?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
+      }
     ]
   },
   {
     id: 'area_5_comercial',
     number: 5,
-    name: 'Comercial y Marketing',
+    name: "Comercial y Marketing",
     icon: 'TrendingUp',
     pentagonAxis: 'Comercial',
-    description: 'Estrategia de ventas, propuesta de valor diferencial, canales y presencia de marca.',
-    imeWeight: 0.15,
+    description: "Propuesta de valor, posicionamiento, canales de captación, licitaciones, conversión y marketing digital.",
+    imeWeight: 0.13,
     kpis: [
-      {
-            "name": "N° cotizaciones/mes",
-            "unit": "N°"
-      },
-      {
-            "name": "Tasa de conversión cotización→adjudicación",
-            "unit": "%"
-      },
-      {
-            "name": "Ticket promedio por venta",
-            "unit": "$"
-      },
-      {
-            "name": "Ciclo de venta promedio",
-            "unit": "Días"
-      },
-      {
-            "name": "N° clientes activos",
-            "unit": "N°"
-      },
-      {
-            "name": "% facturación del top 3 clientes",
-            "unit": "%"
-      },
-      {
-            "name": "Inversión mensual en marketing",
-            "unit": "$"
-      }
-],
+      { name: "Tasa de conversión de presupuestos", unit: "%", target: ">= 30%" },
+      { name: "Ciclo promedio de cierre", unit: "días", target: "<= 30 días" },
+      { name: "Consultas / leads calificados por mes", unit: "leads/mes", target: ">= 10" }
+    ],
     questions: [
       {
-        id: 36,
+        id: 45,
         areaId: 'area_5_comercial',
-        code: 'Q36',
+        code: 'Q45',
         title: "¿Por qué los clientes eligen a la empresa y no a la competencia? ¿Cuál es su propuesta de valor diferencial?",
-        guide: "Defina qué la hace única (ciclo de vida completo, experiencia, especialización). Evite \"buena calidad y buen precio\".",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 37,
+        id: 46,
         areaId: 'area_5_comercial',
-        code: 'Q37',
+        code: 'Q46',
         title: "¿En qué segmento está mejor posicionado hoy y en cuál quiere estar en 3 años?",
-        guide: "Compare el posicionamiento actual con el objetivo de crecimiento.",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 38,
+        id: 47,
         areaId: 'area_5_comercial',
-        code: 'Q38',
+        code: 'Q47',
         title: "¿Cómo consigue nuevos clientes hoy? Describa el proceso desde el primer contacto hasta el cierre.",
-        guide: "Canales típicos: referencias, reactivación de vínculos, licitaciones, canales digitales, alianzas.",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 39,
+        id: 48,
         areaId: 'area_5_comercial',
-        code: 'Q39',
+        code: 'Q48',
         title: "¿Cuántas cotizaciones/presupuestos envía por mes y cuántos se convierten en venta?",
-        guide: "Si automatiza presupuestos con herramientas o IA, ¿mejoró el volumen o la velocidad de cotización?",
-        kpi: "Tasa de conversión cotización→adjudicación (%)",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 40,
+        id: 49,
         areaId: 'area_5_comercial',
-        code: 'Q40',
+        code: 'Q49',
         title: "¿Cuánto tarda en promedio desde el primer contacto hasta la adjudicación/cierre?",
-        kpi: "Ciclo de venta promedio (días)",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 41,
+        id: 50,
         areaId: 'area_5_comercial',
-        code: 'Q41',
+        code: 'Q50',
+        title: "¿Participan en licitaciones, procesos de homologación o registros de proveedores de grandes empresas (mineras, Estado, corporativos)? ¿Cómo les ha ido y qué requisitos les exigieron (calidad, seguridad, administración)?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 51,
+        areaId: 'area_5_comercial',
+        code: 'Q51',
         title: "¿Su web y canales digitales están activos? ¿Con qué frecuencia se actualizan? ¿Generan consultas/leads?",
-        guide: "Si cuenta con sitio propio y formulario de contacto, ¿cuántas consultas reales genera por mes?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 42,
+        id: 52,
         areaId: 'area_5_comercial',
-        code: 'Q42',
+        code: 'Q52',
         title: "¿Tiene una estrategia de marketing definida? ¿Cuánto invierte por mes?",
-        guide: "Considere la tensión entre visibilidad comercial y el posicionamiento deseado.",
-        kpi: "Inversión en marketing ($ y % de facturación)",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 43,
+        id: 53,
         areaId: 'area_5_comercial',
-        code: 'Q43',
+        code: 'Q53',
         title: "¿Qué tan activa y estructurada es su estrategia comercial hoy?",
+        questionType: 'maturity_level',
         options: SCALE_1_TO_5_OPTIONS
-      },
-      {
-        id: 85,
-        areaId: 'area_5_comercial',
-        code: 'Q85',
-        title: "¿Utiliza un CRM o sistema formal para el seguimiento de prospectos, oportunidades y embudo de ventas?",
-        kpi: "% de oportunidades registradas en CRM",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 86,
-        areaId: 'area_5_comercial',
-        code: 'Q86',
-        title: "¿Cuenta con listas de precios, políticas de descuentos y condiciones comerciales estandarizadas?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
+      }
     ]
   },
   {
     id: 'area_6_clientes',
     number: 6,
-    name: 'Clientes y Experiencia',
+    name: "Clientes y Experiencia",
     icon: 'HeartHandshake',
     pentagonAxis: 'Comercial',
-    description: 'Cartera de clientes, satisfacción, postventa, fidelización y riesgo de concentración.',
-    imeWeight: 0.1,
+    description: "Concentración de cartera, recurrencia, satisfacción (NPS), reclamos y postventa.",
+    imeWeight: 0.09,
     kpis: [
-      {
-            "name": "N° clientes activos",
-            "unit": "N°"
-      },
-      {
-            "name": "% facturación top 1 cliente",
-            "unit": "%"
-      },
-      {
-            "name": "% facturación del principal segmento",
-            "unit": "%"
-      },
-      {
-            "name": "Tasa de retención anual",
-            "unit": "%"
-      },
-      {
-            "name": "NPS",
-            "unit": "-100 a +100"
-      },
-      {
-            "name": "N° reclamos/mes",
-            "unit": "N°"
-      },
-      {
-            "name": "Tiempo promedio de resolución",
-            "unit": "Días"
-      }
-],
+      { name: "% facturación en top 3 clientes", unit: "%", target: "< 45%" },
+      { name: "Tasa de recompra / recurrencia", unit: "%", target: ">= 50%" },
+      { name: "Reclamos formales / mes", unit: "cant/mes", target: "0-1" }
+    ],
     questions: [
       {
-        id: 44,
+        id: 54,
         areaId: 'area_6_clientes',
-        code: 'Q44',
+        code: 'Q54',
         title: "¿Quiénes son sus principales clientes y qué % de la facturación representa cada uno?",
-        guide: "Identifique dependencia excesiva de un cliente o sector.",
-        kpi: "% facturación del top 1 cliente (riesgo si >40%)",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 45,
+        id: 55,
         areaId: 'area_6_clientes',
-        code: 'Q45',
+        code: 'Q55',
         title: "¿Qué % de clientes realiza compras/trabajos repetidos? ¿Cuánto dura en promedio la relación?",
-        guide: "Los servicios recurrentes pueden convertir ventas puntuales en relaciones de largo plazo: ¿lo está aprovechando?",
-        kpi: "Tasa de retención (%) y valor por cliente ($)",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 46,
+        id: 56,
         areaId: 'area_6_clientes',
-        code: 'Q46',
+        code: 'Q56',
         title: "¿Mide la satisfacción de sus clientes? ¿Recibe feedback sistemático?",
-        guide: "Encuestas, actas de recepción conforme, reuniones de cierre, NPS.",
-        kpi: "NPS (si lo tiene)",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 47,
+        id: 57,
         areaId: 'area_6_clientes',
-        code: 'Q47',
+        code: 'Q57',
         title: "¿Cuántos reclamos formales recibe por mes? ¿Cómo los gestiona y en cuánto tiempo resuelve?",
-        kpi: "N° reclamos/mes y tiempo de resolución",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 48,
+        id: 58,
         areaId: 'area_6_clientes',
-        code: 'Q48',
+        code: 'Q58',
         title: "¿Qué hace la empresa después de entregar un trabajo para fidelizar al cliente?",
-        guide: "Ej.: planes de mantenimiento/servicio, auditorías post-venta, garantías extendidas.",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 87,
-        areaId: 'area_6_clientes',
-        code: 'Q87',
-        title: "¿Tiene segmentada su cartera de clientes (ej. matriz ABC por rentabilidad, volumen y frecuencia)?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 88,
-        areaId: 'area_6_clientes',
-        code: 'Q88',
-        title: "¿Trabaja con contratos formales, órdenes de compra o acuerdos de nivel de servicio (SLA) con sus clientes?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 89,
-        areaId: 'area_6_clientes',
-        code: 'Q89',
-        title: "¿Existe un protocolo de alta y bienvenida (onboarding) para nuevos clientes?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 90,
-        areaId: 'area_6_clientes',
-        code: 'Q90',
-        title: "¿Cómo gestiona la cobranza a clientes, plazos de pago y seguimiento de cuentas por cobrar o mora?",
-        kpi: "Días promedio de cobro (DSO)",
-        options: STANDARD_CLOSED_OPTIONS
-      },
+      }
     ]
   },
   {
     id: 'area_7_procesos',
     number: 7,
-    name: 'Procesos y Sistemas de Gestión',
-    icon: 'FileCheck',
+    name: "Procesos y Sistemas de Gestión",
+    icon: 'ClipboardCheck',
     pentagonAxis: 'Procesos',
-    description: 'Documentación, estandarización bajo ISO 9001, checklists y gestión de proyectos.',
-    imeWeight: 0.1,
+    description: "Instructivos escritos, manual de operaciones, checklists, confidencialidad, certificaciones y seguimiento de proyectos.",
+    imeWeight: 0.09,
     kpis: [
-      {
-            "name": "N° procedimientos escritos activos",
-            "unit": "N°"
-      },
-      {
-            "name": "% procesos críticos documentados",
-            "unit": "%"
-      },
-      {
-            "name": "Certificaciones/habilitaciones activas",
-            "unit": "N° y tipo"
-      },
-      {
-            "name": "Score de madurez de sistemas",
-            "unit": "1-5"
-      },
-      {
-            "name": "% proyectos entregados en plazo",
-            "unit": "%"
-      },
-      {
-            "name": "% proyectos dentro de presupuesto",
-            "unit": "%"
-      }
-],
+      { name: "Procesos críticos documentados", unit: "%", target: ">= 80%" },
+      { name: "Proyectos entregados en plazo y presupuesto", unit: "%", target: ">= 85%" }
+    ],
     questions: [
       {
-        id: 49,
+        id: 59,
         areaId: 'area_7_procesos',
-        code: 'Q49',
+        code: 'Q59',
         title: "¿Cuántos procedimientos o instructivos escritos tiene hoy? ¿Qué procesos críticos NO están documentados?",
-        kpi: "N° procedimientos activos y % procesos documentados",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 50,
+        id: 60,
         areaId: 'area_7_procesos',
-        code: 'Q50',
+        code: 'Q60',
         title: "¿Existe un manual de operaciones, calidad o procedimientos? ¿Cuándo se actualizó por última vez?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 51,
+        id: 61,
         areaId: 'area_7_procesos',
-        code: 'Q51',
+        code: 'Q61',
         title: "¿Cómo asegura que todo el equipo trabaje de la misma manera? ¿Usa checklists?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 52,
+        id: 62,
         areaId: 'area_7_procesos',
-        code: 'Q52',
+        code: 'Q62',
+        title: "¿Cómo gestionan la confidencialidad y el resguardo de la información y documentación de los clientes y de las obras (planos, proyectos, contratos, cómputos)? ¿Existen protocolos, respaldos y acuerdos firmados?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 63,
+        areaId: 'area_7_procesos',
+        code: 'Q63',
         title: "¿Tiene alguna certificación de calidad (ISO 9001 u otra)? ¿Está vigente? ¿Cubre toda la operación?",
-        guide: "Registre también otras habilitaciones o registros externos y su vencimiento, para planificar la renovación.",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 53,
+        id: 64,
         areaId: 'area_7_procesos',
-        code: 'Q53',
+        code: 'Q64',
         title: "¿Cómo calificaría el nivel de madurez de sus sistemas de gestión?",
+        questionType: 'maturity_level',
         options: SCALE_1_TO_5_OPTIONS
       },
       {
-        id: 54,
+        id: 65,
         areaId: 'area_7_procesos',
-        code: 'Q54',
+        code: 'Q65',
         title: "¿Cómo planifica y hace seguimiento de los proyectos activos? ¿Qué herramienta usa?",
-        guide: "¿Existe un tablero único de proyectos con avance, plazos y costos?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 55,
+        id: 66,
         areaId: 'area_7_procesos',
-        code: 'Q55',
+        code: 'Q66',
         title: "¿Con qué frecuencia los proyectos se entregan fuera de plazo o de presupuesto? ¿Cuál es la causa más común?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 91,
-        areaId: 'area_7_procesos',
-        code: 'Q91',
-        title: "¿Realiza auditorías internas periódicas para verificar que los procesos y procedimientos se cumplan en la práctica?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 92,
-        areaId: 'area_7_procesos',
-        code: 'Q92',
-        title: "¿Registra las no conformidades, desvíos o errores operativos para analizar su causa raíz y evitar que se repitan?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 93,
-        areaId: 'area_7_procesos',
-        code: 'Q93',
-        title: "¿Están diseñados primero los procesos de la cadena de valor independientemente de las personas actuales (Medianera Conceptual)?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
+      }
     ]
   },
   {
     id: 'area_8_tecnologia',
     number: 8,
-    name: 'Tecnología y Sistemas',
-    icon: 'Laptop',
+    name: "Tecnología y Sistemas",
+    icon: 'Cpu',
     pentagonAxis: 'Procesos',
-    description: 'Madurez digital, herramientas de gestión, integración de software y uso de inteligencia artificial.',
+    description: "Software de gestión, herramientas técnicas, centralización/respaldo de datos, integración y adopción de IA.",
     imeWeight: 0.05,
     kpis: [
-      {
-            "name": "N° sistemas/software activos",
-            "unit": "N°"
-      },
-      {
-            "name": "N° sistemas integrados",
-            "unit": "N°"
-      },
-      {
-            "name": "% procesos digitalizados",
-            "unit": "%"
-      },
-      {
-            "name": "Procesos asistidos con IA",
-            "unit": "N°/desc."
-      },
-      {
-            "name": "Score de madurez digital",
-            "unit": "1-5"
-      }
-],
+      { name: "% procesos digitalizados", unit: "%", target: ">= 80%" },
+      { name: "Backup automático verificado", unit: "Sí/No", target: "Sí (100%)" }
+    ],
     questions: [
       {
-        id: 56,
+        id: 67,
         areaId: 'area_8_tecnologia',
-        code: 'Q56',
+        code: 'Q67',
         title: "¿Qué sistemas o software usa hoy para gestionar la empresa? Mencione todas las herramientas.",
-        guide: "Ej.: software de gestión/presupuestos, sistema contable, almacenamiento en la nube, comunicación.",
-        kpi: "Score de madurez digital (1-5)",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 57,
+        id: 68,
         areaId: 'area_8_tecnologia',
-        code: 'Q57',
+        code: 'Q68',
+        title: "¿Qué herramientas profesionales usan para el trabajo técnico en sí (Revit, BIM, AutoCAD, software de cómputos y presupuestos, gestión de obra)? ¿Cuáles, para qué etapa y con qué nivel de dominio del equipo?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 69,
+        areaId: 'area_8_tecnologia',
+        code: 'Q69',
+        title: "¿La información de la empresa (proyectos, planos, datos de clientes, registros administrativos) está centralizada y respaldada, o dispersa en dispositivos y cuentas personales de cada socio?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 70,
+        areaId: 'area_8_tecnologia',
+        code: 'Q70',
         title: "¿Sus sistemas están integrados o funcionan como \"silos\"? ¿Hay recarga de datos duplicada?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 58,
+        id: 71,
         areaId: 'area_8_tecnologia',
-        code: 'Q58',
+        code: 'Q71',
         title: "¿Qué % de sus procesos está digitalizado (vs. papel, verbal o email)?",
-        kpi: "% procesos digitalizados",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 59,
+        id: 72,
         areaId: 'area_8_tecnologia',
-        code: 'Q59',
+        code: 'Q72',
         title: "¿Utiliza herramientas de IA (Claude, ChatGPT, Gemini)? ¿Para qué tareas?",
-        guide: "Si ya implementa IA para automatizar presupuestos o procesos, describa alcance actual y resultados.",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
-        id: 60,
+        id: 73,
         areaId: 'area_8_tecnologia',
-        code: 'Q60',
+        code: 'Q73',
         title: "¿Cuáles son los principales dolores tecnológicos que enfrenta hoy?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 94,
-        areaId: 'area_8_tecnologia',
-        code: 'Q94',
-        title: "¿Cuenta con políticas de seguridad informática, copias de respaldo (backups) automáticas y control de accesos?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 95,
-        areaId: 'area_8_tecnologia',
-        code: 'Q95',
-        title: "¿Dispone de tableros de datos o reportes automatizados en tiempo real para la toma de decisiones?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 96,
-        areaId: 'area_8_tecnologia',
-        code: 'Q96',
-        title: "¿La documentación e información crítica de la empresa está centralizada y ordenada en un repositorio en la nube?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 97,
-        areaId: 'area_8_tecnologia',
-        code: 'Q97',
-        title: "¿Existe un presupuesto o plan anual de actualización de hardware, software e infraestructura tecnológica?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
+      }
     ]
   },
   {
     id: 'area_9_proveedores',
     number: 9,
-    name: 'Proveedores y Cadena de Valor',
+    name: "Proveedores y Cadena de Valor",
     icon: 'Truck',
     pentagonAxis: 'Procesos',
-    description: 'Abastecimiento, proveedores críticos sin alternativa, inventario y calce financiero cobro-pago.',
+    description: "Proveedores críticos y alternativos, compras, inventario/stock, maquinaria/equipos y calce de pagos.",
     imeWeight: 0.05,
     kpis: [
-      {
-            "name": "N° proveedores críticos",
-            "unit": "N°"
-      },
-      {
-            "name": "N° proveedores sin alternativa",
-            "unit": "N°"
-      },
-      {
-            "name": "Rotación de inventario",
-            "unit": "Veces/año"
-      },
-      {
-            "name": "DPO (días de pago a proveedores)",
-            "unit": "Días"
-      },
-      {
-            "name": "Brecha cobro-pago (calce financiero)",
-            "unit": "Días"
-      },
-      {
-            "name": "Costo de abastecimiento / facturación",
-            "unit": "%"
-      }
-],
+      { name: "Proveedores críticos con alternativa", unit: "%", target: "100%" },
+      { name: "Calce financiero cobros vs pagos", unit: "días", target: ">= 0 días" }
+    ],
     questions: [
-      {
-        id: 61,
-        areaId: 'area_9_proveedores',
-        code: 'Q61',
-        title: "¿Cuáles son sus 5 proveedores más críticos? ¿Qué pasaría si uno dejara de operar mañana?",
-        guide: "Considere los insumos o servicios clave del negocio y las posibles sinergias internas.",
-        kpi: "N° proveedores críticos sin alternativa",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 62,
-        areaId: 'area_9_proveedores',
-        code: 'Q62',
-        title: "¿Tiene proveedores alternativos para los insumos más importantes? ¿Hay contratos o acuerdos formales?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 63,
-        areaId: 'area_9_proveedores',
-        code: 'Q63',
-        title: "¿Cómo gestiona las compras? ¿Hay un responsable definido y un proceso de aprobación?",
-        guide: "Describa el circuito de compra y aprobación y quién es el responsable.",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 64,
-        areaId: 'area_9_proveedores',
-        code: 'Q64',
-        title: "¿Tiene inventario/stock? ¿Cómo lo gestiona? ¿Conoce su rotación?",
-        guide: "Si el control de stock es parte de la visión a futuro, ¿cómo funciona hoy?",
-        kpi: "Rotación de inventario (veces/año)",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 65,
-        areaId: 'area_9_proveedores',
-        code: 'Q65',
-        title: "¿Qué condiciones de pago negocia con proveedores (contado, 30, 60 días)? ¿Calzan con el plazo de cobro de sus clientes?",
-        kpi: "DPO (días de pago) vs. plazo de cobro",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 98,
-        areaId: 'area_9_proveedores',
-        code: 'Q98',
-        title: "¿Evalúa y califica periódicamente el desempeño de sus proveedores (cumplimiento de plazos, calidad y precio)?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 99,
-        areaId: 'area_9_proveedores',
-        code: 'Q99',
-        title: "¿Realiza controles de calidad y recepción formal de insumos, materiales o servicios subcontratados?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 100,
-        areaId: 'area_9_proveedores',
-        code: 'Q100',
-        title: "¿Desarrolla alianzas estratégicas o acuerdos de abastecimiento anual con sus proveedores clave?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-    ]
-  },
-  {
-    id: 'area_10_contexto',
-    number: 10,
-    name: 'Contexto Externo (PESTEL) y Reflexión Final',
-    icon: 'Globe',
-    pentagonAxis: 'Directorio',
-    description: 'Factores político-legales, económicos, sociales, tecnológicos, competencia y cierre reflexivo.',
-    imeWeight: 0,
-    kpis: [
-      {
-            "name": "N° regulaciones aplicables activas",
-            "unit": "N°"
-      },
-      {
-            "name": "Impacto de la inflación en costos",
-            "unit": "%"
-      },
-      {
-            "name": "Crecimiento estimado del mercado",
-            "unit": "% anual"
-      },
-      {
-            "name": "N° competidores directos identificados",
-            "unit": "N°"
-      },
-      {
-            "name": "Score de amenaza competitiva",
-            "unit": "1-10"
-      }
-],
-    questions: [
-      {
-        id: 66,
-        areaId: 'area_10_contexto',
-        code: 'Q66',
-        title: "¿Qué regulaciones o normativas impactan directamente en el negocio?",
-        guide: "Ej.: régimen de contrataciones, habilitaciones, seguridad e higiene / ART, registros sectoriales.",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 67,
-        areaId: 'area_10_contexto',
-        code: 'Q67',
-        title: "¿Hay algún cambio político o regulatorio que podría afectar a la empresa en los próximos 2 años?",
-        guide: "Si el negocio es sensible a cambios de gobierno o regulación, evalúe cómo mitigar esa exposición diversificando.",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 68,
-        areaId: 'area_10_contexto',
-        code: 'Q68',
-        title: "¿Cómo afectan la inflación y el tipo de cambio al negocio? ¿Tiene mecanismos de cobertura (redeterminación de precios)?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 69,
-        areaId: 'area_10_contexto',
-        code: 'Q69',
-        title: "¿Su sector está creciendo, estable o en declive? ¿Qué indicadores sigue para monitorearlo?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 70,
-        areaId: 'area_10_contexto',
-        code: 'Q70',
-        title: "¿Hay tendencias sociales (sustentabilidad, eficiencia, nuevos hábitos) que estén afectando su mercado?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 71,
-        areaId: 'area_10_contexto',
-        code: 'Q71',
-        title: "¿Existe alguna tecnología emergente que pueda disrumpir su sector en 3 años?",
-        guide: "Ej.: IA aplicada a la gestión, automatización, nuevas plataformas o materiales.",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 72,
-        areaId: 'area_10_contexto',
-        code: 'Q72',
-        title: "¿Quiénes son sus 3 principales competidores? ¿En qué se diferencia? ¿Qué hacen mejor que usted?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
-      {
-        id: 73,
-        areaId: 'area_10_contexto',
-        code: 'Q73',
-        title: "¿Está creciendo el mercado donde opera? ¿Qué oportunidades no exploradas ve hoy?",
-        options: STANDARD_CLOSED_OPTIONS
-      },
       {
         id: 74,
-        areaId: 'area_10_contexto',
+        areaId: 'area_9_proveedores',
         code: 'Q74',
-        title: "¿Cómo calificaría la intensidad competitiva de su sector?",
-        options: SCALE_1_TO_5_OPTIONS
+        title: "¿Cuáles son sus 5 proveedores más críticos? ¿Qué pasaría si uno dejara de operar mañana?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 75,
-        areaId: 'area_10_contexto',
+        areaId: 'area_9_proveedores',
         code: 'Q75',
-        title: "¿Cuáles son los 3 mayores \"dolores\" que enfrenta la empresa HOY y que, si se resolvieran, cambiarían todo?",
+        title: "¿Tiene proveedores alternativos para los insumos más importantes? ¿Hay contratos o acuerdos formales?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 76,
-        areaId: 'area_10_contexto',
+        areaId: 'area_9_proveedores',
         code: 'Q76',
-        title: "¿Cuál es el mayor freno o limitación que siente que le impide crecer más rápido?",
+        title: "¿Cómo gestiona las compras? ¿Hay un responsable definido y un proceso de aprobación?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 77,
-        areaId: 'area_10_contexto',
+        areaId: 'area_9_proveedores',
         code: 'Q77',
-        title: "¿Qué es lo que mejor hace la empresa? ¿Cuál es su \"superpoder\" que no debería perder bajo ninguna circunstancia?",
+        title: "¿Tiene inventario/stock? ¿Cómo lo gestiona? ¿Conoce su rotación?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
       {
         id: 78,
-        areaId: 'area_10_contexto',
+        areaId: 'area_9_proveedores',
         code: 'Q78',
-        title: "¿Hay algo que no se preguntó y que considera importante que GS Consultora sepa sobre la empresa?",
+        title: "Sobre maquinaria, herramientas y equipos: ¿qué inventario propio tienen frente a lo que aporta el constructor o los subcontratistas? ¿Cómo deciden entre equipo propio, alquiler o tercerización? ¿Qué valor de reposición estiman y cómo lo protegen?",
+        questionType: 'open_diagnostic',
         options: STANDARD_CLOSED_OPTIONS
       },
+      {
+        id: 79,
+        areaId: 'area_9_proveedores',
+        code: 'Q79',
+        title: "¿Qué condiciones de pago negocia con proveedores (contado, 30, 60 días)? ¿Calzan con el plazo de cobro de sus clientes?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      }
     ]
   },
+  {
+    id: 'area_10_seguridad',
+    number: 10,
+    name: "Seguridad, Seguros y Gestión de Riesgos",
+    icon: 'ShieldAlert',
+    pentagonAxis: 'Procesos',
+    description: "Coberturas de seguros, seguridad e higiene, ART/EPP, protocolos en obra, registro de incidentes y blindaje patrimonial.",
+    imeWeight: 0.08,
+    kpis: [
+      { name: "% personal/subcontratos con ART vigente", unit: "%", target: "100%" },
+      { name: "Cobertura de seguros actualizada", unit: "1-5", target: "5" },
+      { name: "Incidentes / accidentes registrados", unit: "cant/año", target: "0" }
+    ],
+    questions: [
+      {
+        id: 80,
+        areaId: 'area_10_seguridad',
+        code: 'Q80',
+        title: "¿Qué seguros tiene contratada la empresa hoy? Detalle coberturas y montos: responsabilidad civil, todo riesgo construcción/obra, ART, seguro de vida, accidentes personales, equipos/maquinaria, vehículos, robo e incendio.",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 81,
+        areaId: 'area_10_seguridad',
+        code: 'Q81',
+        title: "¿Cuentan con seguro de vida y/o de accidentes personales para los socios y para el personal clave? ¿Qué capital y qué coberturas incluyen?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 82,
+        areaId: 'area_10_seguridad',
+        code: 'Q82',
+        title: "¿Las instalaciones (oficina, depósito, obrador) y los bienes (equipos, herramientas, vehículos) están asegurados contra incendio, robo y daños? ¿El valor asegurado está actualizado respecto del valor de reposición?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 83,
+        areaId: 'area_10_seguridad',
+        code: 'Q83',
+        title: "¿Cómo calificarían el nivel de cobertura de seguros de la empresa frente a los riesgos reales de su operación?",
+        questionType: 'maturity_level',
+        options: SCALE_1_TO_5_OPTIONS
+      },
+      {
+        id: 84,
+        areaId: 'area_10_seguridad',
+        code: 'Q84',
+        title: "¿Cuentan con un servicio o responsable de Seguridad e Higiene? ¿Elaboran legajos técnicos, programas de seguridad y aviso de obra cuando corresponde?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 85,
+        areaId: 'area_10_seguridad',
+        code: 'Q85',
+        title: "¿El personal de obra —propio y subcontratado— cuenta con ART vigente y con elementos de protección personal (EPP)? ¿Cómo lo verifican antes de que ingresen a la obra?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 86,
+        areaId: 'area_10_seguridad',
+        code: 'Q86',
+        title: "¿Qué protocolos de seguridad aplican en obra (trabajo en altura, andamios, excavaciones, electricidad, orden y limpieza)? ¿Están documentados y se controlan?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 87,
+        areaId: 'area_10_seguridad',
+        code: 'Q87',
+        title: "¿Registran los accidentes, incidentes y \"casi-accidentes\" en obra? ¿Con qué frecuencia ocurren y cómo los gestionan e investigan?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 88,
+        areaId: 'area_10_seguridad',
+        code: 'Q88',
+        title: "¿El personal y los subcontratistas están correctamente registrados y cubiertos (altas, ART, seguros) ANTES de iniciar tareas, o se regulariza solo ante inspecciones? ¿Exigen ART y seguros a los subcontratistas?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 89,
+        areaId: 'area_10_seguridad',
+        code: 'Q89',
+        title: "¿Qué pasaría con la empresa y con el patrimonio personal de los socios ante un siniestro grave (accidente fatal en obra, incendio del obrador, derrumbe, juicio laboral)? ¿Está el patrimonio personal protegido de los riesgos de la operación? ¿Prevén un fondo o mecanismo para contingencias?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      }
+    ]
+  },
+  {
+    id: 'area_11_contexto',
+    number: 11,
+    name: "Contexto Externo (PESTEL) y Reflexión Final",
+    icon: 'Globe',
+    pentagonAxis: 'Directorio',
+    description: "Regulaciones, entorno macroeconómico, dinámica sectorial, competidores, dolores principales y fortalezas.",
+    imeWeight: 0,
+    kpis: [
+      { name: "Mecanismo de redeterminación activo", unit: "Sí/No", target: "Sí" },
+      { name: "Intensidad competitiva percibida", unit: "1-5", target: "Monitoreada" }
+    ],
+    questions: [
+      {
+        id: 90,
+        areaId: 'area_11_contexto',
+        code: 'Q90',
+        title: "¿Qué regulaciones o normativas impactan directamente en el negocio?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 91,
+        areaId: 'area_11_contexto',
+        code: 'Q91',
+        title: "¿Hay algún cambio político o regulatorio que podría afectar a la empresa en los próximos 2 años?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 92,
+        areaId: 'area_11_contexto',
+        code: 'Q92',
+        title: "¿Cómo afectan la inflación y el tipo de cambio al negocio? ¿Tiene mecanismos de cobertura (redeterminación de precios)?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 93,
+        areaId: 'area_11_contexto',
+        code: 'Q93',
+        title: "¿Su sector está creciendo, estable o en declive? ¿Qué indicadores sigue para monitorearlo?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 94,
+        areaId: 'area_11_contexto',
+        code: 'Q94',
+        title: "¿Cómo evalúan la actividad de los sectores que los contratan (minería, obra pública, inversores inmobiliarios, privados)? ¿Qué indicadores o señales siguen para anticipar la demanda (p. ej. la ola minera de cobre en San Juan)?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 95,
+        areaId: 'area_11_contexto',
+        code: 'Q95',
+        title: "¿Hay tendencias sociales (sustentabilidad, eficiencia, nuevos hábitos) que estén afectando su mercado?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 96,
+        areaId: 'area_11_contexto',
+        code: 'Q96',
+        title: "¿Existe alguna tecnología emergente que pueda disrumpir su sector en 3 años?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 97,
+        areaId: 'area_11_contexto',
+        code: 'Q97',
+        title: "¿Quiénes son sus 3 principales competidores? ¿En qué se diferencia? ¿Qué hacen mejor que usted?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 98,
+        areaId: 'area_11_contexto',
+        code: 'Q98',
+        title: "¿Está creciendo el mercado donde opera? ¿Qué oportunidades no exploradas ve hoy?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 99,
+        areaId: 'area_11_contexto',
+        code: 'Q99',
+        title: "¿Cómo calificaría la intensidad competitiva de su sector?",
+        questionType: 'maturity_level',
+        options: SCALE_1_TO_5_OPTIONS
+      },
+      {
+        id: 100,
+        areaId: 'area_11_contexto',
+        code: 'Q100',
+        title: "¿Cuáles son los 3 mayores \"dolores\" que enfrenta la empresa HOY y que, si se resolvieran, cambiarían todo?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 101,
+        areaId: 'area_11_contexto',
+        code: 'Q101',
+        title: "¿Cuál es el mayor freno o limitación que siente que le impide crecer más rápido?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 102,
+        areaId: 'area_11_contexto',
+        code: 'Q102',
+        title: "¿Qué es lo que mejor hace la empresa? ¿Cuál es su \"superpoder\" que no debería perder bajo ninguna circunstancia?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      },
+      {
+        id: 103,
+        areaId: 'area_11_contexto',
+        code: 'Q103',
+        title: "¿Hay algo que no se preguntó y que considera importante que GS Consultora sepa sobre la empresa?",
+        questionType: 'open_diagnostic',
+        options: STANDARD_CLOSED_OPTIONS
+      }
+    ]
+  }
 ];
 
 export function getAllDiagnosticQuestions(): DiagnosticQuestion[] {

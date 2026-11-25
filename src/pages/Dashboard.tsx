@@ -147,7 +147,7 @@ export default function Dashboard() {
  </div>
  </div>
  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px]">
- <span className="text-slate-500">Audio → 100 preguntas</span>
+ <span className="text-slate-500">Audio → 103 preguntas (11 áreas)</span>
  <span className="font-semibold text-[#17324D]">IA Auditada</span>
  </div>
  </div>

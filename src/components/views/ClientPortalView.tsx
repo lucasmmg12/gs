@@ -1022,8 +1022,8 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
  {activeTab === 'diagnostic' && (
  !isDiagnosticApproved ? (
  renderQualityGateLock(
- 'Diagnóstico 360° (10 Áreas) y Matriz de Riesgos',
- 'El relevamiento de las 100 preguntas de Diagnóstico 360° y la Matriz de Riesgos Inherentes/Residuales se encuentran en proceso de validación técnica por Consultora GS.'
+ 'Diagnóstico 360° (11 Áreas) y Matriz de Riesgos',
+ 'El relevamiento de las 103 preguntas de Diagnóstico 360° y la Matriz de Riesgos Inherentes/Residuales se encuentran en proceso de validación técnica por Consultora GS.'
  )
  ) : (
  <div className="space-y-6">
@@ -1031,7 +1031,7 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
  <div>
  <h3 className="font-display text-lg font-bold text-zinc-950 ">
- Resultado Auditado del Diagnóstico 360° (10 Áreas)
+ Resultado Auditado del Diagnóstico 360° (11 Áreas · 103 Preguntas)
  </h3>
  <p className="text-xs text-zinc-500 font-medium">
  Evaluación integral aprobada por Consultora GS para {client.name}.
