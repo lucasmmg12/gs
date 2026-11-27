@@ -28,7 +28,6 @@ import type { Client } from '../../data/mockData';
 import { exportDiagnostic360ExecutiveReport } from '../../lib/reportGenerator';
 import {
  exportOfficialMinuteDocx,
- exportOfficialDiagnostic360Docx,
  exportOwnerMeetingBriefDocx
 } from '../../lib/gsOfficialExporter';
 import { exportClientFullMappedMasterPlan } from '../../lib/gsTemplateMapper';
@@ -1038,39 +1037,6 @@ Los invitamos a construir juntos la próxima etapa de crecimiento."`;
  </p>
  </div>
  <div className="flex flex-wrap items-center gap-2">
- <button
- type="button"
- onClick={async () => {
- const projectCode = localStorage.getItem(`gs_project_code_${client.id}`) || '26-030';
- let savedAnswers = {};
- let savedQual = {};
- let savedKpis = {};
- try {
- savedAnswers = JSON.parse(localStorage.getItem(`gs_diag_answers_${client.id}`) || '{}');
- savedQual = JSON.parse(localStorage.getItem(`gs_qualitative_answers_${client.id}`) || '{}');
- savedKpis = JSON.parse(localStorage.getItem(`gs_area_kpis_${client.id}`) || '{}');
- } catch { /* ignore */ }
-
- await exportOfficialDiagnostic360Docx({
- client: {
- name: client.name,
- rubro: client.industry || 'PyME en Profesionalización',
- },
- projectCode,
- omvText:
- ombData?.declarationText ||
- `Hoy es 2029. ${client.name} opera con Directorio activo, procesos trazables y rentabilidad previsible.`,
- omvTargets,
- answers: savedAnswers,
- qualitativeMap: savedQual,
- areaKpiValues: savedKpis,
- results,
- });
- }}
- className="px-3.5 py-2 bg-blue-900 hover:bg-blue-950 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer"
- >
- <FileText className="w-3.5 h-3.5 text-blue-200" /> Word 360° Oficial (.DOCX)
- </button>
  <button
  type="button"
  onClick={() => exportDiagnostic360ExecutiveReport(client, results)}

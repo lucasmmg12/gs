@@ -8,7 +8,6 @@ import {
  Check,
  Download,
  FileSpreadsheet,
- FileText,
  Mic,
  Lock,
 } from 'lucide-react';
@@ -23,8 +22,7 @@ import {
  exportDiagnostic360ExecutiveReport,
  exportDiagnosticResponsesExcel,
 } from '../../lib/reportGenerator';
-import { exportOfficialDiagnostic360Docx } from '../../lib/gsOfficialExporter';
-import { DEFAULT_OMV_TARGETS, LIKERT_1_TO_5_QUESTION_IDS } from '../../data/gsAxisMetadata';
+import { LIKERT_1_TO_5_QUESTION_IDS } from '../../data/gsAxisMetadata';
 import type { ClientStage } from './OMBModule';
 import { supabase } from '../../lib/supabase';
 import { loadOrgWorkspaceFromDb, saveOrgWorkspaceToDb } from '../../lib/gsCloudSync';
@@ -76,7 +74,6 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  Record<number, { answer: string; quote: string; updatedAt: string; validatedByConsultant?: boolean; sourceSessionTitle?: string }>
  >({});
  const [areaKpiValues, setAreaKpiValues] = useState<Record<string, string>>({});
- const [exportingDocx, setExportingDocx] = useState(false);
  const [dbSyncStatus, setDbSyncStatus] = useState<'synced' | 'saving'>('synced');
 
  const isDiagnosticClosed = stage === 'diagnostic_closed' || stage === 'master_plan_active';
@@ -228,46 +225,6 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  return DIAGNOSTIC_AREAS.find((a) => a.id === selectedAreaId) || DIAGNOSTIC_AREAS[0];
  }, [selectedAreaId]);
 
- const handleExportWordOfficial = async () => {
- setExportingDocx(true);
- try {
- const projectCode = localStorage.getItem(`gs_project_code_${client.id}`) || '00-000';
- let omvText = '';
- let omvTargets = DEFAULT_OMV_TARGETS;
- try {
- const savedRevs = localStorage.getItem(`gs_omb_revisions_${client.id}`);
- if (savedRevs) {
- const parsed = JSON.parse(savedRevs);
- const rev0 = parsed.find((r: any) => r.isBaselineRev0) || parsed[0];
- if (rev0?.declarationText) omvText = rev0.declarationText;
- }
- const savedTargets = localStorage.getItem(`gs_omv_targets_${client.id}`);
- if (savedTargets) omvTargets = JSON.parse(savedTargets);
- } catch {
- // ignore
- }
-
- await exportOfficialDiagnostic360Docx({
- client: {
- name: client.name,
- rubro: (client as any).industry || (client as any).rubro || 'PyME',
- location: (client as any).location || 'Argentina',
- },
- projectCode,
- consultantName: auditConsultants?.leaderConsultant || 'Equipo Consultora GS',
- reviewerName: auditConsultants?.approvedBy || 'Dirección GS',
- omvText,
- omvTargets,
- answers,
- qualitativeMap,
- areaKpiValues,
- results: diagnosticResults,
- });
- } finally {
- setExportingDocx(false);
- }
- };
-
  return (
  <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
  <StepAssistantBanner
@@ -302,18 +259,9 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  Relevamiento finalizado — Línea Base oficial establecida para el Master Plan
  </h3>
  <p className="text-xs text-emerald-200/80">
- Las respuestas cualitativas, KPIs por área y puntajes IME/IRE ya alimentan las Matrices Estratégicas y el Workbook del Master Plan. Puede exportar el Formulario Word Oficial (.DOCX) o consultar Matrices y FODA.
+ Las respuestas cualitativas, KPIs por área y puntajes IME/IRE ya alimentan las Matrices Estratégicas y el Workbook del Master Plan en vivo.
  </p>
  </div>
- <button
- type="button"
- onClick={handleExportWordOfficial}
- disabled={exportingDocx}
- className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-display text-xs font-bold flex items-center gap-2 shrink-0 shadow-sm cursor-pointer"
- >
- <FileText className="w-4 h-4" />
- {exportingDocx ? 'Generando Word...' : 'Descargar Word Oficial (.DOCX)'}
- </button>
  </div>
  ) : (
  onOpenAudioSession && (
@@ -389,17 +337,6 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  </div>
 
  <div className="flex flex-wrap items-center gap-2">
- <button
- type="button"
- onClick={handleExportWordOfficial}
- disabled={exportingDocx}
- className="px-3.5 py-2.5 bg-[#17324D] hover:bg-[#521523] text-white rounded-xl text-xs font-bold font-display flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
- title="Descargar Formulario Oficial GS Diagnóstico 360° en Word (.docx)"
- >
- <FileText className="w-3.5 h-3.5" />
- {exportingDocx ? 'Word...' : 'Word 360° (.DOCX)'}
- </button>
-
  <button
  type="button"
  onClick={() => exportDiagnostic360ExecutiveReport(client, diagnosticResults, auditConsultants)}
@@ -527,7 +464,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-2.5">
  <div className="flex items-center justify-between">
  <span className="font-display text-[11px] font-bold text-zinc-900 ">
- 📊 Tabla de KPIs Cuantitativos — {currentArea.name} (Se exporta al Word 360°)
+ 📊 Tabla de KPIs Cuantitativos — {currentArea.name}
  </span>
  <span className="text-[10px] text-zinc-500">Si es estimado, aclárelo con (*approx.)</span>
  </div>
@@ -620,7 +557,7 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  {/* A. Respuesta Abierta / Texto Libre Oficial GS (Autocompletada por IA o escrita por el consultor) */}
  <div className="mt-2 mb-3">
  <label className="text-[10px] font-bold text-zinc-500 flex flex-wrap items-center justify-between gap-2 mb-1">
- <span>Respuesta Desarrollada / Evidencia Cualitativa (Texto libre para el Word Oficial GS)</span>
+ <span>Respuesta Desarrollada / Evidencia Cualitativa</span>
  <div className="flex items-center gap-2">
  {qualitativeMap[question.id]?.answer && (
  qualitativeMap[question.id]?.validatedByConsultant ? (
@@ -727,15 +664,6 @@ export const DynamicDiagnosticForm: React.FC<DynamicDiagnosticFormProps> = ({
  </span>
 
  <div className="flex items-center gap-2">
- <button
- type="button"
- onClick={handleExportWordOfficial}
- disabled={exportingDocx}
- className="px-4 py-2.5 bg-[#17324D] hover:bg-[#521523] text-white rounded-xl text-xs font-bold font-display flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
- >
- <FileText className="w-4 h-4" />
- Exportar Word 360° (.DOCX)
- </button>
  <button
  type="button"
  onClick={onSave}
